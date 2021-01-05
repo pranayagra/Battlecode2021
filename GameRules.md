@@ -52,8 +52,8 @@
 
 * Remember each robot is independent and runs it own version of the code (sharing information between robots is not trivial and is done through flags discussed later)
 * All robots may **sense** the passability of nearby map squares and any robots located on them. Robots without true sense are unable to distinguish between slanderers and politicians (slanders appear as politicians to them)
-* Muckrakers can **detect** the presence of robots (only getting location information) 40 radius away, but can also sense 30 units away
-* sense > detect it seems like, and is only different from Muckrakers
+* Muckrakers can **detect** the presence of robots (only getting location information) 40 radius away, but can sense 30 units away
+* sense is more information than detect it seems like, and is only different for Muckrakers
 
 
 
@@ -66,7 +66,7 @@
 * Each $n$ nearby robots (specifiable up to action radius) will receive $\frac{max(conviction - 10, 0)}{n}$ conviction (health)
   * Extra conviction not divisible by $n$ will be distributed based on earlier creation time.
   * Ally robots will be "healed" by this amount, capped by the max conviction that they have
-  * Enemy or neutral robot will lose conviction. If the conviction becomes negative, then slanderers and muckrakes will be destroyed and politicians and buildings will be converted to your team.
+  * Enemy or neutral robot will lose conviction. If the conviction becomes negative, then slanderers and muckrakers will be destroyed; politicians and buildings will be converted to your team.
 
 ### Slanderers
 
@@ -80,11 +80,13 @@
 
 * Camouflage (passive) -> After creation
 
-  * 300 rounds after, slanderer fades from citizens' memory
+  * 300 rounds after, slanderer converts into a politician with equal conviction
 
     
 
 * The slanderer can probably run back to the HQ base to stay safe behind a wall of politicians and have high influence so it doesn't die + generate a lot... we need to also protect the EC
+
+* I have heard that the devs may nerf these since they generate too much right now...
 
 ### Muckrakers
 
@@ -94,10 +96,10 @@
   * Targets an enemy slanderer, destroying it, and for the next 50 turns speeches by politicians will have a multiplicative factor of $1.01^{\text{slanderer's influence}}$ 
 
 * I think these are broken ->
-  * we can push a stream of muckrakers with a mixture of low conviction (waste expensive politician since they perform suicide upon active)
+  * we can push a stream of muckrakers with a mixture of low conviction (waste expensive politician since they perform suicide upon active) to destroy slanderers
   * or high ones if all their politicians are low health (I don't think this is ever a net positive, smaller health muckrakers are better always I think)
-  * Note that politicians are faster than muckrakers, so they may be able to generate before we can stream
-  * Even if this is successful, we need to have speeches/politicians on stand by
+  * Note that politicians are faster than muckrakers, so they may be able to generate before we can stream.. not sure
+  * Even if this is successful, we need to have speeches/politicians on stand by to capitalize on the advantage
 
 ### ECs
 
@@ -112,11 +114,12 @@
 * Bid (active) -> 
 
   * Each EC will perform a bid. The EC with the highest bid will win a vote for the respective team. The team that lost will lose half the value of their max bid (to prevent spamming bids?)
-  * Note - at most 3000 rounds. If a team loses all its robots, then it immediately loses.
+  * Note - at most 3000 rounds. If a team loses all its robots before 3000 rounds, then it immediately loses.
+  * NOTE - I have seen other users say this may not actually be an active skill (since it does not forgo building potentially. It could be that creating units is not an active skill. Should test out in actual game to confirm)
 
   
 
-* I think the move is to capture the neutral ones ASAP and then do:
+* I think the move is to capture the neutral ECs ASAP and then do:
 
 * 1) safe farm -> create weak politicians as meat shields so enemy attack is magnitudes less (split speech damage over $n$ items instead of $1$ item)
 
