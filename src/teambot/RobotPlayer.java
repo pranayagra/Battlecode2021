@@ -9,13 +9,13 @@ import teambot.battlecode2021.util.Debug;
 public strictfp class RobotPlayer {
     public static RobotController controller;
 
-    static final RobotType[] spawnableRobot = {
+    public static final RobotType[] spawnableRobot = {
         RobotType.POLITICIAN,
         RobotType.SLANDERER,
         RobotType.MUCKRAKER,
     };
 
-    static final Direction[] directions = {
+    public static final Direction[] directions = {
         Direction.NORTH,
         Direction.NORTHEAST,
         Direction.EAST,
@@ -26,7 +26,7 @@ public strictfp class RobotPlayer {
         Direction.NORTHWEST,
     };
 
-    static int turnCount;
+    public static int turnCount;
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.

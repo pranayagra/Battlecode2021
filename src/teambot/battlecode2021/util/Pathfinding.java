@@ -1,8 +1,7 @@
 package teambot.battlecode2021.util;
 
 import battlecode.common.*;
-import teambot.battlecode2021.PoliticanBot;
-
+import teambot.*;
 import java.util.*;
 
 public class Pathfinding {
@@ -14,46 +13,74 @@ public class Pathfinding {
     }
 
     // Returns false if cannot move
-    //TODO: Finish, use naive move for now
-    public Boolean move(MapLocation loc) throws GameActionException {
-        controllerLoc = controller.location;
+
+    public Boolean move(MapLocation targetLoc) throws GameActionException {
+
+        MapLocation currentLoc = controller.getLocation();
         // Is it ready
-        if (!controller.isReady()) {
-            return false;
-        }
+        if (!controller.isReady()) return false;
         // Is target out of the map
-        if (controller.canSenseRadiusSquared(loc.distanceSquaredTo(controller)) && controller.onTheMap(loc)) {
-            return false;
+        if (!controller.onTheMap(currentLoc.add(currentLoc.directionTo(targetLoc)))) return false;
+        // TODO: Some type of basic BFS which is within bytecode limit
+        // Potential choices
+        System.out.println(currentLoc.directionTo(targetLoc));
+        MapLocation a = currentLoc.add(currentLoc.directionTo(targetLoc));
+        MapLocation b = currentLoc.add(currentLoc.directionTo(targetLoc).rotateRight());
+        MapLocation c = currentLoc.add(currentLoc.directionTo(targetLoc).rotateLeft());
+        MapLocation[] choices = new MapLocation[3];
+            //Bytecode efficient insertion sort
+        if (controller.canSenseLocation(a)) {
+            choices[0] = a;
         }
-
-        /*
-        // Calculate policy to head toward goal location
-        -- Bellman optimality equation, DP
-        */
-
-        //TODO: Convert to graph form
-            // Store nodes
-        ArrayList<MapLocations> sensedLocs = new ArrayList<MapLocation>();
-        for (x=-5;x<=5;x++) {
-            for (y=-5;y<=5;x++) {
-                if (controller.canSenseLocation(controllerLoc.translate(x,y))) {
-                    sensedLocs.add(controllerLoc.translate(x,y));
+        if (controller.canSenseLocation(b)) {
+            double costA = 1.0/controller.sensePassability(a);
+            double costB = 2.0/controller.sensePassability(b);
+            if (costB < costA) {
+                choices[0] = b;
+                choices[1] = a;
+            } 
+            else {
+                choices[1] = b;
+            }
+            if (controller.canSenseLocation(c)) {
+                double costC = 2.0/controller.sensePassability(c);
+                if (costC < Math.min(costA, costB)) {
+                    choices[2] = choices[1];
+                    choices[1] = choices[0];
+                    choices[0] = c;
+                } 
+                else if (costC < costA || costC < costB) {
+                    choices[2] = choices[1];
+                    choices[1] = c;
+                }
+                else {
+                    choices[2] = c;
                 }
             }
         }
-        //TODO: Calculate rewards
-        //TODO: Inductive backtracking
-        return true;
+        else if (controller.canSenseLocation(c)) {
+            if (2.0/controller.sensePassability(c) < 1.0/controller.sensePassability(a)) {
+                choices[0] = c;
+                choices[1] = a;
+            }
+        }
         
-        
-
+        // Move
+        for (int i = 0; i <= 2; i ++) {
+            if (choices[i] == null) {
+                return false;
+            }
+            if (naiveMove(choices[i])) {
+                return true;
+            }
+        }
+        return false;
     }
-
     // Naive movement | error checks
     
     public Boolean naiveMove(Direction dir) throws GameActionException {
-        if (rc.canMove(dir)) {
-            rc.move(dir);
+        if (controller.canMove(dir)) {
+            controller.move(dir);
             return true;
         }
         return false;
