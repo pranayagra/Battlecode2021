@@ -21,7 +21,7 @@ public class Communication {
     private static int SEED = 2193121;
     private RobotController controller;
 
-    public Communication init(RobotController controller) {
+    public Communication (RobotController controller) {
         this.controller = controller;
     }
 
