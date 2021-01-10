@@ -4,3 +4,5 @@
 !/src/**
 src/.DS_Store
 !LegacyCode.java
+src/teambot/.DS_Store
+src/teambot/battlecode2021/.DS_Store
