@@ -10,10 +10,10 @@ import mushroombot.*;
 COMMUNICATION SCHEMA
 24 bits
 
-Bit 0-3: Order identifier
-Bit 4-9: Location x
-Bit 10-15: Location y
-Bit 16-22: Data
+Bit 0-5: Order identifier
+Bit 6-11: Location x
+Bit 12-17: Location y
+Bit 18-22: Data
 Bit 23: Parity
 
 ORDERS:
@@ -25,11 +25,17 @@ EC Specific
             9 -> Nothing
             10 -> Move
 
+Scouts
+    20 -> Edge of Map
+
 
 */
 
 public class Communication {
 
+    // Communication
+    private static Queue<Integer> MESSAGE_QUEUE = new LinkedList<Integer>();
+    public static boolean HAS_SET_FLAG = false;
     private static int SEED = 2193121;
     private static RobotController controller;
 
@@ -37,33 +43,60 @@ public class Communication {
         Communication.controller = controller;
     }
 
-    public static boolean trySend (int order, int x, int y, int data) throws GameActionException {
+    // Recieves a message information and adds to queue
+    public static boolean trySend (int order, int x, int y, int data) {
         int result = 0;
-        System.out.println("Trying Send");
-        result += order << 20;
-        result += x << 14;
-        result += y << 8;
+        result += order << 18;
+        result += x << 12;
+        result += y << 6;
         result += data << 1;
         if (!parityCheck(result)) {
             result += 1;
         }
         if (controller.canSetFlag(result)) {
-            System.out.println("Sending");
-            System.out.println(result);
-            controller.setFlag(result);
+            MESSAGE_QUEUE.add(result);
             return true;
         }
         System.out.println(result);
         return false;
     }
 
+    public static boolean prioritySend (int order, int x, int y, int data) throws GameActionException {
+        int result = 0;
+        result += order << 18;
+        result += x << 12;
+        result += y << 6;
+        result += data << 1;
+        if (!parityCheck(result)) {
+            result += 1;
+        }
+        if (controller.canSetFlag(result)) {
+            controller.setFlag(result);
+            HAS_SET_FLAG = true;
+            return true;
+        }
+        System.out.println(result);
+        return false;
+    }
+
+    public static boolean trySend(int message) {
+        System.out.println(message);
+        if (parityCheck(message)) {
+            if (controller.canSetFlag(message)) {
+                MESSAGE_QUEUE.add(message);
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static int[] recieve(int message) {
         int[] result = new int[4];
         if (parityCheck(message)) {
-            result[0] = (message & 15728640) >> 20;
-            result[1] = (message & 1032192) >> 14;
-            result[2] = (message & 16128) >> 8;
-            result[3] = (message & 254) >> 1;
+            result[0] = (message & 0b111111000000000000000000) >> 18;
+            result[1] = (message & 0b000000111111000000000000) >> 12;
+            result[2] = (message & 0b000000000000111111000000) >> 6;
+            result[3] = (message & 0b000000000000000000111110) >> 1;
             return result;
         }
         return null;
@@ -80,6 +113,12 @@ public class Communication {
             return false;
         }
         return true;
+    }
+
+    public static void post() throws GameActionException {
+        if (!HAS_SET_FLAG && MESSAGE_QUEUE.size() > 0) {
+            controller.setFlag(MESSAGE_QUEUE.poll());
+        }
     }
 
 }
