@@ -22,15 +22,6 @@ public class Pathfinding {
     static double gradient;
     static int stuckTurns;
 
-        // In support of bug nav
-    public static double calculateGradient(MapLocation start, MapLocation end) {
-        if (end.x-start.x == 0) {
-            return -1;
-        }
-        //Rise over run
-        return (end.y-start.y)/(end.x-start.x);
-    }
-
     public static int move(MapLocation targetLoc) throws GameActionException {
         //Debugging
         if (Debug.debug) {
@@ -211,11 +202,41 @@ public class Pathfinding {
         return Math.min(Math.abs(a.x-b.x), Math.abs(a.y-b.y));
     }
 
-    public static Boolean inMap(MapLocation a) {
+    public static boolean inMap(MapLocation a) {
         if (Cache.MAP_BOTTOM != 0 && Cache.MAP_BOTTOM > a.y) {
             return false;
         }
+        if (Cache.MAP_LEFT != 0 && Cache.MAP_LEFT > a.x) {
+            return false;
+        }
+        if (Cache.MAP_RIGHT != 0 && Cache.MAP_RIGHT < a.x) {
+            return false;
+        }
+        if (Cache.MAP_TOP != 0 && Cache.MAP_TOP < a.y) {
+            return false;
+        }
         return true;
+    }
+
+    public static int[] relative (MapLocation from, MapLocation to) {
+        return new int[] {to.x-from.x,to.y-from.y};
+    }
+
+    public static double calculateGradient(MapLocation start, MapLocation end) {
+        if (end.x-start.x == 0) {
+            return -1;
+        }
+        //Rise over run
+        return (end.y-start.y)/(end.x-start.x);
+    }
+
+    //TODO: Make random take into account map areas
+    public static MapLocation randomLocation() {
+        MapLocation res = new MapLocation((int)(Math.random()*64- 32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
+        while (!inMap(res)) {
+            res = new MapLocation((int)(Math.random()*64- 32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
+        }
+        return res;
     }
 
 }

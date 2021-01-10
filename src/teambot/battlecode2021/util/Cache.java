@@ -109,6 +109,7 @@ public class Cache {
             System.out.println("Cache loop() => part 1 done");
         }
 
+        /*
         for (RobotInfo robot : ALL_NEARBY_ROBOTS) {
             if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
                 if (robot.team == OUR_TEAM) {
@@ -120,12 +121,14 @@ public class Cache {
                 }
             }
         }
+        */
 
         if (Debug.debug) {
             System.out.println("Cache loop() => part 2 done");
         }
 
 
+        /*
         if (ROBOT_TYPE == RobotType.ENLIGHTENMENT_CENTER) {
             if (MAP_WIDTH == 0 || MAP_HEIGHT == 0 || MAP_BOTTOM == 0 || MAP_TOP == 0 || MAP_LEFT == 0 || MAP_RIGHT == 0) {
 
@@ -144,6 +147,7 @@ public class Cache {
 
             }
         }
+        */
 
         if (Debug.debug) {
             System.out.println("Cache loop() => part 3 done");

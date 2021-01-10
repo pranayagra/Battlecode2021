@@ -41,7 +41,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         for (Direction dir : RobotPlayer.directions) {
             if (controller.canBuildRobot(RobotType.MUCKRAKER, dir, 1)) {
                 controller.buildRobot(RobotType.MUCKRAKER, dir, 1);
-                Communication.trySend(SCOUT_DIRECTION+1,0,0,RobotPlayer.directionIntegerMap.get(dir));
+                Cache.EC_ALL_PRODUCED_ROBOT_IDS.add(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(dir)).ID);
+                Communication.prioritySend(SCOUT_DIRECTION+1,0,0,RobotPlayer.directionIntegerMap.get(dir));
                 SCOUT_DIRECTION ++;
                 MUCKRAKER_NUM ++;
                 return true;

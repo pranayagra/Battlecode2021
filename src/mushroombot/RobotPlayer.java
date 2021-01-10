@@ -92,6 +92,7 @@ public strictfp class RobotPlayer {
                     Cache.loop();
                     bot.turn();
 //                    Util.postLoop();
+                    Communication.post();
                     if (controller.getRoundNum() != currentTurn) {
                         //Ran out of bytecodes - MAGENTA color debug
                         controller.setIndicatorDot(controller.getLocation(),255,0,255);

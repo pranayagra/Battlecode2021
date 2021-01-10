@@ -77,6 +77,8 @@ public class Cache {
         PASSABILITY = controller.sensePassability(CURRENT_LOCATION);
         COOLDOWN = controller.getCooldownTurns();
 
+        Communication.HAS_SET_FLAG = false;
+
         for (RobotInfo robot : ALL_NEARBY_ROBOTS) {
             if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
                 if (robot.team == OUR_TEAM) {
@@ -95,8 +97,37 @@ public class Cache {
 
                 for (Integer robotID : EC_ALL_PRODUCED_ROBOT_IDS) {
                     // TODO: CHECK FOR specific robotID flag if MAP information is missing from EC
+                    if (controller.canGetFlag(robotID)){
+                        int[] message = Communication.recieve(controller.getFlag(robotID));
+                        if (message != null) {
+                            //Process message
+                                //Map Location Info
+                            if (message[0] == 20) {
+                                if (message[3] == 0 && MAP_TOP == 0) {
+                                    Communication.trySend(controller.getFlag(robotID));
+                                    MAP_TOP = CURRENT_LOCATION.y + message[2];
+                                }
+                                else if (message[3] == 2 && MAP_RIGHT == 0) {
+                                    Communication.trySend(controller.getFlag(robotID));
+                                    MAP_RIGHT = CURRENT_LOCATION.x + message[1];
+                                }
+                                else if (message[3] == 4 && MAP_BOTTOM == 0) {
+                                    Communication.trySend(controller.getFlag(robotID));
+                                    MAP_BOTTOM = CURRENT_LOCATION.y - message[2];
+                                }
+                                else if (message[3] == 6 && MAP_LEFT == 0) {
+                                    Communication.trySend(controller.getFlag(robotID));
+                                    MAP_LEFT = CURRENT_LOCATION.x - message[1];
+                                }
+                            }
+                        }
+                    } else {
+                        EC_ALL_PRODUCED_ROBOT_IDS.remove(robotID);
+                    }
+                    
                 }
 
+                /*
                 if (MAP_WIDTH != 0 && (MAP_LEFT ^ MAP_RIGHT) != 0) {
                     if (MAP_LEFT == 0) MAP_LEFT = MAP_RIGHT - MAP_WIDTH;
                     if (MAP_RIGHT == 0) MAP_RIGHT = MAP_LEFT + MAP_WIDTH;
@@ -105,8 +136,27 @@ public class Cache {
                     if (MAP_HEIGHT == 0) MAP_HEIGHT = MAP_BOTTOM + MAP_HEIGHT;
                     if (MAP_BOTTOM == 0) MAP_BOTTOM = MAP_HEIGHT - MAP_HEIGHT;
                 }
+                */
 
-
+            }
+        }
+        else {
+            if (COMMAND_ID != 0) {
+                int[] message = Communication.recieve(controller.getFlag(COMMAND_ID));
+                if (message[0] == 20) {
+                    if (message[3] == 0 && MAP_TOP == 0) {
+                        MAP_TOP = COMMAND_LOCATION.y + message[2];
+                    }
+                    else if (message[3] == 2 && MAP_RIGHT == 0) {
+                        MAP_RIGHT = COMMAND_LOCATION.x + message[1];
+                    }
+                    else if (message[3] == 4 && MAP_BOTTOM == 0) {
+                        MAP_BOTTOM = COMMAND_LOCATION.y - message[2];
+                    }
+                    else if (message[3] == 6 && MAP_LEFT == 0) {
+                        MAP_LEFT = COMMAND_LOCATION.x - message[1];
+                    }
+                }
             }
         }
     }
