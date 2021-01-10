@@ -46,12 +46,17 @@ public class Cache {
 
     //TODO: IMPLEMENT - REFACTOR SO IT'S JUST A METHOD TO SAVE A STATE AND WE USE CURR_POSITION - START_POSITION...
     // The moves we have performed from birth. So if we find something useful, we can set our flags accordingly with only taking 6 + 6 bits and communicate to the EC(s) the absolute location
-    public static int DELTA_X;
-    public static int DELTA_Y;
+    public static MapLocation START_LOCATION;
     public static Map<MapLocation, Integer> SAVE_DELTA_STATE; //TODO: KNOW WHAT EACH INTEGER REPRESENTS, OR
 
     //TODO: The EC needs to have additional parameters to hold all the IDs of the robots it produced
     public static Set<Integer> EC_ALL_PRODUCED_ROBOT_IDS; // IDs of the roberts that were produced by the EC (class specific)
+
+    //TODO: Save in 128x128 map the passability of grid (we need 128x128 since we do not know the offset of the map)
+
+
+    // EC specific information
+    public static int TOTAL_NUMBER_OF_ECS;
 
     public static void init(RobotController controller) {
         Cache.controller = controller;
@@ -59,8 +64,25 @@ public class Cache {
         OPPONENT_TEAM = OUR_TEAM.opponent();
         ROBOT_TYPE = controller.getType();
         CURRENT_LOCATION = controller.getLocation();
+        START_LOCATION = CURRENT_LOCATION;
         ID = controller.getID();
         NUM_ROUNDS_SINCE_SPAWN = 0;
+
+
+        if (Debug.debug) {
+            System.out.println("Cache init() => start");
+        }
+        if (ROBOT_TYPE == RobotType.ENLIGHTENMENT_CENTER && controller.getRoundNum() == 1) {
+            TOTAL_NUMBER_OF_ECS = controller.getRobotCount();
+            if (Debug.debug) {
+                System.out.println("TOTAL NUMBER OF ECS: " + TOTAL_NUMBER_OF_ECS);
+            }
+        }
+        if (Debug.debug) {
+            System.out.println("Cache init() => end");
+        }
+
+
 
         //TODO: Not sure if I like using hashmap to store EC locations (is it bytecode expensive? Is there a different solution / can we create our own structure to hold ECs)?
         //TODO: Not sure how to determine / unadd if EC is captured/lost. I guess it's more reactive as we loop through...
@@ -68,6 +90,11 @@ public class Cache {
     }
 
     public static void loop() throws GameActionException {
+
+        if (Debug.debug) {
+            System.out.println("Cache loop() => end");
+        }
+
         ++NUM_ROUNDS_SINCE_SPAWN;
         ALL_NEARBY_ROBOTS = controller.senseNearbyRobots();
         ALL_NEARBY_FRIENDLY_ROBOTS = controller.senseNearbyRobots(-1, OUR_TEAM);
@@ -77,6 +104,10 @@ public class Cache {
         CONVICTION = controller.getConviction();
         PASSABILITY = controller.sensePassability(CURRENT_LOCATION);
         COOLDOWN = controller.getCooldownTurns();
+
+        if (Debug.debug) {
+            System.out.println("Cache loop() => part 1 done");
+        }
 
         for (RobotInfo robot : ALL_NEARBY_ROBOTS) {
             if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
@@ -88,6 +119,10 @@ public class Cache {
                     ALL_KNOWN_FRIENDLY_EC_LOCATIONS.remove(robot.location);
                 }
             }
+        }
+
+        if (Debug.debug) {
+            System.out.println("Cache loop() => part 2 done");
         }
 
 
@@ -107,8 +142,12 @@ public class Cache {
                     if (MAP_BOTTOM == 0) MAP_BOTTOM = MAP_HEIGHT - MAP_HEIGHT;
                 }
 
-
             }
         }
+
+        if (Debug.debug) {
+            System.out.println("Cache loop() => part 3 done");
+        }
+
     }
 }
