@@ -5,6 +5,7 @@ import teambot.battlecode2021.MuckrakerBot;
 import teambot.battlecode2021.PoliticanBot;
 import teambot.battlecode2021.SlandererBot;
 import teambot.battlecode2021.util.Debug;
+import teambot.battlecode2021.util.Util;
 
 public strictfp class RobotPlayer {
     public static RobotController controller;
@@ -58,7 +59,10 @@ public strictfp class RobotPlayer {
 
         if (Debug.debug) {
             System.out.println("I am robot " + controller.getType() + " at location " + controller.getLocation() + " and have cooldown " + controller.getCooldownTurns());
+            System.out.println("Influence " + controller.getInfluence() + ", Conviction " + controller.getConviction());
         }
+
+        Util.init(controller);
 
         boolean errored = false;
         while (true) {
@@ -69,9 +73,9 @@ public strictfp class RobotPlayer {
                         controller.setIndicatorDot(controller.getLocation(),255,0,0);
                     }
                     int currentTurn = controller.getRoundNum(); //starts at round 1
-//                    Util.loop();
+                    Util.loop();
                     bot.turn();
-//                    Util.postLoop();
+                    Util.postLoop();
                     if (controller.getRoundNum() != currentTurn) {
                         //Ran out of bytecodes - MAGENTA color debug
                         controller.setIndicatorDot(controller.getLocation(),255,0,255);
