@@ -11,9 +11,9 @@ COMMUNICATION SCHEMA
 24 bits
 
 Bit 0-5: Order identifier
-Bit 6-11: Location x
-Bit 12-17: Location y
-Bit 18-22: Data
+Bit 6-12: Location x
+Bit 13-19: Location y
+Bit 20-22: Data
 Bit 23: Parity
 
 ORDERS:
@@ -27,6 +27,7 @@ EC Specific
 
 Scouts
     20 -> Edge of Map
+    21 -> EC
 
 
 */
@@ -45,10 +46,16 @@ public class Communication {
 
     // Recieves a message information and adds to queue
     public static boolean trySend (int order, int x, int y, int data) {
+        if (x < 0) {
+            x = -x + 64;
+        }
+        if (y < 0) {
+            y = -y + 64;
+        }
         int result = 0;
         result += order << 18;
-        result += x << 12;
-        result += y << 6;
+        result += x << 11;
+        result += y << 4;
         result += data << 1;
         if (!parityCheck(result)) {
             result += 1;
@@ -62,10 +69,16 @@ public class Communication {
     }
 
     public static boolean prioritySend (int order, int x, int y, int data) throws GameActionException {
+        if (x < 0) {
+            x = -x + 64;
+        }
+        if (y < 0) {
+            y = -y + 64;
+        }
         int result = 0;
         result += order << 18;
-        result += x << 12;
-        result += y << 6;
+        result += x << 11;
+        result += y << 4;
         result += data << 1;
         if (!parityCheck(result)) {
             result += 1;
@@ -94,9 +107,15 @@ public class Communication {
         int[] result = new int[4];
         if (parityCheck(message)) {
             result[0] = (message & 0b111111000000000000000000) >> 18;
-            result[1] = (message & 0b000000111111000000000000) >> 12;
-            result[2] = (message & 0b000000000000111111000000) >> 6;
-            result[3] = (message & 0b000000000000000000111110) >> 1;
+            result[1] = (message & 0b000000111111100000000000) >> 11;
+            result[2] = (message & 0b000000000000011111110000) >> 4;
+            result[3] = (message & 0b000000000000000000001110) >> 1;
+            if (result[1] >= 64) {
+                result[1] = -(result[1] - 64);
+            }
+            if (result[2] >= 64) {
+                result[2] = -(result[2] - 64);
+            }
             return result;
         }
         return null;

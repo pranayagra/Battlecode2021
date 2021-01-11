@@ -53,66 +53,31 @@ public class MuckrakerBot implements RunnableBot {
                             }
                             order = 1;
                         }
+                        else if (order == 9) {
+                            target = Pathfinding.randomLocation();
+                            order = 2;
+                        }
                     }
                 }
             }
         }
-
-        int relativeX = Pathfinding.relative(Cache.COMMAND_LOCATION, Cache.CURRENT_LOCATION)[0];
-        int relativeY = Pathfinding.relative(Cache.COMMAND_LOCATION, Cache.CURRENT_LOCATION)[1];
-
+        
         if (simpleAttack()) {
             return;
         }
+
         switch (order) {
             case 0: //Camping
                 break;
             case 1: //Moving|Scouting Map
-                if (Cache.MAP_TOP>0&&Cache.MAP_BOTTOM>0&&Cache.MAP_LEFT>0&&Cache.MAP_RIGHT>0) {
-                    order = 2;
-                    target=Pathfinding.randomLocation();
-                }
-                else if (Pathfinding.move(target) == 2) {
-                    System.out.println("Found edge of map!");
-                    if (!controller.onTheMap(controller.adjacentLocation(Direction.NORTH))) {
-                        Communication.trySend(20, 0, relativeY, 0);
-                        Cache.MAP_TOP = Cache.CURRENT_LOCATION.y;
-                    }
-                    if (!controller.onTheMap(controller.adjacentLocation(Direction.EAST))) {
-                        Communication.trySend(20, relativeX, 0, 2);
-                        Cache.MAP_RIGHT = Cache.CURRENT_LOCATION.x;
-                    }
-                    if (!controller.onTheMap(controller.adjacentLocation(Direction.SOUTH))) {
-                        Communication.trySend(20, 0, -relativeY, 4);
-                        Cache.MAP_BOTTOM = Cache.CURRENT_LOCATION.y;
-                    }
-                    if (!controller.onTheMap(controller.adjacentLocation(Direction.WEST))) {
-                        Communication.trySend(20, -relativeX, 0, 6);
-                        Cache.MAP_LEFT = Cache.CURRENT_LOCATION.x;
-                    }
-
-                    // Now switch a target
-                    if (Cache.MAP_TOP == 0) {
-                        target = Cache.CURRENT_LOCATION.translate(0,64);
-                    }
-                    else if (Cache.MAP_BOTTOM == 0) {
-                        target = Cache.CURRENT_LOCATION.translate(0,-64);
-                    }
-                    else if (Cache.MAP_RIGHT == 0) {
-                        target = Cache.CURRENT_LOCATION.translate(64,0);
-                    }
-                    else if (Cache.MAP_LEFT == 0) {
-                        target = Cache.CURRENT_LOCATION.translate(-64,0);
-                    }
-                }
-                else {
-                    return;
-                };
+                mapEdgeScout();
+                break;
             case 2:
-                if (target.equals(Cache.CURRENT_LOCATION)) {
+                int res = Pathfinding.move(target);
+                if (res == 2 || target.equals(Cache.CURRENT_LOCATION) || Cache.NUM_ROUNDS_SINCE_SPAWN % 50 == 0) {
                     target = Pathfinding.randomLocation();
                 }
-                Pathfinding.move(target);
+                break;
             default: 
                 break;
         }
@@ -138,5 +103,54 @@ public class MuckrakerBot implements RunnableBot {
             }
         }
         return false;
+    }
+
+    public void mapEdgeScout() throws GameActionException {
+
+        int relativeX = Pathfinding.relative(Cache.COMMAND_LOCATION, Cache.CURRENT_LOCATION)[0];
+        int relativeY = Pathfinding.relative(Cache.COMMAND_LOCATION, Cache.CURRENT_LOCATION)[1];
+
+        if (Cache.MAP_TOP>0&&Cache.MAP_BOTTOM>0&&Cache.MAP_LEFT>0&&Cache.MAP_RIGHT>0) {
+            order = 2;
+            target=Pathfinding.randomLocation();
+            System.out.println(target);
+        }
+        else if (Pathfinding.move(target) == 2) {
+            System.out.println("Found edge of map!");
+            if (!controller.onTheMap(controller.adjacentLocation(Direction.NORTH))) {
+                Communication.trySend(20, 0, relativeY, 0);
+                Cache.MAP_TOP = Cache.CURRENT_LOCATION.y;
+            }
+            if (!controller.onTheMap(controller.adjacentLocation(Direction.EAST))) {
+                Communication.trySend(20, relativeX, 0, 2);
+                Cache.MAP_RIGHT = Cache.CURRENT_LOCATION.x;
+            }
+            if (!controller.onTheMap(controller.adjacentLocation(Direction.SOUTH))) {
+                Communication.trySend(20, 0, relativeY, 4);
+                Cache.MAP_BOTTOM = Cache.CURRENT_LOCATION.y;
+            }
+            if (!controller.onTheMap(controller.adjacentLocation(Direction.WEST))) {
+                Communication.trySend(20, relativeX, 0, 6);
+                Cache.MAP_LEFT = Cache.CURRENT_LOCATION.x;
+            }
+
+            // Now switch a target
+            if (Cache.MAP_TOP == 0) {
+                target = Cache.CURRENT_LOCATION.translate(0,64);
+            }
+            else if (Cache.MAP_BOTTOM == 0) {
+                target = Cache.CURRENT_LOCATION.translate(0,-64);
+            }
+            else if (Cache.MAP_RIGHT == 0) {
+                target = Cache.CURRENT_LOCATION.translate(64,0);
+            }
+            else if (Cache.MAP_LEFT == 0) {
+                target = Cache.CURRENT_LOCATION.translate(-64,0);
+            }
+        }
+        else {
+            Pathfinding.move(target);
+            return;
+        };
     }
 }

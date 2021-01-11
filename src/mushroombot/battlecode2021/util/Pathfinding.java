@@ -232,9 +232,14 @@ public class Pathfinding {
 
     //TODO: Make random take into account map areas
     public static MapLocation randomLocation() {
-        MapLocation res = new MapLocation((int)(Math.random()*64- 32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
-        while (!inMap(res)) {
-            res = new MapLocation((int)(Math.random()*64- 32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
+        MapLocation res = new MapLocation((int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
+        if (Cache.MAP_TOP>0&&Cache.MAP_BOTTOM>0&&Cache.MAP_LEFT>0&&Cache.MAP_RIGHT>0) {
+            res = new MapLocation((int)(Math.random()*(Cache.MAP_RIGHT-Cache.MAP_LEFT)+Cache.MAP_LEFT),(int)(Math.random()*(Cache.MAP_TOP-Cache.MAP_BOTTOM)+Cache.MAP_BOTTOM));
+        }
+        else {
+            while (!inMap(res)) {
+                res = new MapLocation((int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
+            }
         }
         return res;
     }
