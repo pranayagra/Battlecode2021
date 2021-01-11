@@ -8,7 +8,6 @@ public class Util {
 
     public static void init(RobotController controller) {
         Util.controller = controller;
-        Cache.init(controller);
     }
 
     public static void loop() throws GameActionException {

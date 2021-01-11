@@ -1,6 +1,7 @@
 package teambot.battlecode2021.util;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
@@ -35,7 +36,7 @@ public class Communication {
 
         switch (locationMeaning) {
             case "LOCATION":
-                code = 0b0000;
+                code = 0b1111;
                 break;
             case "MAP_RIGHT_SIDE":
                 code = 0b0001;
@@ -64,6 +65,30 @@ public class Communication {
 //    public static int makeFlag_ATTACK_EC(MapLocation location) {
 //
 //    }
+
+    public static MapLocation decodeLocation(int flag) {
+        int x = (Cache.CURRENT_LOCATION.x / 1000 * 1000) + ((flag >> 10) & 0x3FF);
+        int y = (Cache.CURRENT_LOCATION.y / 1000 * 1000) + (flag & 0x3FF);
+
+        int myLocationX = Cache.CURRENT_LOCATION.x;
+        int myLocationY = Cache.CURRENT_LOCATION.y;
+
+        if (Math.abs(myLocationX - x) >= 64) {
+            x -= 1000;
+            if (Math.abs(myLocationX - x) >= 64) {
+                x += 2000;
+            }
+        }
+
+        if (Math.abs(myLocationY - y) >= 64) {
+            y -= 1000;
+            if (Math.abs(myLocationY - y) >= 64) {
+                y += 2000;
+            }
+        }
+
+        return new MapLocation(x, y);
+    }
 
     public static Object decode(int flag) {
 
