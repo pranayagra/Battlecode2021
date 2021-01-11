@@ -12,6 +12,7 @@ public class MuckrakerBot implements RunnableBot {
     private MapLocation scoutTarget;
     int relativeX;
     int relativeY;
+    private static boolean isBlockingEnemyEC;
 
     public MuckrakerBot(RobotController controller) {
         this.controller = controller;
@@ -20,6 +21,7 @@ public class MuckrakerBot implements RunnableBot {
     @Override
     public void init() throws GameActionException {
         random = new Random(controller.getID());
+        isBlockingEnemyEC = false;
         for (Map.Entry<MapLocation, Integer> entry : Cache.ALL_KNOWN_FRIENDLY_EC_LOCATIONS.entrySet()) {
             relativeX = Pathfinding.relative(entry.getKey(), Cache.CURRENT_LOCATION)[0];
             relativeY = Pathfinding.relative(entry.getKey(),Cache.CURRENT_LOCATION)[1];
@@ -42,10 +44,57 @@ public class MuckrakerBot implements RunnableBot {
             return;
         }
 
+        isBlockingEnemyEC = updateBlockingEnemyEC();
+
+        if (attackingPoliticianNearEnemyEC()) {
+            if (Debug.debug) {
+                System.out.println("POLITICAN NEAR SCOUT THAT IS NEAR ENEMY EC -- RUN AWAY");
+            }
+            return;
+        }
+
 //        if ()
+    }
 
+    //assume robot always tries to surround/get as close as possible to a EC (only 1 distance, extras can roam around to edge map/bounce around)
 
+    public boolean updateBlockingEnemyEC() {
+        for (RobotInfo robot : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+            if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
+                return true;
+            }
+        }
+        return false;
+    }
 
+    public boolean attackingPoliticianNearEnemyEC() throws GameActionException {
+        boolean runAway = false;
+
+        if (!isBlockingEnemyEC) {
+            return runAway;
+        }
+
+        MapLocation politicianLocation = null;
+        for (RobotInfo robot : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+            if (robot.getType() == RobotType.POLITICIAN) {
+                if (controller.canGetFlag(robot.ID)) {
+                    int flag = controller.getFlag(robot.ID);
+                    if (Communication.isPoliticianAttackingFlag(flag)) {
+                        politicianLocation = robot.getLocation();
+                        runAway = true;
+                    }
+                }
+            }
+        }
+
+        //TODO: implement runAway
+        if (runAway) {
+            int relativeX = Pathfinding.relative(politicianLocation, Cache.CURRENT_LOCATION)[0];
+            int relativeY = Pathfinding.relative(politicianLocation, Cache.CURRENT_LOCATION)[1];
+            // go opposite direction of politician
+        }
+
+        return runAway;
     }
 
     public boolean simpleAttack() throws GameActionException {
