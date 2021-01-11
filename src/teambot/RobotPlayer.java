@@ -4,6 +4,7 @@ import teambot.battlecode2021.EnlightenmentCenterBot;
 import teambot.battlecode2021.MuckrakerBot;
 import teambot.battlecode2021.PoliticanBot;
 import teambot.battlecode2021.SlandererBot;
+import teambot.battlecode2021.util.Cache;
 import teambot.battlecode2021.util.Debug;
 import teambot.battlecode2021.util.Util;
 
@@ -39,6 +40,11 @@ public strictfp class RobotPlayer {
         // This is the RobotController object. You use it to perform actions from this robot,
         // and to get information on its current status.
         RobotPlayer.controller = controller;
+
+        Util.init(controller);
+        Cache.init(controller);
+        Debug.init(controller);
+
         RunnableBot bot;
         switch (controller.getType()) {
             case ENLIGHTENMENT_CENTER:
@@ -56,13 +62,6 @@ public strictfp class RobotPlayer {
             default:
                 throw new IllegalStateException("NOT A VALID BOT");
         }
-
-        if (Debug.debug) {
-            System.out.println("I am robot " + controller.getType() + " at location " + controller.getLocation() + " and have cooldown " + controller.getCooldownTurns());
-            System.out.println("Influence " + controller.getInfluence() + ", Conviction " + controller.getConviction());
-        }
-
-        Util.init(controller);
 
         boolean errored = false;
         while (true) {

@@ -67,22 +67,7 @@ public class Cache {
         START_LOCATION = CURRENT_LOCATION;
         ID = controller.getID();
         NUM_ROUNDS_SINCE_SPAWN = 0;
-
-
-        if (Debug.debug) {
-            System.out.println("Cache init() => start");
-        }
-        if (ROBOT_TYPE == RobotType.ENLIGHTENMENT_CENTER && controller.getRoundNum() == 1) {
-            TOTAL_NUMBER_OF_ECS = controller.getRobotCount();
-            if (Debug.debug) {
-                System.out.println("TOTAL NUMBER OF ECS: " + TOTAL_NUMBER_OF_ECS);
-            }
-        }
-        if (Debug.debug) {
-            System.out.println("Cache init() => end");
-        }
-
-
+        EC_ALL_PRODUCED_ROBOT_IDS = new HashSet<>();
 
         //TODO: Not sure if I like using hashmap to store EC locations (is it bytecode expensive? Is there a different solution / can we create our own structure to hold ECs)?
         //TODO: Not sure how to determine / unadd if EC is captured/lost. I guess it's more reactive as we loop through...
@@ -90,10 +75,6 @@ public class Cache {
     }
 
     public static void loop() throws GameActionException {
-
-        if (Debug.debug) {
-            System.out.println("Cache loop() => end");
-        }
 
         ++NUM_ROUNDS_SINCE_SPAWN;
         ALL_NEARBY_ROBOTS = controller.senseNearbyRobots();
@@ -104,10 +85,6 @@ public class Cache {
         CONVICTION = controller.getConviction();
         PASSABILITY = controller.sensePassability(CURRENT_LOCATION);
         COOLDOWN = controller.getCooldownTurns();
-
-        if (Debug.debug) {
-            System.out.println("Cache loop() => part 1 done");
-        }
 
         for (RobotInfo robot : ALL_NEARBY_ROBOTS) {
             if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
@@ -121,18 +98,11 @@ public class Cache {
             }
         }
 
-        if (Debug.debug) {
-            System.out.println("Cache loop() => part 2 done");
-        }
-
-
         if (ROBOT_TYPE == RobotType.ENLIGHTENMENT_CENTER) {
             if (MAP_WIDTH == 0 || MAP_HEIGHT == 0 || MAP_BOTTOM == 0 || MAP_TOP == 0 || MAP_LEFT == 0 || MAP_RIGHT == 0) {
-
                 for (Integer robotID : EC_ALL_PRODUCED_ROBOT_IDS) {
                     // TODO: CHECK FOR specific robotID flag if MAP information is missing from EC
                 }
-
                 if (MAP_WIDTH != 0 && (MAP_LEFT ^ MAP_RIGHT) != 0) {
                     if (MAP_LEFT == 0) MAP_LEFT = MAP_RIGHT - MAP_WIDTH;
                     if (MAP_RIGHT == 0) MAP_RIGHT = MAP_LEFT + MAP_WIDTH;
@@ -141,12 +111,7 @@ public class Cache {
                     if (MAP_HEIGHT == 0) MAP_HEIGHT = MAP_BOTTOM + MAP_HEIGHT;
                     if (MAP_BOTTOM == 0) MAP_BOTTOM = MAP_HEIGHT - MAP_HEIGHT;
                 }
-
             }
-        }
-
-        if (Debug.debug) {
-            System.out.println("Cache loop() => part 3 done");
         }
 
     }
