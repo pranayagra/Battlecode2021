@@ -33,7 +33,7 @@ public class Cache {
 
     public static int[] EC_FLAGS;
     public static Map<MapLocation, Integer> ALL_KNOWN_FRIENDLY_EC_LOCATIONS = new HashMap<MapLocation,Integer>(); // Location : RobotID
-    public static Map<MapLocation, Integer> ALL_KNOWN_ENEMY_EC_LOCATIONS = new HashMap<MapLocation,Integer>(); // Location : RobotID
+    public static Set<MapLocation> ALL_KNOWN_ENEMY_EC_LOCATIONS = new HashSet<MapLocation>();
     public static MapLocation COMMAND_LOCATION;
     public static int COMMAND_ID;
 
@@ -82,10 +82,21 @@ public class Cache {
         for (RobotInfo robot : ALL_NEARBY_ROBOTS) {
             if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
                 if (robot.team == OUR_TEAM) {
-                    ALL_KNOWN_ENEMY_EC_LOCATIONS.remove(robot.location);
+                    if (ALL_KNOWN_ENEMY_EC_LOCATIONS.contains(robot.location) && COMMAND_ID != 0) {
+                        int[] relative = Pathfinding.relative(COMMAND_LOCATION, CURRENT_LOCATION);
+                        System.out.println("Enemy converted");
+                        Communication.trySend(21, relative[0], relative[1], 2);
+                        ALL_KNOWN_ENEMY_EC_LOCATIONS.remove(robot.location);
+                    }
+                    
                     ALL_KNOWN_FRIENDLY_EC_LOCATIONS.put(robot.location, robot.ID);
-                } else if (robot.team == OPPONENT_TEAM) {
-                    ALL_KNOWN_ENEMY_EC_LOCATIONS.put(robot.location, robot.ID);
+                } else if (ROBOT_TYPE != RobotType.ENLIGHTENMENT_CENTER && robot.team == OPPONENT_TEAM) {
+                    if (!ALL_KNOWN_ENEMY_EC_LOCATIONS.contains(robot.location) && COMMAND_ID != 0) {
+                        int[] relative = Pathfinding.relative(COMMAND_LOCATION, CURRENT_LOCATION);
+                        System.out.println("Found enemy EC");
+                        Communication.trySend(21, relative[0], relative[1], 1);
+                    }
+                    ALL_KNOWN_ENEMY_EC_LOCATIONS.add(robot.location);
                     ALL_KNOWN_FRIENDLY_EC_LOCATIONS.remove(robot.location);
                 }
             }
@@ -101,7 +112,7 @@ public class Cache {
                         int[] message = Communication.recieve(controller.getFlag(robotID));
                         if (message != null) {
                             //Process message
-                                //Map Location Info
+                                // Map Location Info
                             if (message[0] == 20) {
                                 if (message[3] == 0 && MAP_TOP == 0) {
                                     Communication.trySend(controller.getFlag(robotID));
@@ -113,11 +124,22 @@ public class Cache {
                                 }
                                 else if (message[3] == 4 && MAP_BOTTOM == 0) {
                                     Communication.trySend(controller.getFlag(robotID));
-                                    MAP_BOTTOM = CURRENT_LOCATION.y - message[2];
+                                    MAP_BOTTOM = CURRENT_LOCATION.y + message[2];
                                 }
                                 else if (message[3] == 6 && MAP_LEFT == 0) {
                                     Communication.trySend(controller.getFlag(robotID));
-                                    MAP_LEFT = CURRENT_LOCATION.x - message[1];
+                                    MAP_LEFT = CURRENT_LOCATION.x + message[1];
+                                }
+                            }
+                                // Enemy EC Info
+                            if (message[0] == 21) { 
+                                MapLocation loc = CURRENT_LOCATION.translate(message[1],message[2]);
+                                if (!ALL_KNOWN_ENEMY_EC_LOCATIONS.contains(loc) && message[3] == 1) {
+                                    ALL_KNOWN_ENEMY_EC_LOCATIONS.add(loc);
+                                    System.out.println("EC has recieved enemy EC location");
+                                } 
+                                if (ALL_KNOWN_ENEMY_EC_LOCATIONS.contains(loc) && message[3] == 2) {
+                                    ALL_KNOWN_ENEMY_EC_LOCATIONS.remove(loc);
                                 }
                             }
                         }
@@ -151,10 +173,10 @@ public class Cache {
                         MAP_RIGHT = COMMAND_LOCATION.x + message[1];
                     }
                     else if (message[3] == 4 && MAP_BOTTOM == 0) {
-                        MAP_BOTTOM = COMMAND_LOCATION.y - message[2];
+                        MAP_BOTTOM = COMMAND_LOCATION.y + message[2];
                     }
                     else if (message[3] == 6 && MAP_LEFT == 0) {
-                        MAP_LEFT = COMMAND_LOCATION.x - message[1];
+                        MAP_LEFT = COMMAND_LOCATION.x + message[1];
                     }
                 }
             }

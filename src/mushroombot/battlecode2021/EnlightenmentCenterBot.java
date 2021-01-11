@@ -31,23 +31,38 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (tryBuildScout()) {
             return;
         }
+
+        tryBuildArcher();
     }
 
     public boolean tryBuildScout() throws GameActionException {
-        if (MUCKRAKER_NUM > 7) {
-            return false;
+        if (MUCKRAKER_NUM < 7) {
+            for (Direction dir : RobotPlayer.directions) {
+                if (controller.canBuildRobot(RobotType.MUCKRAKER, dir, 1)) {
+                    controller.buildRobot(RobotType.MUCKRAKER, dir, 1);
+                    Cache.EC_ALL_PRODUCED_ROBOT_IDS.add(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(dir)).ID);
+                    Communication.prioritySend(SCOUT_DIRECTION+1,0,0,RobotPlayer.directionIntegerMap.get(dir));
+                    SCOUT_DIRECTION ++;
+                    MUCKRAKER_NUM ++;
+                    return true;
+                }
+            }
         }
+        
+        return false;
+    }
 
+    public boolean tryBuildArcher() throws GameActionException {
         for (Direction dir : RobotPlayer.directions) {
             if (controller.canBuildRobot(RobotType.MUCKRAKER, dir, 1)) {
                 controller.buildRobot(RobotType.MUCKRAKER, dir, 1);
                 Cache.EC_ALL_PRODUCED_ROBOT_IDS.add(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(dir)).ID);
-                Communication.prioritySend(SCOUT_DIRECTION+1,0,0,RobotPlayer.directionIntegerMap.get(dir));
-                SCOUT_DIRECTION ++;
+                Communication.prioritySend(9,0,0,RobotPlayer.directionIntegerMap.get(dir));
                 MUCKRAKER_NUM ++;
                 return true;
             }
         }
+        
         return false;
     }
 
