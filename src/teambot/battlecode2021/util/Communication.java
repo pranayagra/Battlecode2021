@@ -96,6 +96,15 @@ public class Communication {
         return new MapLocation(x, y);
     }
 
+    public final static int POLITICIAN_ATTACK_FLAG = 0b010111111111111111111111;
+
+    public static boolean isPoliticianAttackingFlag(int flag) {
+        if (flag == POLITICIAN_ATTACK_FLAG) {
+            return true;
+        }
+        return false;
+    }
+
     public static Object decode(int flag) {
 
 //        switch (flag >> 20) {
