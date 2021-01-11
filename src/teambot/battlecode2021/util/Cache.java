@@ -50,7 +50,7 @@ public class Cache {
     public static Map<MapLocation, Integer> SAVE_DELTA_STATE; //TODO: KNOW WHAT EACH INTEGER REPRESENTS, OR
 
     //TODO: The EC needs to have additional parameters to hold all the IDs of the robots it produced
-    public static Set<Integer> EC_ALL_PRODUCED_ROBOT_IDS; // IDs of the roberts that were produced by the EC (class specific)
+    public static Set<Integer> EC_ALL_PRODUCED_ROBOT_IDS; // IDs of the robots that were produced by the EC (class specific)
 
     //TODO: Save in 128x128 map the passability of grid (we need 128x128 since we do not know the offset of the map)
 
@@ -86,15 +86,16 @@ public class Cache {
         PASSABILITY = controller.sensePassability(CURRENT_LOCATION);
         COOLDOWN = controller.getCooldownTurns();
 
-
-        for (RobotInfo robot : ALL_NEARBY_ROBOTS) {
-            if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
-                if (robot.team == OUR_TEAM) {
-                    ALL_KNOWN_ENEMY_EC_LOCATIONS.remove(robot.location);
-                    ALL_KNOWN_FRIENDLY_EC_LOCATIONS.put(robot.location, robot.ID);
-                } else if (robot.team == OPPONENT_TEAM) {
-                    ALL_KNOWN_ENEMY_EC_LOCATIONS.put(robot.location, robot.ID);
-                    ALL_KNOWN_FRIENDLY_EC_LOCATIONS.remove(robot.location);
+        if (ROBOT_TYPE != RobotType.ENLIGHTENMENT_CENTER) {
+            for (RobotInfo robot : ALL_NEARBY_ROBOTS) {
+                if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
+                    if (robot.team == OUR_TEAM) {
+                        ALL_KNOWN_ENEMY_EC_LOCATIONS.remove(robot.location);
+                        ALL_KNOWN_FRIENDLY_EC_LOCATIONS.put(robot.location, robot.ID);
+                    } else if (robot.team == OPPONENT_TEAM) {
+                        ALL_KNOWN_ENEMY_EC_LOCATIONS.put(robot.location, robot.ID);
+                        ALL_KNOWN_FRIENDLY_EC_LOCATIONS.remove(robot.location);
+                    }
                 }
             }
         }

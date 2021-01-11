@@ -77,6 +77,9 @@ public class Communication {
             x -= 1000;
             if (Math.abs(myLocationX - x) >= 64) {
                 x += 2000;
+                if (Math.abs(myLocationX - x) >= 64) {
+                    x = -1;
+                }
             }
         }
 
@@ -84,6 +87,9 @@ public class Communication {
             y -= 1000;
             if (Math.abs(myLocationY - y) >= 64) {
                 y += 2000;
+                if (Math.abs(myLocationY - y) >= 64) {
+                    y = -1;
+                }
             }
         }
 

@@ -1,6 +1,7 @@
 package teambot.battlecode2021.util;
 
 import battlecode.common.GameActionException;
+import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 
 public class Util {
