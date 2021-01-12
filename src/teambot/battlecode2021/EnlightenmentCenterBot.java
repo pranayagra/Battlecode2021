@@ -23,10 +23,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private int POLITICIAN_NUM = 0;
     private int SCOUT_DIRECTION = 0;
 
-    public static int num_validIDS;
-    public static int[] validIDS;
+    private static int num_validIDS;
+    private static int[] validIDS;
+
 
     public static int num_ALL_MY_EC_LOCATIONs;
+
     public static int[] ALL_MY_EC_IDS;
     public static MapLocation[] ALL_MY_EC_LOCATIONS;
 
@@ -66,18 +68,21 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         switch (controller.getRoundNum()) {
             case 1:
-                setLocationFlag();
-                tryBuildSlanderer(50);
+                round1();
+                return;
+            case 2:
+                defaultTurn();
+                round2();
                 break;
             default:
                 defaultTurn();
                 break;
         }
 
-        if (EC_ID_CURRENT_BRUTE_FORCE <= EC_ID_END_BRUTE_FORCE + 2) {
+        if (EC_ID_CURRENT_BRUTE_FORCE <= EC_ID_END_BRUTE_FORCE) {
             brute_force_ids();
-            Debug.printECInformation();
         }
+        Debug.printECInformation();
 
         if (Clock.getBytecodesLeft() <= 2000) {
             return;
@@ -149,14 +154,25 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     }
 
-    public void setLocationFlag() throws GameActionException {
-        int encodedFlag = Communication.encode_LocationType_and_LocationData(Constants.FLAG_LOCATION_TYPES.MY_EC_LOCATION, Cache.CURRENT_LOCATION);
+    private void setLocationFlag() throws GameActionException {
+        int encodedFlag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
+                Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.MY_EC_LOCATION, 0, Cache.CURRENT_LOCATION);
         Debug.printInformation("setLocationFlag()", encodedFlag);
         Communication.checkAndSetFlag(encodedFlag);
     }
 
-    public void brute_force_ids() throws GameActionException {
-        //brute force IDs
+    private void round1() throws GameActionException {
+        setLocationFlag();
+        tryBuildSlanderer(50);
+        while (Clock.getBytecodesLeft() >= 300 && EC_ID_CURRENT_BRUTE_FORCE++ <= EC_ID_END_BRUTE_FORCE) {
+            if (controller.canGetFlag(EC_ID_CURRENT_BRUTE_FORCE)) {
+                validIDS[num_validIDS++] = EC_ID_CURRENT_BRUTE_FORCE;
+            }
+
+        }
+    }
+
+    private void round2() throws GameActionException {
         for (int i = 0; i < num_validIDS; ++i) {
 
             int encodedFlag = Communication.checkAndGetFlag(validIDS[i]);
@@ -164,24 +180,33 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
             if (Communication.decodeIsFlagLocationType(encodedFlag, true)) {
 
-                Constants.FLAG_LOCATION_TYPES flagType = Communication.decodeLocationType(encodedFlag);
-                if (flagType != Constants.FLAG_LOCATION_TYPES.MY_EC_LOCATION) continue;
+                Constants.FLAG_LOCATION_TYPES locationType = Communication.decodeLocationType(encodedFlag);
+                if (locationType != Constants.FLAG_LOCATION_TYPES.MY_EC_LOCATION) continue;
 
                 MapLocation location = Communication.decodeLocationData(encodedFlag);
                 ALL_MY_EC_LOCATIONS[num_ALL_MY_EC_LOCATIONs] = location;
                 ALL_MY_EC_IDS[num_ALL_MY_EC_LOCATIONs++] = validIDS[i];
             }
         }
+    }
 
-        num_validIDS = 0;
-        while (EC_ID_CURRENT_BRUTE_FORCE++ <= EC_ID_END_BRUTE_FORCE) {
-            if (controller.canGetFlag(EC_ID_CURRENT_BRUTE_FORCE)) {
-                validIDS[num_validIDS++] = EC_ID_CURRENT_BRUTE_FORCE;
+    public void brute_force_ids() throws GameActionException {
+        //brute force IDs
+
+        while (Clock.getBytecodesLeft() >= 400 && EC_ID_CURRENT_BRUTE_FORCE++ <= EC_ID_END_BRUTE_FORCE) {
+
+            int encodedFlag = Communication.checkAndGetFlag(EC_ID_CURRENT_BRUTE_FORCE);
+            if (encodedFlag == -1) continue;
+
+            if (Communication.decodeIsFlagLocationType(encodedFlag,true)) {
+                Constants.FLAG_LOCATION_TYPES locationType = Communication.decodeLocationType(encodedFlag);
+                if (locationType != Constants.FLAG_LOCATION_TYPES.MY_EC_LOCATION) continue;
+
+                MapLocation locationData = Communication.decodeLocationData(encodedFlag);
+                ALL_MY_EC_LOCATIONS[num_ALL_MY_EC_LOCATIONs] = locationData;
+                ALL_MY_EC_IDS[num_ALL_MY_EC_LOCATIONs++] = EC_ID_CURRENT_BRUTE_FORCE;
             }
 
-            if (Clock.getBytecodesLeft() <= 400) {
-                break;
-            }
         }
 
         Debug.printByteCode("CHECKED MORE IDS -- " + (EC_ID_CURRENT_BRUTE_FORCE));

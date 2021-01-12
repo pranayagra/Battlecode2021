@@ -103,6 +103,10 @@ public class PoliticanBot implements RunnableBot {
         return damage;
     }
 
+    public void followMuckraker() {
+
+    }
+
 
 
 
