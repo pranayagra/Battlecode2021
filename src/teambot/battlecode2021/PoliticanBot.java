@@ -15,14 +15,15 @@ public class PoliticanBot implements RunnableBot {
     private static boolean isTypeAttack;
     private static MapLocation EnemyEC;
 
-    public PoliticanBot(RobotController controller) {
+    public PoliticanBot(RobotController controller) throws GameActionException {
         this.controller = controller;
-        random = new Random(controller.getID());
+        init();
     }
 
     @Override
     public void init() throws GameActionException {
-       isTypeAttack = random.nextInt(4) < 3 ? true : false; //[0, 1, 2, 3] 75% attack, 25% defend
+        random = new Random(controller.getID());
+        isTypeAttack = random.nextInt(4) < 3 ? true : false; //[0, 1, 2, 3] 75% attack, 25% defend
 
     }
 

@@ -14,8 +14,9 @@ public class MuckrakerBot implements RunnableBot {
     int relativeY;
     private static boolean isBlockingEnemyEC;
 
-    public MuckrakerBot(RobotController controller) {
+    public MuckrakerBot(RobotController controller) throws GameActionException {
         this.controller = controller;
+        init();
     }
 
     @Override
@@ -41,13 +42,10 @@ public class MuckrakerBot implements RunnableBot {
     public void turn() throws GameActionException {
         Debug.printByteCode("TURN START");
 
-        if (controller.getRoundNum() == 1) {
-            init();
-        }
-
         if (Debug.debug) {
             System.out.println("relativeX " + relativeX + ", relativeY " + relativeY);
             System.out.println("Scout Target: " + scoutTarget);
+//            Pathfinding.move()
         }
 
 
