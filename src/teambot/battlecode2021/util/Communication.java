@@ -34,26 +34,55 @@ public class Communication {
 
     //0b0 | SOME OTHER SCHEMA of 23 bits to convey other type of information (should include a verification check too)
 
-    public static int encode_LocationType_and_LocationData(Constants.FLAG_LOCATION_TYPES locationType, MapLocation location) {
-        int flag = encodeLocationType(locationType) + encodeLocationData(location);
+    /* SCHEMA: 0b1 | 3 extraType | 3 locationType | 3 extraData | 7 locationDataX | 7 locationDataY */
+    public static int encode_ExtraANDLocationType_and_ExtraANDLocationData(
+            Constants.FLAG_EXTRA_TYPES extraType, Constants.FLAG_LOCATION_TYPES locationType, int extraData, MapLocation locationData) {
+
+        int flag = Constants.EXTRA_LOCATION_SCHEMA +
+                encode_LocationType_and_LocationData(locationType, locationData) +
+                encode_ExtraType_and_ExtraData(extraType, extraData);
+        Debug.printInformation("encode_ExtraANDLocationType_and_ExtraANDLocationData() FINAL flag ", flag);
+        return flag;
+    }
+
+    private static int encode_LocationType_and_LocationData(Constants.FLAG_LOCATION_TYPES locationType, MapLocation locationData) {
+        int flag = encodeLocationType(locationType) + encodeLocationData(locationData);
         Debug.printInformation("encode_LocationType_and_LocationData() flag ", flag);
         return flag;
     }
 
     /* CONVENTION IS -> 0b1 | 000 (not location based) | 3 location type | ...*/
-    /* Uses bits 17-19 & 23 */
+    /* Uses bits 17-19 */
     private static int encodeLocationType(Constants.FLAG_LOCATION_TYPES locationType) {
-        int encoding = Constants.LOCATION_SCHEMA +
-                (locationType.ordinal() << Constants.LOCATION_IDENTIFIER_NBITS);
+        int encoding = (locationType.ordinal() << Constants.LOCATION_IDENTIFIER_SHIFT);
         Debug.printInformation("encodeLocationType() flag ", encoding);
         return encoding;
     }
 
-    /* Uses bits 0-13 inclusive */ //NEED SOME ORDER IDENTIFIER TO IDENTIFY WHAT LOCATION MEANS (ALLY EC, EDGE OF MAP, ENEMY EC, NEUTRAL EC, ETC) ?
-    private static int encodeLocationData(MapLocation location) {
-        int encoding = ((location.x & Constants.LOCATION_BITMASK) << Constants.LOCATION_NBITS) +
-                (location.y & Constants.LOCATION_BITMASK);
+    /* Uses bits 0-13 inclusive */
+    private static int encodeLocationData(MapLocation locationData) {
+        int encoding = ((locationData.x & Constants.LOCATION_DATA_BITMASK) << Constants.LOCATION_DATA_NBITS) +
+                (locationData.y & Constants.LOCATION_DATA_BITMASK);
         Debug.printInformation("encodeLocationData() flag ", encoding);
+        return encoding;
+    }
+
+    // ensure data <= 3 bits
+    private static int encode_ExtraType_and_ExtraData(Constants.FLAG_EXTRA_TYPES extraType, int extraData) {
+        int flag = encodeExtraType(extraType) + encodeExtraData(extraData);
+        Debug.printInformation("encode_ExtraType_and_ExtraData() flag ", flag);
+        return flag;
+    }
+
+    private static int encodeExtraType(Constants.FLAG_EXTRA_TYPES extraType) {
+        int encoding = (extraType.ordinal() << Constants.EXTRA_IDENTIFIER_SHIFT);
+        Debug.printInformation("encodeExtraType() flag ", encoding);
+        return encoding;
+    }
+
+    private static int encodeExtraData(int extraData) {
+        int encoding = (extraData & Constants.EXTRA_DATA_BITMASK) << Constants.EXTRA_DATA_SHIFT;
+        Debug.printInformation("encodeExtraData() flag ", encoding);
         return encoding;
     }
 
@@ -71,35 +100,57 @@ public class Communication {
         return encodedCoordinate;
     }
 
-    /* Checks if the flag is of type location based on 23rd bit */
-    //TODO: IMPLEMENT EXTRA VERIFICATION FOR CERTAIN MESSAGES
+    /* Checks if the flag is of type location based on 23rd bit == 1
+    * If extraVerification, make sure that some extra bits are also valid
+    * */
     public static boolean decodeIsFlagLocationType(int encoding, boolean extraVerification) {
-        return (encoding >> Constants.SCHEMA_BIT) == 1;
+        boolean valid = (encoding >> Constants.SCHEMA_BIT) == 1;
+        if (valid && extraVerification) {
+            valid &= (decodeExtraType(encoding) == Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE);
+        }
+        Debug.printInformation("decodeIsFlagLocationType() ", valid);
+        return valid;
     }
 
-    /* return the meaning of the location */
+    public static Constants.FLAG_EXTRA_TYPES decodeExtraType(int encoding) {
+        // ENUM_TYPE of index ((encoding >> 20) & 0b111)
+        int identifier = (encoding >> Constants.EXTRA_IDENTIFIER_SHIFT) & Constants.EXTRA_IDENTIFIER_BITMASK;
+        Constants.FLAG_EXTRA_TYPES extraType = Constants.FLAG_EXTRA_TYPES.values()[identifier];
+        Debug.printInformation("decodeExtraType() ", extraType);
+        return extraType;
+    }
+
+    /* return the type (meaning) of the location that was encoded. Assumes decodeIsFlagLocationType() is called first */
     public static Constants.FLAG_LOCATION_TYPES decodeLocationType(int encoding) {
-        int identifier = (encoding & (0b111 << Constants.LOCATION_IDENTIFIER_NBITS)) >> Constants.LOCATION_IDENTIFIER_NBITS;
-        return Constants.FLAG_LOCATION_TYPES.values()[identifier];
+        // ENUM_TYPE of index ((encoding >> 17) & 0b111)
+        int identifier = (encoding >> Constants.LOCATION_IDENTIFIER_SHIFT) & Constants.LOCATION_IDENTIFIER_BITMASK;
+        Constants.FLAG_LOCATION_TYPES locationType = Constants.FLAG_LOCATION_TYPES.values()[identifier];
+        Debug.printInformation("decodeLocationType() ", locationType);
+        return locationType;
     }
 
-    /* Decode the flag which contains location information. Assumes encoding is valid location flag */
+    public static int decodeExtraData(int encoding) {
+        int extraData = (encoding >> Constants.EXTRA_DATA_SHIFT) & Constants.EXTRA_DATA_BITMASK;
+        Debug.printInformation("decodeExtraData() ", extraData);
+        return extraData;
+    }
+
+    /* Decode the flag which contains the actual location data. Assumes decodeIsFlagLocationType() is called first */
     public static MapLocation decodeLocationData(int encoding) {
         // x represents a proposed location shifted to the current location
-        // Math: (currentLocationX / 128 * 128) + (bits 7-13 inclusive shifted to position 0-6)
-        int x = (Cache.CURRENT_LOCATION.x & ~Constants.LOCATION_BITMASK) +
-                ((encoding >> Constants.LOCATION_NBITS) & Constants.LOCATION_BITMASK);
+        // Math: (currentLocationX / 128 * 128) + (bits 7-13 inclusive shifted to position 0-6, other bits removed)
+        int x = (Cache.CURRENT_LOCATION.x & ~Constants.LOCATION_DATA_BITMASK) +
+                ((encoding >> Constants.LOCATION_DATA_NBITS) & Constants.LOCATION_DATA_BITMASK);
         x = decodeLocationDataHelper(x, Cache.CURRENT_LOCATION.x);
 
-        int y = (Cache.CURRENT_LOCATION.y & ~Constants.LOCATION_BITMASK) +
-                (encoding & Constants.LOCATION_BITMASK);
+        int y = (Cache.CURRENT_LOCATION.y & ~Constants.LOCATION_DATA_BITMASK) +
+                (encoding & Constants.LOCATION_DATA_BITMASK);
         y = decodeLocationDataHelper(y, Cache.CURRENT_LOCATION.y);
 
-        MapLocation decodedLocation = new MapLocation(x, y);
-        Debug.printInformation("decodeLocationData() ", decodedLocation);
-        return decodedLocation;
+        MapLocation locationData = new MapLocation(x, y);
+        Debug.printInformation("decodeLocationData() ", locationData);
+        return locationData;
     }
-
 
 
     public static boolean checkAndSetFlag(int flag) throws GameActionException {
