@@ -87,16 +87,16 @@ public class Communication {
     public static MapLocation decodeLocationData(int encoding) {
         // x represents a proposed location shifted to the current location
         // Math: (currentLocationX / 128 * 128) + (bits 7-13 inclusive shifted to position 0-6)
-        int x = (Cache.CURRENT_LOCATION.x & Constants.LOCATION_BITMASK) +
+        int x = (Cache.CURRENT_LOCATION.x & ~Constants.LOCATION_BITMASK) +
                 ((encoding >> Constants.LOCATION_NBITS) & Constants.LOCATION_BITMASK);
         x = decodeLocationDataHelper(x, Cache.CURRENT_LOCATION.x);
 
-        int y = (Cache.CURRENT_LOCATION.y & Constants.LOCATION_BITMASK) +
+        int y = (Cache.CURRENT_LOCATION.y & ~Constants.LOCATION_BITMASK) +
                 (encoding & Constants.LOCATION_BITMASK);
         y = decodeLocationDataHelper(y, Cache.CURRENT_LOCATION.y);
 
         MapLocation decodedLocation = new MapLocation(x, y);
-        Debug.printLocation(decodedLocation);
+        Debug.printInformation("decodeLocationData() ", decodedLocation);
         return decodedLocation;
     }
 
