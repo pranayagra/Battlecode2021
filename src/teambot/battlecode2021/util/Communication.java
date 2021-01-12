@@ -29,10 +29,10 @@ public class Communication {
     }
 
     //0b1 | 3 bits A extra identifier | 3 bits B location identifier | 3 bits data of type A | 7 bits location X of type B | 7 bits location Y of type B
-    // Maybe the 3 bits could be something about the 3 types of units and what to do (0, 0) is go to location, (0, 1) is stay away from location, (1, 1) is ?
+    // Maybe the 3 extra bits could be something about the 3 types of units and what to do (0, 0) is go to location, (0, 1) is stay away from location, (1, 1) is ?
     // they could also be used as additional verification to ensure what we are sending is actually ours (good for important and risky information)
 
-    //0b0 | SOME OTHER SCHEMA of 23 bits to convey other type of information
+    //0b0 | SOME OTHER SCHEMA of 23 bits to convey other type of information (should include a verification check too)
 
     public static int encode_LocationType_and_LocationData(Constants.FLAG_LOCATION_TYPES locationType, MapLocation location) {
         int flag = encodeLocationType(locationType) + encodeLocationData(location);

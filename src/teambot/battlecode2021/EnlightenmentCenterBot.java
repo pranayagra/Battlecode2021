@@ -39,12 +39,13 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     public EnlightenmentCenterBot(RobotController controller) throws GameActionException {
         this.controller = controller;
-        random = new Random(controller.getID());
         init();
     }
 
     @Override
     public void init() throws GameActionException {
+        random = new Random(controller.getID());
+
         EC_ID_CURRENT_BRUTE_FORCE = 10000;
         EC_ID_END_BRUTE_FORCE = EC_ID_CURRENT_BRUTE_FORCE + 4096;
         num_validIDS = 0;
