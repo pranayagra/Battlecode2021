@@ -5,6 +5,7 @@ import teambot.battlecode2021.MuckrakerBot;
 import teambot.battlecode2021.PoliticanBot;
 import teambot.battlecode2021.SlandererBot;
 import teambot.battlecode2021.util.Cache;
+import teambot.battlecode2021.util.Communication;
 import teambot.battlecode2021.util.Debug;
 import teambot.battlecode2021.util.Util;
 
@@ -44,6 +45,7 @@ public strictfp class RobotPlayer {
         Util.init(controller);
         Cache.init(controller);
         Debug.init(controller);
+        Communication.init(controller);
 
         RunnableBot bot;
         switch (controller.getType()) {

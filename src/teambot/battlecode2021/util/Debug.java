@@ -71,6 +71,24 @@ public class Debug {
         }
     }
 
+    public static void printInformation(String uniqueMSG, Object data) {
+        if (debug) {
+            System.out.println(uniqueMSG + " => " + robotType() + " at " + robotLocation() + ": " + data.toString());
+        }
+    }
+
+    public static void printLocation(MapLocation location) {
+        if (debug) {
+            System.out.println(robotType() + " at " + robotLocation() + " has location " + location);
+        }
+    }
+
+    public static void printFlag(int flag) {
+        if (debug) {
+            System.out.println(robotType() + " at " + robotLocation() + " has flag " + flag);
+        }
+    }
+
     public static void printRobotInformation() {
 //        assertValues();
         if (debug) {

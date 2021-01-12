@@ -1,6 +1,7 @@
 package teambot.battlecode2021.util;
 import battlecode.common.*;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -68,6 +69,8 @@ public class Cache {
         ID = controller.getID();
         NUM_ROUNDS_SINCE_SPAWN = 0;
         EC_ALL_PRODUCED_ROBOT_IDS = new HashSet<>();
+        ALL_KNOWN_FRIENDLY_EC_LOCATIONS = new HashMap<>();
+        ALL_KNOWN_ENEMY_EC_LOCATIONS = new HashMap<>();
 
         //TODO: Not sure if I like using hashmap to store EC locations (is it bytecode expensive? Is there a different solution / can we create our own structure to hold ECs)?
         //TODO: Not sure how to determine / unadd if EC is captured/lost. I guess it's more reactive as we loop through...
@@ -86,22 +89,21 @@ public class Cache {
         PASSABILITY = controller.sensePassability(CURRENT_LOCATION);
         COOLDOWN = controller.getCooldownTurns();
 
-        if (ROBOT_TYPE != RobotType.ENLIGHTENMENT_CENTER) {
-            for (RobotInfo robot : ALL_NEARBY_ROBOTS) {
-                if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
-                    if (robot.team == OUR_TEAM) {
-                        ALL_KNOWN_ENEMY_EC_LOCATIONS.remove(robot.location);
-                        ALL_KNOWN_FRIENDLY_EC_LOCATIONS.put(robot.location, robot.ID);
-                    } else if (robot.team == OPPONENT_TEAM) {
-                        ALL_KNOWN_ENEMY_EC_LOCATIONS.put(robot.location, robot.ID);
-                        ALL_KNOWN_FRIENDLY_EC_LOCATIONS.remove(robot.location);
-                    }
-                }
-            }
-        }
+//        if (ROBOT_TYPE != RobotType.ENLIGHTENMENT_CENTER) {
+//            for (RobotInfo robot : ALL_NEARBY_ENEMY_ROBOTS) {
+//                if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER && robot.team == OPPONENT_TEAM) {
+//                    MapLocation EC_MAP = robot.getLocation();
+//                    int flag = Communication.makeFlag_SpecificedLocation(EC_MAP, "ENEMY_EC");
+//                    if (controller.canSetFlag(flag)) {
+//                        controller.setFlag(flag);
+//                        break;
+//                    }
+//                }
+//            }
+//        }
 
 
-
+        /*
         if (ROBOT_TYPE == RobotType.ENLIGHTENMENT_CENTER) {
             if (MAP_WIDTH == 0 || MAP_HEIGHT == 0 || MAP_BOTTOM == 0 || MAP_TOP == 0 || MAP_LEFT == 0 || MAP_RIGHT == 0) {
                 for (Integer robotID : EC_ALL_PRODUCED_ROBOT_IDS) {
@@ -116,7 +118,7 @@ public class Cache {
                     if (MAP_BOTTOM == 0) MAP_BOTTOM = MAP_HEIGHT - MAP_HEIGHT;
                 }
             }
-        }
+        }*/
 
     }
 }
