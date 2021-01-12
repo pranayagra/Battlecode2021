@@ -20,22 +20,36 @@ public class MuckrakerBot implements RunnableBot {
 
     @Override
     public void init() throws GameActionException {
+
+        Debug.printByteCode("INIT START");
+
         random = new Random(controller.getID());
         isBlockingEnemyEC = false;
+
         for (Map.Entry<MapLocation, Integer> entry : Cache.ALL_KNOWN_FRIENDLY_EC_LOCATIONS.entrySet()) {
             relativeX = Pathfinding.relative(entry.getKey(), Cache.CURRENT_LOCATION)[0];
             relativeY = Pathfinding.relative(entry.getKey(),Cache.CURRENT_LOCATION)[1];
             scoutTarget = new MapLocation(Cache.CURRENT_LOCATION.x - 64 * relativeX, Cache.CURRENT_LOCATION.y - 64 * relativeY);
             break;
         }
-        if (Debug.debug) {
-            System.out.println("relativeX " + relativeX + ", relativeY " + relativeY);
-            System.out.println("Scout Target: " + scoutTarget);
-        }
+
+
+        Debug.printByteCode("INIT END");
     }
 
     @Override
     public void turn() throws GameActionException {
+        Debug.printByteCode("TURN START");
+
+        if (controller.getRoundNum() == 1) {
+            init();
+        }
+
+        if (Debug.debug) {
+            System.out.println("relativeX " + relativeX + ", relativeY " + relativeY);
+            System.out.println("Scout Target: " + scoutTarget);
+        }
+
 
         if (simpleAttack()) {
             if (Debug.debug) {
@@ -53,6 +67,7 @@ public class MuckrakerBot implements RunnableBot {
             return;
         }
 
+        Debug.printByteCode("TURN END");
 //        if ()
     }
 
