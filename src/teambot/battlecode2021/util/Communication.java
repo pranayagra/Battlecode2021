@@ -33,6 +33,9 @@ public class Communication {
     // they could also be used as additional verification to ensure what we are sending is actually ours (good for important and risky information)
 
     //0b0 | SOME OTHER SCHEMA of 23 bits to convey other type of information (should include a verification check too)
+    //0b0 | 4 bits identifer (0101) => ID-based
+    //0b0 | 4 bits identifer (1111) =>
+    //Politican Attacking EC ->
 
     /* SCHEMA: 0b1 | 3 extraType | 3 locationType | 3 extraData | 7 locationDataX | 7 locationDataY */
     public static int encode_ExtraANDLocationType_and_ExtraANDLocationData(
@@ -172,6 +175,10 @@ public class Communication {
         return flag;
     }
 
+
+
+
+    /* SCHEMA: 0b0 | 23 bits */
 
 
     //OLD CODE:

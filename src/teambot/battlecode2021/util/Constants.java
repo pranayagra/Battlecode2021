@@ -26,12 +26,12 @@ public class Constants {
     // MAYBE LET LOCATION FLAGS BE SCHEMA FORM -> 0b1|???|3 bits LOCATION FLAGS set here|...
     /* CANNOT BE MORE THAN 8 OPTIONS (3 bits) */
     public static enum FLAG_LOCATION_TYPES {
+        NOOP,
         MY_EC_LOCATION,
         ENEMY_EC_LOCATION,
         NEUTRAL_EC_LOCATION,
         LEFT_OR_RIGHT_MAP_LOCATION,
-        TOP_OR_BOTTOM_MAP_LOCATION,
-        MY_LOCATION
+        TOP_OR_BOTTOM_MAP_LOCATION
     }
 
     // TODO: ADD MORE STATES
@@ -39,9 +39,22 @@ public class Constants {
     public static enum FLAG_EXTRA_TYPES {
         SCOUT_ATTACK,
         VERIFICATION_ENSURANCE,
+        DIRECTION_MOVING,
     }
     //NOT SURE interaction between extra stuff (since location data is always location based, but here we have 3-3 bits or 6 bit...
     public static enum FLAG_EXTRA_DATA {
 
     }
+
+    public static final Direction[] directions = {
+            Direction.NORTH,
+            Direction.NORTHEAST,
+            Direction.EAST,
+            Direction.SOUTHEAST,
+            Direction.SOUTH,
+            Direction.SOUTHWEST,
+            Direction.WEST,
+            Direction.NORTHWEST,
+    };
+
 }
