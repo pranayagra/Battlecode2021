@@ -7,13 +7,18 @@ import teambot.battlecode2021.util.Communication;
 import teambot.battlecode2021.util.Debug;
 import teambot.battlecode2021.util.Pathfinding;
 
+import java.util.Map;
 import java.util.Random;
 
 public class PoliticanBot implements RunnableBot {
     private RobotController controller;
     private static Random random;
+    private Pathfinding pathfinding;
     private static boolean isTypeAttack;
     private static MapLocation EnemyEC;
+
+    private MapLocation[] friendlySlanderers;
+//    private int[] friendlySlandererRobotIDs;
 
     public PoliticanBot(RobotController controller) throws GameActionException {
         this.controller = controller;
@@ -22,13 +27,25 @@ public class PoliticanBot implements RunnableBot {
 
     @Override
     public void init() throws GameActionException {
+        this.pathfinding = new Pathfinding();
+        pathfinding.init(controller);
+
         random = new Random(controller.getID());
         isTypeAttack = random.nextInt(4) < 3 ? true : false; //[0, 1, 2, 3] 75% attack, 25% defend
+        friendlySlanderers = new MapLocation[60];
+//        friendlySlandererRobotIDs = new int[999];
 
     }
 
     @Override
     public void turn() throws GameActionException {
+
+        if (chaseMuckrakerUntilExplode()) {
+            Debug.printInformation("CHASING MUCKRAKER ", "");
+            return;
+        } else {
+            Pathfinding.move(Pathfinding.randomLocation());
+        }
 
         if (isTypeAttack) {
             if (attackingPoliticianNearEnemyEC()) {
@@ -46,6 +63,65 @@ public class PoliticanBot implements RunnableBot {
                 return;
             }
         }
+    }
+
+    public boolean leaveBaseToEnterLattice() throws GameActionException {
+
+        return false;
+    }
+
+    //chasing flag -> flagType | robotID
+    public boolean chaseMuckrakerUntilExplode() throws GameActionException {
+
+        int friendlySlandersSize = 0;
+
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+            if (robotInfo.type == RobotType.POLITICIAN) {
+                int encodedFlag = Communication.checkAndGetFlag(robotInfo.ID);
+                if (Communication.decodeIsFlagLocationType(encodedFlag, true)) {
+                    if (Communication.decodeExtraData(encodedFlag) == 7) {
+                        // This is a slanderer on our team...
+                        friendlySlanderers[friendlySlandersSize++] = robotInfo.location;
+                    }
+                }
+            }
+        }
+
+        MapLocation toTarget = null;
+        int leastDistance = 9999;
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+            if (robotInfo.type == RobotType.MUCKRAKER) {
+                int minDistance = 9998;
+                //enemy muckraker
+                //TODO: make sure that no friendly unit is already tracking the muckraker
+                //TODO: leave the muckraker alone if it goes far enough from our defense location
+
+                //find minimum distance from slanderers to enemy
+                for (int i = 0; i < friendlySlandersSize; ++i) {
+                    minDistance = Math.min(minDistance, robotInfo.location.distanceSquaredTo(friendlySlanderers[i]));
+                }
+                if (leastDistance > minDistance) {
+                    leastDistance = minDistance;
+                    toTarget = robotInfo.location;
+                }
+
+            }
+        }
+
+        if (toTarget != null && controller.isReady()) {
+            //explode?
+            if (leastDistance <= RobotType.MUCKRAKER.actionRadiusSquared + 1) {
+                controller.empower(RobotType.POLITICIAN.actionRadiusSquared);
+                return true;
+            }
+            if (false) {
+
+            }
+            Pathfinding.move(toTarget);
+            return true;
+        }
+
+        return false;
     }
 
     //ASSUME POLITICIAN CAN PATHFIND TO EC LOCATION

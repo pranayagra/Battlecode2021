@@ -95,7 +95,8 @@ public class SlandererBot implements RunnableBot {
         Debug.printInformation("my location reward is ", rewardOfStaying);
         Debug.printInformation("location rewards surrounding me is ", Arrays.toString(moveRewards));
         Debug.printByteCode("runFromMuckrakerMove() => SCANNED ENEMY LOCATIONS ");
-        int flag = 0;
+        int flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
+                Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.NOOP, 7, Cache.CURRENT_LOCATION);;
         int bestValidDirection = -1;
         double bestValidReward = rewardOfStaying;
 

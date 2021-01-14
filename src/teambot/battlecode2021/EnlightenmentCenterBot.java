@@ -146,13 +146,21 @@ public class EnlightenmentCenterBot implements RunnableBot {
             return;
         }
 
-        boolean spawnMuckraker = random.nextInt(2) == 1;
+//        boolean spawnMuckraker = random.nextInt(2) == 1;
+//        if (spawnMuckraker) {
+//            tryBuildMuckraker(1);
+//        } else {
+//            tryBuildSlanderer(2);
+//        }
 
-        if (spawnMuckraker) {
-            tryBuildMuckraker(1);
-        } else {
-            tryBuildSlanderer(2);
+
+        int spawnType = random.nextInt(4);
+        if (spawnType <= 3) {
+            tryBuildPolitician(15);
+        } else if (spawnType == 1) {
+            tryBuildSlanderer(20);
         }
+
 
 
 
