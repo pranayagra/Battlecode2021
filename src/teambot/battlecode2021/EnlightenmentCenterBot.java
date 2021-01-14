@@ -132,8 +132,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
             }
         }
 
-
     }
+
+    /*
+    *
+    *
+    * */
 
     public void defaultTurn() throws GameActionException {
 
@@ -142,12 +146,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
             return;
         }
 
-        boolean spawnMucraker = random.nextInt(2) == 1;
+        boolean spawnMuckraker = random.nextInt(2) == 1;
 
-        if (spawnMucraker) {
+        if (spawnMuckraker) {
             tryBuildMuckraker(1);
         } else {
-
+            tryBuildSlanderer(2);
         }
 
 

@@ -77,6 +77,12 @@ public class Debug {
         }
     }
 
+    public static void printInformationArray(String uniqueMSG, Object[] data) {
+        if (debug) {
+            System.out.println(uniqueMSG + " => " + robotType() + " at " + robotLocation() + ": " + Arrays.toString(data));
+        }
+    }
+
     public static void printLocation(MapLocation location) {
         if (debug) {
             System.out.println(robotType() + " at " + robotLocation() + " has location " + location);
@@ -121,6 +127,12 @@ public class Debug {
 
     private static String robotInformationOutput() {
         return "[ByteCode Left: " + Clock.getBytecodesLeft() + ", Influence: " + robotInfluence() + ", Conviction: " + robotConviction() + "]";
+    }
+
+    public static void resignGame(int round) {
+        if (debug) {
+            if (controller.getRoundNum() >= round) controller.resign();
+        }
     }
 
 }

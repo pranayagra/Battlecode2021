@@ -199,7 +199,7 @@ public class Pathfinding {
 
     // Util
     public static Integer travelDistance(MapLocation a, MapLocation b) {
-        return Math.min(Math.abs(a.x-b.x), Math.abs(a.y-b.y));
+        return Math.max(Math.abs(a.x-b.x), Math.abs(a.y-b.y));
     }
 
     public static boolean inMap(MapLocation a) {

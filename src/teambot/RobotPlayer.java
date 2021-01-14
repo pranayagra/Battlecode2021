@@ -4,10 +4,7 @@ import teambot.battlecode2021.EnlightenmentCenterBot;
 import teambot.battlecode2021.MuckrakerBot;
 import teambot.battlecode2021.PoliticanBot;
 import teambot.battlecode2021.SlandererBot;
-import teambot.battlecode2021.util.Cache;
-import teambot.battlecode2021.util.Communication;
-import teambot.battlecode2021.util.Debug;
-import teambot.battlecode2021.util.Util;
+import teambot.battlecode2021.util.*;
 
 public strictfp class RobotPlayer {
     public static RobotController controller;
@@ -74,6 +71,9 @@ public strictfp class RobotPlayer {
                         controller.setIndicatorDot(controller.getLocation(),255,0,0);
                     }
                     int currentTurn = controller.getRoundNum(); //starts at round 1
+
+                    Debug.resignGame(200);
+
                     Util.loop();
                     bot.turn();
                     Util.postLoop();
