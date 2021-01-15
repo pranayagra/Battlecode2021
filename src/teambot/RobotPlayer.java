@@ -72,10 +72,14 @@ public strictfp class RobotPlayer {
                     }
                     int currentTurn = controller.getRoundNum(); //starts at round 1
 
+<<<<<<< HEAD
                     Debug.resignGame(1000);
+=======
+                    Debug.resignGame(400);
+>>>>>>> 7b8bd63adc5e16a6a11633b6a7e03ae910f501d1
 
                     Util.loop();
-                    runAwayFromAttackFlag(controller);
+                    runAwayFromAttackFlag();
                     bot.turn();
                     Util.postLoop();
                     if (controller.getRoundNum() != currentTurn) {
@@ -93,13 +97,11 @@ public strictfp class RobotPlayer {
 
     }
 
-    private static void runAwayFromAttackFlag(RobotController controller) throws GameActionException {
-        int senseRadius = controller.getType().sensorRadiusSquared;
-        RobotInfo[] nearbyAlliedRobots = controller.senseNearbyRobots(senseRadius, controller.getTeam());
-        for (RobotInfo nearbyAlliedRobot : nearbyAlliedRobots) {
+    private static void runAwayFromAttackFlag() throws GameActionException {
+        for (RobotInfo nearbyAlliedRobot : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
             if (controller.canGetFlag(nearbyAlliedRobot.ID)) {
                 if (controller.getFlag(nearbyAlliedRobot.ID) == Communication.POLITICIAN_ATTACK_FLAG) {
-                    moveAwayFromLocation(controller, nearbyAlliedRobot.location);
+                    moveAwayFromLocation(nearbyAlliedRobot.location);
                     return;
                 }
             }
@@ -110,11 +112,14 @@ public strictfp class RobotPlayer {
         return Math.abs(one.x - two.x) + Math.abs(one.y - two.y);
     }
 
-    private static boolean moveAwayFromLocation(RobotController controller, MapLocation avoidLocation) throws GameActionException {
+    private static boolean moveAwayFromLocation(MapLocation avoidLocation) throws GameActionException {
 
         if (!controller.isReady()) return false;
 
         int maximizedDistance = addedLocationDistance(Cache.CURRENT_LOCATION, avoidLocation);
+
+        if (Cache.CURRENT_LOCATION.distanceSquaredTo(avoidLocation) > RobotType.POLITICIAN.actionRadiusSquared + 3) return false;
+
         Direction maximizedDirection = null;
 
         for (Direction direction : Constants.DIRECTIONS) {
@@ -136,84 +141,4 @@ public strictfp class RobotPlayer {
         return false;
     }
 
-//    static void runEnlightenmentCenter() throws GameActionException {
-//        RobotType toBuild = randomSpawnableRobotType();
-//        int influence = 50;
-//        for (Direction dir : directions) {
-//            if (rc.canBuildRobot(toBuild, dir, influence)) {
-//                rc.buildRobot(toBuild, dir, influence);
-//            } else {
-//                break;
-//            }
-//        }
-//    }
-//
-//    static void runPolitician() throws GameActionException {
-//        Team enemy = rc.getTeam().opponent();
-//        int actionRadius = rc.getType().actionRadiusSquared;
-//        RobotInfo[] attackable = rc.senseNearbyRobots(actionRadius, enemy);
-//        if (attackable.length != 0 && rc.canEmpower(actionRadius)) {
-//            System.out.println("empowering...");
-//            rc.empower(actionRadius);
-//            System.out.println("empowered");
-//            return;
-//        }
-//        if (tryMove(randomDirection()))
-//            System.out.println("I moved!");
-//    }
-//
-//    static void runSlanderer() throws GameActionException {
-//        if (tryMove(randomDirection()))
-//            System.out.println("I moved!");
-//    }
-//
-//    static void runMuckraker() throws GameActionException {
-//        Team enemy = rc.getTeam().opponent();
-//        int actionRadius = rc.getType().actionRadiusSquared;
-//        for (RobotInfo robot : rc.senseNearbyRobots(actionRadius, enemy)) {
-//            if (robot.type.canBeExposed()) {
-//                // It's a slanderer... go get them!
-//                if (rc.canExpose(robot.location)) {
-//                    System.out.println("e x p o s e d");
-//                    rc.expose(robot.location);
-//                    return;
-//                }
-//            }
-//        }
-//        if (tryMove(randomDirection()))
-//            System.out.println("I moved!");
-//    }
-
-    /**
-     * Returns a random Direction.
-     *
-     * @return a random Direction
-     */
-    static Direction randomDirection() {
-        return directions[(int) (Math.random() * directions.length)];
-    }
-
-    /**
-     * Returns a random spawnable RobotType
-     *
-     * @return a random RobotType
-     */
-    static RobotType randomSpawnableRobotType() {
-        return spawnableRobot[(int) (Math.random() * spawnableRobot.length)];
-    }
-
-    /**
-     * Attempts to move in a given direction.
-     *
-     * @param dir The intended direction of movement
-     * @return true if a move was performed
-     * @throws GameActionException
-     */
-    static boolean tryMove(Direction dir) throws GameActionException {
-        System.out.println("I am trying to move " + dir + "; " + controller.isReady() + " " + controller.getCooldownTurns() + " " + controller.canMove(dir));
-        if (controller.canMove(dir)) {
-            controller.move(dir);
-            return true;
-        } else return false;
-    }
 }
