@@ -7,16 +7,12 @@ import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.Team;
+import com.sun.tools.internal.jxc.ap.Const;
 
 /*
 COMMUNICATION SCHEMA
 24 bits
 
-[0000]
-Bit 0-3: Order identifier
-
-[00000000000000000000]
-Bit 
 */
 
 public class Communication {
@@ -28,16 +24,7 @@ public class Communication {
         Communication.controller = controller;
     }
 
-    //0b1 | 3 bits A extra identifier | 3 bits B location identifier | 3 bits data of type A | 7 bits location X of type B | 7 bits location Y of type B
-    // Maybe the 3 extra bits could be something about the 3 types of units and what to do (0, 0) is go to location, (0, 1) is stay away from location, (1, 1) is ?
-    // they could also be used as additional verification to ensure what we are sending is actually ours (good for important and risky information)
-
-    //0b0 | SOME OTHER SCHEMA of 23 bits to convey other type of information (should include a verification check too)
-    //0b0 | 4 bits identifer (0101) => ID-based
-    //0b0 | 4 bits identifer (1111) =>
-    //Politican Attacking EC ->
-
-    /* SCHEMA: 0b1 | 3 extraType | 3 locationType | 3 extraData | 7 locationDataX | 7 locationDataY */
+    /* SCHEMA 1: 0b1 | 3 extraType | 3 locationType | 3 extraData | 7 locationDataX | 7 locationDataY */
     public static int encode_ExtraANDLocationType_and_ExtraANDLocationData(
             Constants.FLAG_EXTRA_TYPES extraType, Constants.FLAG_LOCATION_TYPES locationType, int extraData, MapLocation locationData) {
 
@@ -46,6 +33,43 @@ public class Communication {
                 encode_ExtraType_and_ExtraData(extraType, extraData);
         Debug.printInformation("encode_ExtraANDLocationType_and_ExtraANDLocationData() FINAL flag ", flag);
         return flag;
+    }
+
+    /* SCHEMA 2: 0b | 7 bits schema code (must start with 0) | 3 bits type of bot | 14 bits information */
+    public static int encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES movementBotType, Constants.MOVEMENT_BOTS_DATA movementBotData) {
+        int flag = (Constants.MOVEMENT_BOT_SCHEMA_CODE << Constants.MOVEMENT_BOT_SCHEMA_SHIFT) +
+                (movementBotType.ordinal() << Constants.MOVEMENT_BOT_TYPE_SHIFT) +
+                movementBotData.ordinal();
+        Debug.printInformation("encode_MovementBotType_and_MovementBotData() FINAL flag ", flag);
+        return flag;
+    }
+
+    public static boolean decodeIsFlagMovementBotType(int encoding) {
+        boolean valid = (encoding >> Constants.MOVEMENT_BOT_SCHEMA_SHIFT) == Constants.MOVEMENT_BOT_SCHEMA_CODE;
+        Debug.printInformation("decodeIsFlagMovementBotType() ", valid);
+        return valid;
+    }
+
+    public static Constants.MOVEMENT_BOTS_TYPES decodeMovementBotType(int encoding) {
+        int identifier = ((encoding >> Constants.MOVEMENT_BOT_TYPE_SHIFT) & 0b111);
+        Constants.MOVEMENT_BOTS_TYPES movementBotType = Constants.MOVEMENT_BOTS_TYPES.values()[identifier];
+        Debug.printInformation("decodeMovementBotType() ", movementBotType);
+        return movementBotType;
+    }
+
+    public static Constants.MOVEMENT_BOTS_DATA convert_DirectionInt_MovementBotsData(int dir) {
+        return Constants.MOVEMENT_BOTS_DATA.values()[dir + 1];
+    }
+
+    public static int convert_MovementBotData_DirectionInt(Constants.MOVEMENT_BOTS_DATA movementBotsData) {
+        return (movementBotsData.ordinal() - 1);
+    }
+
+    public static Constants.MOVEMENT_BOTS_DATA decodeMovementBotData(int encoding) {
+        int identifier = (encoding & Constants.MOVEMENT_BOTS_DATA_BITMASK);
+        Constants.MOVEMENT_BOTS_DATA movementBotData = Constants.MOVEMENT_BOTS_DATA.values()[identifier];
+        Debug.printInformation("decodeMovementBotData() ", movementBotData);
+        return movementBotData;
     }
 
     private static int encode_LocationType_and_LocationData(Constants.FLAG_LOCATION_TYPES locationType, MapLocation locationData) {
@@ -107,7 +131,7 @@ public class Communication {
     * If extraVerification, make sure that some extra bits are also valid
     * */
     public static boolean decodeIsFlagLocationType(int encoding, boolean extraVerification) {
-        boolean valid = (encoding >> Constants.SCHEMA_BIT) == 1;
+        boolean valid = (encoding >> Constants.LOCATION_SCHEMA_BIT) == 1;
         if (valid && extraVerification) {
             valid &= (decodeExtraType(encoding) == Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE);
         }

@@ -2,10 +2,7 @@ package teambot.battlecode2021;
 
 import battlecode.common.*;
 import teambot.*;
-import teambot.battlecode2021.util.Cache;
-import teambot.battlecode2021.util.Communication;
-import teambot.battlecode2021.util.Constants;
-import teambot.battlecode2021.util.Debug;
+import teambot.battlecode2021.util.*;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -95,42 +92,42 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     public void readMyRobotFlags() throws GameActionException {
 
-        for (Iterator<Integer> i = Cache.EC_ALL_PRODUCED_ROBOT_IDS.iterator(); i.hasNext();) {
-            Integer robotID = i.next();
-            if (controller.canGetFlag(robotID)) {
-                int robotMSG = controller.getFlag(robotID);
-                MapLocation enemyLocation = Communication.decodeLocationData(robotMSG);
-                ALL_ENEMY_EC_LOCATIONS[num_ALL_ENEMY_EC_LOCATIONs++] = enemyLocation;
-            } else {
-                i.remove();
-            }
-
-            if (Clock.getBytecodesLeft() <= 300) {
-                break;
-            }
-        }
+//        for (Iterator<Integer> i = Cache.EC_ALL_PRODUCED_ROBOT_IDS.iterator(); i.hasNext();) {
+//            Integer robotID = i.next();
+//            if (controller.canGetFlag(robotID)) {
+//                int robotMSG = controller.getFlag(robotID);
+//                MapLocation enemyLocation = Communication.decodeLocationData(robotMSG);
+//                ALL_ENEMY_EC_LOCATIONS[num_ALL_ENEMY_EC_LOCATIONs++] = enemyLocation;
+//            } else {
+//                i.remove();
+//            }
+//
+//            if (Clock.getBytecodesLeft() <= 300) {
+//                break;
+//            }
+//        }
     }
 
 
     public void readECFlags() throws GameActionException {
-        int[] msgs = new int[num_ALL_MY_EC_LOCATIONs];
-        for (int i = 0; i < num_ALL_MY_EC_LOCATIONs; ++i) {
-            if (controller.canGetFlag(ALL_MY_EC_IDS[i])) {
-                msgs[i] = controller.getFlag(ALL_MY_EC_IDS[i]);
-                if (msgs[i] >> 20 == 0b1111) {
-                    continue;
-                } else {
-                    // This is where to attack message... -> out of all the flags
-                    // Protocol -> robots scout and try to find enemy ECs. If it finds a location, we set the flag and the EC can then read it.
-                    // It can save the enemy location and either 1) set the protocol on where to send all targets (if no other flag is set for other ECs) or output the same flag as another EC.
-                    //By the end of the round (or beginning of next round), each EC should have the same attack flag.
-
-                    //If a robot shows won (then EC will win status) => and other ECs can read it.
-                    //We either scout another location
-
-                }
-            }
-        }
+//        int[] msgs = new int[num_ALL_MY_EC_LOCATIONs];
+//        for (int i = 0; i < num_ALL_MY_EC_LOCATIONs; ++i) {
+//            if (controller.canGetFlag(ALL_MY_EC_IDS[i])) {
+//                msgs[i] = controller.getFlag(ALL_MY_EC_IDS[i]);
+//                if (msgs[i] >> 20 == 0b1111) {
+//                    continue;
+//                } else {
+//                    // This is where to attack message... -> out of all the flags
+//                    // Protocol -> robots scout and try to find enemy ECs. If it finds a location, we set the flag and the EC can then read it.
+//                    // It can save the enemy location and either 1) set the protocol on where to send all targets (if no other flag is set for other ECs) or output the same flag as another EC.
+//                    //By the end of the round (or beginning of next round), each EC should have the same attack flag.
+//
+//                    //If a robot shows won (then EC will win status) => and other ECs can read it.
+//                    //We either scout another location
+//
+//                }
+//            }
+//        }
 
     }
 
@@ -141,28 +138,27 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     public void defaultTurn() throws GameActionException {
 
-        if (MUCKRAKER_NUM < 8) {
-            tryBuildMuckraker(1);
-            return;
-        }
-
-//        boolean spawnMuckraker = random.nextInt(2) == 1;
-//        if (spawnMuckraker) {
+//        if (MUCKRAKER_NUM < 8) {
 //            tryBuildMuckraker(1);
-//        } else {
-//            tryBuildSlanderer(2);
+//            return;
 //        }
 
+//        tryBuildSlanderer(1);
+//
+////        boolean spawnMuckraker = random.nextInt(2) == 1;
+////        if (spawnMuckraker) {
+////            tryBuildMuckraker(1);
+////        } else {
+////            tryBuildSlanderer(2);
+////        }
 
-        int spawnType = random.nextInt(4);
-        if (spawnType <= 3) {
-            tryBuildPolitician(15);
+
+        int spawnType = random.nextInt(2);
+        if (spawnType == 0) {
+            tryBuildPolitician(13);
         } else if (spawnType == 1) {
-            tryBuildSlanderer(20);
+            tryBuildSlanderer(1);
         }
-
-
-
 
     }
 
@@ -229,6 +225,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         if (!controller.isReady()) {
             return false;
+        }
+
+        Direction trybuild = Constants.directions[random.nextInt(8)];
+        if (controller.canBuildRobot(RobotType.SLANDERER, trybuild, influence)) {
+            controller.buildRobot(RobotType.SLANDERER, trybuild, influence);
+            return true;
         }
 
         for (Direction dir : RobotPlayer.directions) {
