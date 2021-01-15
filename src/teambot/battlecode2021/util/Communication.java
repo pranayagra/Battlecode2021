@@ -47,7 +47,7 @@ public class Communication {
 
     public static boolean decodeIsFlagMovementBotType(int encoding) {
         boolean valid = (encoding >> Constants.MOVEMENT_BOT_SCHEMA_SHIFT) == Constants.MOVEMENT_BOT_SCHEMA_CODE;
-        Debug.printInformation("decodeIsFlagMovementBotType() ", valid);
+//        Debug.printInformation("decodeIsFlagMovementBotType() ", valid);
         return valid;
     }
 
@@ -58,7 +58,7 @@ public class Communication {
     public static Constants.MOVEMENT_BOTS_TYPES decodeMovementBotType(int encoding) {
         int identifier = ((encoding >> Constants.MOVEMENT_BOT_TYPE_SHIFT) & 0b111);
         Constants.MOVEMENT_BOTS_TYPES movementBotType = Constants.MOVEMENT_BOTS_TYPES.values()[identifier];
-        Debug.printInformation("decodeMovementBotType() ", movementBotType);
+//        Debug.printInformation("decodeMovementBotType() ", movementBotType);
         return movementBotType;
     }
 
@@ -73,13 +73,13 @@ public class Communication {
     public static Constants.MOVEMENT_BOTS_DATA decodeMovementBotData(int encoding) {
         int identifier = (encoding & Constants.MOVEMENT_BOTS_DATA_BITMASK);
         Constants.MOVEMENT_BOTS_DATA movementBotData = Constants.MOVEMENT_BOTS_DATA.values()[identifier];
-        Debug.printInformation("decodeMovementBotData() ", movementBotData);
+//        Debug.printInformation("decodeMovementBotData() ", movementBotData);
         return movementBotData;
     }
 
     private static int encode_LocationType_and_LocationData(Constants.FLAG_LOCATION_TYPES locationType, MapLocation locationData) {
         int flag = encodeLocationType(locationType) + encodeLocationData(locationData);
-        Debug.printInformation("encode_LocationType_and_LocationData() flag ", flag);
+//        Debug.printInformation("encode_LocationType_and_LocationData() flag ", flag);
         return flag;
     }
 
@@ -87,7 +87,7 @@ public class Communication {
     /* Uses bits 17-19 */
     private static int encodeLocationType(Constants.FLAG_LOCATION_TYPES locationType) {
         int encoding = (locationType.ordinal() << Constants.LOCATION_IDENTIFIER_SHIFT);
-        Debug.printInformation("encodeLocationType() flag ", encoding);
+//        Debug.printInformation("encodeLocationType() flag ", encoding);
         return encoding;
     }
 
@@ -95,26 +95,26 @@ public class Communication {
     private static int encodeLocationData(MapLocation locationData) {
         int encoding = ((locationData.x & Constants.LOCATION_DATA_BITMASK) << Constants.LOCATION_DATA_NBITS) +
                 (locationData.y & Constants.LOCATION_DATA_BITMASK);
-        Debug.printInformation("encodeLocationData() flag ", encoding);
+//        Debug.printInformation("encodeLocationData() flag ", encoding);
         return encoding;
     }
 
     // ensure data <= 3 bits
     private static int encode_ExtraType_and_ExtraData(Constants.FLAG_EXTRA_TYPES extraType, int extraData) {
         int flag = encodeExtraType(extraType) + encodeExtraData(extraData);
-        Debug.printInformation("encode_ExtraType_and_ExtraData() flag ", flag);
+//        Debug.printInformation("encode_ExtraType_and_ExtraData() flag ", flag);
         return flag;
     }
 
     private static int encodeExtraType(Constants.FLAG_EXTRA_TYPES extraType) {
         int encoding = (extraType.ordinal() << Constants.EXTRA_IDENTIFIER_SHIFT);
-        Debug.printInformation("encodeExtraType() flag ", encoding);
+//        Debug.printInformation("encodeExtraType() flag ", encoding);
         return encoding;
     }
 
     private static int encodeExtraData(int extraData) {
         int encoding = (extraData & Constants.EXTRA_DATA_BITMASK) << Constants.EXTRA_DATA_SHIFT;
-        Debug.printInformation("encodeExtraData() flag ", encoding);
+//        Debug.printInformation("encodeExtraData() flag ", encoding);
         return encoding;
     }
 
@@ -140,7 +140,7 @@ public class Communication {
         if (valid && extraVerification) {
             valid &= (decodeExtraType(encoding) == Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE);
         }
-        Debug.printInformation("decodeIsFlagLocationType() ", valid);
+//        Debug.printInformation("decodeIsFlagLocationType() ", valid);
         return valid;
     }
 
@@ -148,7 +148,7 @@ public class Communication {
         // ENUM_TYPE of index ((encoding >> 20) & 0b111)
         int identifier = (encoding >> Constants.EXTRA_IDENTIFIER_SHIFT) & Constants.EXTRA_IDENTIFIER_BITMASK;
         Constants.FLAG_EXTRA_TYPES extraType = Constants.FLAG_EXTRA_TYPES.values()[identifier];
-        Debug.printInformation("decodeExtraType() ", extraType);
+//        Debug.printInformation("decodeExtraType() ", extraType);
         return extraType;
     }
 
@@ -157,13 +157,13 @@ public class Communication {
         // ENUM_TYPE of index ((encoding >> 17) & 0b111)
         int identifier = (encoding >> Constants.LOCATION_IDENTIFIER_SHIFT) & Constants.LOCATION_IDENTIFIER_BITMASK;
         Constants.FLAG_LOCATION_TYPES locationType = Constants.FLAG_LOCATION_TYPES.values()[identifier];
-        Debug.printInformation("decodeLocationType() ", locationType);
+//        Debug.printInformation("decodeLocationType() ", locationType);
         return locationType;
     }
 
     public static int decodeExtraData(int encoding) {
         int extraData = (encoding >> Constants.EXTRA_DATA_SHIFT) & Constants.EXTRA_DATA_BITMASK;
-        Debug.printInformation("decodeExtraData() ", extraData);
+//        Debug.printInformation("decodeExtraData() ", extraData);
         return extraData;
     }
 
