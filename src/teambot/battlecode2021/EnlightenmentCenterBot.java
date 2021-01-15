@@ -160,8 +160,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //     tryBuildSlanderer(1);
         // }
 
-        if (controller.getRoundNum() > 50) {
-            if (Cache.ALL_NEARBY_FRIENDLY_ROBOTS.length < 24) {
+        if (controller.getRoundNum() > 10) {
+            if (Cache.ALL_NEARBY_FRIENDLY_ROBOTS.length < 100) {
                 tryBuildMuckraker(2);
             }
         } else {
