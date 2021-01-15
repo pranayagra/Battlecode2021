@@ -160,7 +160,13 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //     tryBuildSlanderer(1);
         // }
 
-        tryBuildMuckraker(1);
+        if (controller.getRoundNum() > 50) {
+            if (Cache.ALL_NEARBY_FRIENDLY_ROBOTS.length < 24) {
+                tryBuildMuckraker(2);
+            }
+        } else {
+            tryBuildMuckraker(1);
+        }
     }
 
     private void setLocationFlag() throws GameActionException {
