@@ -79,6 +79,7 @@ public class SlandererBot implements RunnableBot {
         } else {
             currentSquareIsBadExecute();
         }
+
     }
 
     /* Execute behavior if current square is a "bad" square
@@ -170,7 +171,7 @@ public class SlandererBot implements RunnableBot {
         5) Iterate through all friendly robots of type slanderers and find the closest one with a movement flag with danger bit. Call this preferedMovementDirectionIdx
         6) Attempt to move in preferedMovementDirectionIdx direction. If cannot move, try the next-to directions
         7) else: return 0
-    Set: flag to danger if muckraker is within sensor range
+    Set: flag to default value indicating unit type or flag to danger if muckraker is within sensor range
 
     Return: 0 means we are not moving because there is no reason to move,
             1 means we are not moving because we shouldn't move (or can't)
@@ -244,7 +245,11 @@ public class SlandererBot implements RunnableBot {
         }
 
         /* Set communication for other slanderers if there is a muckraker within my range */
-        Communication.checkAndSetFlag(flag);
+
+        if (flag != Communication.checkAndGetFlag(flag))  {
+            Communication.checkAndSetFlag(flag);
+        }
+
 //        Debug.printInformation("flag is set for ", flag);
 //        Debug.printByteCode("runFromMuckrakerMove() => SET FLAG ");
 

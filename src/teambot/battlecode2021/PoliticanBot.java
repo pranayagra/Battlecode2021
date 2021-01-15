@@ -76,18 +76,37 @@ public class PoliticanBot implements RunnableBot {
         return false;
     }
 
+
+    //Assumptions: neutralEC is found by a scout and communicated to the EC
+    //Bugs:
+    //  friendly units nearby our base may move around as a result of the flag. We should have a "no matter what I will not move" flag to avoid this danger situation (especially with wall units) and only set the flag when once
+    //  What if two ECs close together? Then nearbyRobots.length == 1 is always false (I think this condition is too risky regardless of this situation)
+
+    //TODO: I think protocol should be ->
+    // EC spawns politician (maybe let's say xx2 influence politicians are type neutral EC explode) and let's this bot know the location of the neutralEC
+    // Then this bot pathfinds to the location, waits until it is somewhat close, sets its flag to attacking, and then explodes based on condition (hard part)
+
+    // Enhancements:
+    //      the "actionRadius" is not always the most preferred explosion radius. Rather, smaller is usually better here
+    //      the nearbyRobots.length == 1 is too strict (we cannot force enemy robots to leave). Rather, the politican should be able to the best location
+    //      we only explode if it is a 1-shot (with some extra for health). If it is no longer a 1-shot, this politican is repurposed.
+    //      check for enemy politicians?
+    //      We may want a way to clear enemies that just surround the neutral EC with weak targets but do not capture
     public boolean moveAndDestoryNeutralEC() throws GameActionException {
+
         if (neutralEC == null) {
             if (Debug.debug) {
                 System.out.println("neutralEC not set");
             }
             return false;
         }
-        int actionRadius = controller.getType().actionRadiusSquared;
+
+        int actionRadius = Cache.ROBOT_TYPE.actionRadiusSquared;
         RobotInfo[] nearbyRobots = controller.senseNearbyRobots(actionRadius);
         for (RobotInfo robotInfo : nearbyRobots) {
             if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER && robotInfo.team == Team.NEUTRAL) {
                 // explode if no other nearby robots
+                //TODO: pranay's comment -> I think 1 is too risky since the enemy might have a bot nearby? not sure...
                 if (nearbyRobots.length == 1 && controller.canEmpower(actionRadius)) {
                     controller.empower(actionRadius);
                     return true;
@@ -103,6 +122,14 @@ public class PoliticanBot implements RunnableBot {
     }
 
     //chasing flag -> flagType | robotID
+    // has some bugs! Pranay's Method...
+    // enhancements:
+    //      stick to a certain distance away from slanderers or better yet muckrakers (outside the wall) instead of random movement
+    //      only focus on enemy politicians maybe? since muckrakers can't get through the wall anyways... risky
+    //      explosion radius
+    //      sometimes we move which causes us to not be able to cast ability until later
+    //      there are some bugs with not exploding at the right time, or multiple bots exloding at the same time
+    //      
     public boolean chaseMuckrakerUntilExplode() throws GameActionException {
 
         int friendlySlanderersSize = 0;
