@@ -15,17 +15,34 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int EC_ID_CURRENT_BRUTE_FORCE;
     private static int EC_ID_END_BRUTE_FORCE;
 
-    private int MUCKRAKER_NUM = 0;
-    private int SLANDERER_NUM = 0;
-    private int POLITICIAN_NUM = 0;
-    private int SCOUT_DIRECTION = 0;
+    /* Politicians that are attacking -- mid prio (should only be at most 100) */
+    private static int ATTACKING_POLITICIAN_SZ;
+    private static int[] ATTACKING_POLITICIAN_IDs;
+
+    /* Politicians that are defending slanderers -- high prio */
+    private static int[] POLITICIAN_DEFENDING_SLANDERER_SZ;
+    private static int[] POLITICIAN_DEFENDING_SLANDERER_IDs;
+
+    /* Slanderer, useful to communicate danger or production of muckrakers -- mid prio (depending on implemention of wall) */
+    private static int SLANDERER_SZ;
+    private static int[] SLANDERER_IDs;
+
+    /* I do not think we need to store these, maybe only if we want to communicate to the EC we are getting attacked heavily -- low prio */
+    private static int WALL_MUCKRAKER_SZ;
+    private static int[] WALL_MUCKRAKER_IDs;
+
+    /* Should always iterate on all of these -- highest priority (should be at most 100) */
+    private static int SCOUT_MUCKRAKER_SZ;
+    private static int[] SCOUT_MUCKRAKER_IDs;
+
+    //TODO: need to think of building requests when we cannot build on a certain round or have too many requests.. we probably want some type of priority here
+    private static int[] buildRequests; //want to store -> the necessary information (type, influence, direction, deltaDirectionAllowed) and how old the request is?
 
     private static int num_validIDS;
     private static int[] validIDS;
 
 
     public static int num_ALL_MY_EC_LOCATIONs;
-
     public static int[] ALL_MY_EC_IDS;
     public static MapLocation[] ALL_MY_EC_LOCATIONS;
 
@@ -56,6 +73,18 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         num_ALL_ENEMY_EC_LOCATIONs = 0;
         ALL_ENEMY_EC_LOCATIONS = new MapLocation[MAX_ECS_PER_TEAM * 4];
+
+        Debug.printByteCode("BEFORE ARRAY INIT ");
+//        MUCKRAKER_IDs = new int[64 * 64];
+//        POLITICIAN_IDs = new int[64 * 64];
+//        SLANDERER_IDs = new int[64 * 64];
+
+        SCOUT_MUCKRAKER_IDs = new int[100];
+        SCOUT_MUCKRAKER_SZ = 0;
+
+        Debug.printByteCode("AFTER ARRAY INIT ");
+        Debug.printByteCode("AFTER ITERATION 64^2 TIMES ");
+
     }
 
     @Override
@@ -84,52 +113,16 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (Clock.getBytecodesLeft() <= 2000) {
             return;
         }
+    }
 
-        readECFlags();
-        readMyRobotFlags();
+    public void readFriendlyECFlags() {
 
     }
 
-    public void readMyRobotFlags() throws GameActionException {
-
-//        for (Iterator<Integer> i = Cache.EC_ALL_PRODUCED_ROBOT_IDS.iterator(); i.hasNext();) {
-//            Integer robotID = i.next();
-//            if (controller.canGetFlag(robotID)) {
-//                int robotMSG = controller.getFlag(robotID);
-//                MapLocation enemyLocation = Communication.decodeLocationData(robotMSG);
-//                ALL_ENEMY_EC_LOCATIONS[num_ALL_ENEMY_EC_LOCATIONs++] = enemyLocation;
-//            } else {
-//                i.remove();
-//            }
-//
-//            if (Clock.getBytecodesLeft() <= 300) {
-//                break;
-//            }
-//        }
-    }
-
-
-    public void readECFlags() throws GameActionException {
-//        int[] msgs = new int[num_ALL_MY_EC_LOCATIONs];
-//        for (int i = 0; i < num_ALL_MY_EC_LOCATIONs; ++i) {
-//            if (controller.canGetFlag(ALL_MY_EC_IDS[i])) {
-//                msgs[i] = controller.getFlag(ALL_MY_EC_IDS[i]);
-//                if (msgs[i] >> 20 == 0b1111) {
-//                    continue;
-//                } else {
-//                    // This is where to attack message... -> out of all the flags
-//                    // Protocol -> robots scout and try to find enemy ECs. If it finds a location, we set the flag and the EC can then read it.
-//                    // It can save the enemy location and either 1) set the protocol on where to send all targets (if no other flag is set for other ECs) or output the same flag as another EC.
-//                    //By the end of the round (or beginning of next round), each EC should have the same attack flag.
-//
-//                    //If a robot shows won (then EC will win status) => and other ECs can read it.
-//                    //We either scout another location
-//
-//                }
-//            }
-//        }
+    public void readFriendlyScoutFlags() {
 
     }
+
 
     /*
     *
@@ -137,6 +130,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
     * */
 
     public void defaultTurn() throws GameActionException {
+        readFriendlyScoutFlags();
+        readFriendlyECFlags();
 
 //        if (MUCKRAKER_NUM < 8) {
 //            tryBuildMuckraker(1);
@@ -160,12 +155,14 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //     tryBuildSlanderer(1);
         // }
 
+
+
         if (controller.getRoundNum() > 10) {
             if (Cache.ALL_NEARBY_FRIENDLY_ROBOTS.length < 100) {
-                tryBuildMuckraker(2);
+                spawnWallMuckraker(2, randomValidDirection());
             }
         } else {
-            tryBuildMuckraker(1);
+            spawnScoutMuckraker(1, randomValidDirection());
         }
     }
 
@@ -178,7 +175,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     private void round1() throws GameActionException {
         setLocationFlag();
-        tryBuildSlanderer(50);
+        spawnLatticeSlanderer(50, randomValidDirection());
         while (Clock.getBytecodesLeft() >= 300 && EC_ID_CURRENT_BRUTE_FORCE++ <= EC_ID_END_BRUTE_FORCE) {
             if (controller.canGetFlag(EC_ID_CURRENT_BRUTE_FORCE)) {
                 validIDS[num_validIDS++] = EC_ID_CURRENT_BRUTE_FORCE;
@@ -205,15 +202,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
     }
 
-    public void brute_force_ids() throws GameActionException {
+    private void brute_force_ids() throws GameActionException {
         //brute force IDs
-
         while (Clock.getBytecodesLeft() >= 400 && EC_ID_CURRENT_BRUTE_FORCE++ <= EC_ID_END_BRUTE_FORCE) {
-
             int encodedFlag = Communication.checkAndGetFlag(EC_ID_CURRENT_BRUTE_FORCE);
             if (encodedFlag == -1) continue;
-
-            if (Communication.decodeIsFlagLocationType(encodedFlag,true)) {
+            if (Communication.decodeIsFlagLocationType(encodedFlag, true)) {
                 Constants.FLAG_LOCATION_TYPES locationType = Communication.decodeLocationType(encodedFlag);
                 if (locationType != Constants.FLAG_LOCATION_TYPES.MY_EC_LOCATION) continue;
 
@@ -221,73 +215,75 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 ALL_MY_EC_LOCATIONS[num_ALL_MY_EC_LOCATIONs] = locationData;
                 ALL_MY_EC_IDS[num_ALL_MY_EC_LOCATIONs++] = EC_ID_CURRENT_BRUTE_FORCE;
             }
-
         }
-
-        Debug.printByteCode("CHECKED MORE IDS -- " + (EC_ID_CURRENT_BRUTE_FORCE));
     }
 
-    // THE FACTORIES
-    public boolean tryBuildSlanderer(int influence) throws GameActionException {
+    /* Greedily returns the closest valid direction to preferredDirection within the directionFlexibilityDelta value (2 means allow for 2 clockwise 45 deg in both directions)
+    Returns null if no valid direction with specification
+    directionFlexibilityDelta: max value 4 */
+    private Direction toBuildDirection(Direction preferredDirection, int directionFlexibilityDelta) {
 
-        if (!controller.isReady()) {
-            return false;
+        if (!controller.isReady()) return null;
+
+        if (controller.canBuildRobot(RobotType.MUCKRAKER, preferredDirection, 1)) {
+            return preferredDirection;
         }
 
-        Direction trybuild = Constants.DIRECTIONS[random.nextInt(8)];
-        if (controller.canBuildRobot(RobotType.SLANDERER, trybuild, influence)) {
-            controller.buildRobot(RobotType.SLANDERER, trybuild, influence);
-            return true;
+        Direction left = preferredDirection;
+        Direction right = preferredDirection;
+        for (int i = 1; i <= directionFlexibilityDelta; ++i) {
+            right = right.rotateRight();
+            left = left.rotateLeft();
+            if (controller.canBuildRobot(RobotType.MUCKRAKER, right, 1)) return right;
+            if (controller.canBuildRobot(RobotType.MUCKRAKER, left, 1)) return left;
         }
-
-        for (Direction dir : RobotPlayer.directions) {
-            if (controller.canBuildRobot(RobotType.SLANDERER, dir, influence)) {
-                controller.buildRobot(RobotType.SLANDERER, dir, influence);
-                Cache.EC_ALL_PRODUCED_ROBOT_IDS.add(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(dir)).ID);
-                ++SLANDERER_NUM;
-                return true;
-            }
-        }
-        return false;
+        return null;
     }
 
-    public boolean tryBuildMuckraker(int influence) throws  GameActionException {
-
-        if (!controller.isReady()) {
-            return false;
-        }
-
-        Direction trybuild = Constants.DIRECTIONS[random.nextInt(8)];
-        if (controller.canBuildRobot(RobotType.MUCKRAKER, trybuild, influence)) {
-            controller.buildRobot(RobotType.MUCKRAKER, trybuild, influence);
-            return true;
-        }
-
-        for (Direction dir : RobotPlayer.directions) {
-            if (controller.canBuildRobot(RobotType.MUCKRAKER, dir, influence)) {
-                controller.buildRobot(RobotType.MUCKRAKER, dir, influence);
-                Cache.EC_ALL_PRODUCED_ROBOT_IDS.add(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(dir)).ID);
-                ++MUCKRAKER_NUM;
-                return true;
-            }
-        }
-        return false;
+    /* Finds a random valid direction.
+    returns null if no valid direction */
+    private Direction randomValidDirection() {
+        return toBuildDirection(Constants.DIRECTIONS[random.nextInt(8)], 4);
     }
 
-    public boolean tryBuildPolitician(int influence) throws  GameActionException {
+    private void spawnScoutMuckraker(int influence, Direction direction) throws GameActionException {
+        //TODO: should spawn muckraker in location
+        if (controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
+            controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
 
-        if (!controller.isReady()) {
-            return false;
+            SLANDERER_IDs[SLANDERER_SZ++] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
+
+
         }
 
-        for (Direction dir : RobotPlayer.directions) {
-            if (controller.canBuildRobot(RobotType.POLITICIAN, dir, influence)) {
-                controller.buildRobot(RobotType.POLITICIAN, dir, influence);
-                Cache.EC_ALL_PRODUCED_ROBOT_IDS.add(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(dir)).ID);
-                ++POLITICIAN_NUM;
-                return true;
-            }
+    }
+
+    private void spawnWallMuckraker(int influence, Direction direction) throws GameActionException {
+        //TODO: should spawn muckrakers to build wall
+        if (controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
+            controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
         }
-        return false;
+    }
+
+    private void spawnLatticeSlanderer(int influence, Direction direction) throws GameActionException {
+        //TODO: should spawn slanderer, which default behavior is to build lattice
+        if (controller.canBuildRobot(RobotType.SLANDERER, direction, influence)) {
+            controller.buildRobot(RobotType.SLANDERER, direction, influence);
+        }
+    }
+
+    private void spawnDefendingPolitician(int influence, Direction direction) throws GameActionException {
+        //TODO: should defend slanderers outside the muckrakers wall
+        if (controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
+            controller.buildRobot(RobotType.POLITICIAN, direction, influence);
+        }
+    }
+
+    private void spawnAttackingPolitician(int influence, Direction direction) throws GameActionException {
+        //TODO: should only be called if the politician is meant to attack some base -> need to create politician with enough influence, set my EC flag to the location + attacking poli
+        //Assumption: politician upon creation should read EC flag and know it's purpose in life. It can determine what to do then
+        if (controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
+            controller.buildRobot(RobotType.POLITICIAN, direction, influence);
+        }
     }
 }
