@@ -36,6 +36,7 @@ public class Cache {
     public static int MAP_SYMMETRIC_TYPE;
 
     public static int[] EC_FLAGS;
+    public static MapLocation myECLocation;
     public static Map<MapLocation, Integer> ALL_KNOWN_FRIENDLY_EC_LOCATIONS; // Location : RobotID
     public static Map<MapLocation, Integer> ALL_KNOWN_ENEMY_EC_LOCATIONS; // Location : RobotID
 
@@ -71,6 +72,19 @@ public class Cache {
         EC_ALL_PRODUCED_ROBOT_IDS = new HashSet<>();
         ALL_KNOWN_FRIENDLY_EC_LOCATIONS = new HashMap<>();
         ALL_KNOWN_ENEMY_EC_LOCATIONS = new HashMap<>();
+
+        myECLocation = Cache.CURRENT_LOCATION;
+
+        if (ROBOT_TYPE != RobotType.ENLIGHTENMENT_CENTER) {
+            for (RobotInfo robotInfo : controller.senseNearbyRobots(2, OUR_TEAM)) {
+                if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER) {
+                    Debug.printInformation("FOUND EC AT ", robotInfo.location);
+                    myECLocation = robotInfo.location;
+                    break;
+                }
+            }
+        }
+        Debug.printInformation("MY EC LOCATION IS ", myECLocation);
 
         //TODO: Not sure if I like using hashmap to store EC locations (is it bytecode expensive? Is there a different solution / can we create our own structure to hold ECs)?
         //TODO: Not sure how to determine / unadd if EC is captured/lost. I guess it's more reactive as we loop through...
