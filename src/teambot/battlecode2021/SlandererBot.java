@@ -62,8 +62,8 @@ public class SlandererBot implements RunnableBot {
 
     /* Create lattice structure of slanderers centered around the EC location
     * Potential Bugs:
-    *       if two seperate ECs collide slanderers with each other
-    *       if one side of the EC is overproduced and bots can't get further away... is this really a bug tho or a feature?
+    *       if two seperate ECs collide slanderers with each other (big problem I think), not sure best way to fix... maybe each slanderer communicates in its flag distance from closest EC and we greedily make it accordingly to closest EC?
+    *       if one side of the EC is overproduced and bots can't get further away... is this really a bug tho or a feature? I think feature
     * */
     public void spawnInLattice() throws GameActionException {
         distanceFromMyEC = calculateLocationDistanceFromMyEC(Cache.CURRENT_LOCATION);
