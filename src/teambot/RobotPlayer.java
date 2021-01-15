@@ -72,9 +72,10 @@ public strictfp class RobotPlayer {
                     }
                     int currentTurn = controller.getRoundNum(); //starts at round 1
 
-                    Debug.resignGame(200);
+                    // Debug.resignGame(200);
 
                     Util.loop();
+                    runAwayFromAttackFlag(controller);
                     bot.turn();
                     Util.postLoop();
                     if (controller.getRoundNum() != currentTurn) {
@@ -90,6 +91,49 @@ public strictfp class RobotPlayer {
             }
         }
 
+    }
+
+    private static void runAwayFromAttackFlag(RobotController controller) throws GameActionException {
+        int senseRadius = controller.getType().sensorRadiusSquared;
+        RobotInfo[] nearbyAlliedRobots = controller.senseNearbyRobots(senseRadius, controller.getTeam());
+        for (RobotInfo nearbyAlliedRobot : nearbyAlliedRobots) {
+            if (controller.canGetFlag(nearbyAlliedRobot.ID)) {
+                if (controller.getFlag(nearbyAlliedRobot.ID) == Communication.POLITICIAN_ATTACK_FLAG) {
+                    moveAwayFromLocation(controller, nearbyAlliedRobot.location);
+                    return;
+                }
+            }
+        }
+    }
+
+    private static int addedLocationDistance(MapLocation one, MapLocation two) {
+        return Math.abs(one.x - two.x) + Math.abs(one.y - two.y);
+    }
+
+    private static boolean moveAwayFromLocation(RobotController controller, MapLocation avoidLocation) throws GameActionException {
+
+        if (!controller.isReady()) return false;
+
+        int maximizedDistance = addedLocationDistance(Cache.CURRENT_LOCATION, avoidLocation);
+        Direction maximizedDirection = null;
+
+        for (Direction direction : Constants.directions) {
+            if (controller.canMove(direction)) {
+                MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
+                int candidateDistance = Pathfinding.travelDistance(candidateLocation, avoidLocation);
+                if (candidateDistance > maximizedDistance) {
+                    maximizedDistance = candidateDistance;
+                    maximizedDirection = direction;
+                }
+            }
+        }
+
+        if (maximizedDirection != null) {
+            controller.move(maximizedDirection);
+            return true;
+        }
+
+        return false;
     }
 
 //    static void runEnlightenmentCenter() throws GameActionException {
