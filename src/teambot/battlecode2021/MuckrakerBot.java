@@ -171,7 +171,7 @@ public class MuckrakerBot implements RunnableBot {
         if (!controller.isReady()) return;
         boolean move = false;
         MapLocation center = null;
-        RobotInfo[] nearby = controller.senseNearbyRobots((int) Math.ceil(Math.sqrt(controller.getType().actionRadiusSquared)));
+        RobotInfo[] nearby = controller.senseNearbyRobots();
         for (RobotInfo info : nearby) {
             if (info.ID == nucleus) {
                 move = true;
