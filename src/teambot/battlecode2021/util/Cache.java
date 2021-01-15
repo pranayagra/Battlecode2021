@@ -19,6 +19,7 @@ public class Cache {
     public static int INFLUENCE;
     public static int CONVICTION;
     public static int ID;
+    public static int SENSOR_RADIUS;
 
     public static MapLocation MAP_CENTER_LOCATION;
 
@@ -70,6 +71,7 @@ public class Cache {
         START_LOCATION = CURRENT_LOCATION;
         ID = controller.getID();
         NUM_ROUNDS_SINCE_SPAWN = 0;
+        SENSOR_RADIUS = (int) Math.floor(Math.sqrt(Cache.ROBOT_TYPE.sensorRadiusSquared));
         EC_ALL_PRODUCED_ROBOT_IDS = new HashSet<>();
         ALL_KNOWN_FRIENDLY_EC_LOCATIONS = new HashMap<>();
         ALL_KNOWN_ENEMY_EC_LOCATIONS = new HashMap<>();
