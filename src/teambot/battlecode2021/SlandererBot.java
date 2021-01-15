@@ -102,7 +102,7 @@ public class SlandererBot implements RunnableBot {
         int goodSquareMinimizedDistance = (int) 1E9;
         Direction goodSquareMinimizedDirection = null;
 
-        for (Direction direction : Constants.directions) {
+        for (Direction direction : Constants.DIRECTIONS) {
             if (controller.canMove(direction)) {
                 MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
                 int candidateDistance = calculateLocationDistanceFromMyEC(candidateLocation);
@@ -144,7 +144,7 @@ public class SlandererBot implements RunnableBot {
         int moveTowardsDistance = distanceFromMyEC;
         Direction moveTowardsDirection = null;
 
-        for (Direction direction : Constants.directions) {
+        for (Direction direction : Constants.DIRECTIONS) {
             if (controller.canMove(direction)) {
                 MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
                 int candidateDistance = calculateLocationDistanceFromMyEC(candidateLocation);
@@ -258,7 +258,7 @@ public class SlandererBot implements RunnableBot {
 
         if (foundEnemyMuckraker) {
             if (bestValidDirection != -1) {
-                controller.move(Constants.directions[bestValidDirection]);
+                controller.move(Constants.DIRECTIONS[bestValidDirection]);
                 return 2;
             }
             return 1;
@@ -296,20 +296,21 @@ public class SlandererBot implements RunnableBot {
 //        Debug.printByteCode("runFromMuckrakerMove() => ITERATED THROUGH FRIENDLY ROBOTS ");
 
         if (preferedMovementDirectionIdx != -1) {
-            if (controller.canMove(Constants.directions[preferedMovementDirectionIdx])) {
-                controller.move(Constants.directions[preferedMovementDirectionIdx]);
+            if (controller.canMove(Constants.DIRECTIONS[preferedMovementDirectionIdx])) {
+                controller.move(Constants.DIRECTIONS[preferedMovementDirectionIdx]);
                 return 2;
-            } else if (controller.canMove(Constants.directions[(preferedMovementDirectionIdx + 1) % 8])) {
-                controller.move(Constants.directions[(preferedMovementDirectionIdx + 1) % 8]);
+            } else if (controller.canMove(Constants.DIRECTIONS[(preferedMovementDirectionIdx + 1) % 8])) {
+                controller.move(Constants.DIRECTIONS[(preferedMovementDirectionIdx + 1) % 8]);
                 return 2;
-            } else if (controller.canMove(Constants.directions[(preferedMovementDirectionIdx + 7) % 8])) {
-                controller.move(Constants.directions[(preferedMovementDirectionIdx + 7) % 8]);
+            } else if (controller.canMove(Constants.DIRECTIONS[(preferedMovementDirectionIdx + 7) % 8])) {
+                controller.move(Constants.DIRECTIONS[(preferedMovementDirectionIdx + 7) % 8]);
                 return 2;
             }
             return 1;
         }
         return 0; // no reason to move
     }
+
 
 
     /* UNUSED =>
@@ -322,7 +323,7 @@ public class SlandererBot implements RunnableBot {
         int minimizedDistance = distanceFromMyEC;
         Direction minimizedDirection = null;
 
-        for (Direction direction : Constants.directions) {
+        for (Direction direction : Constants.DIRECTIONS) {
             if (controller.canMove(direction)) {
                 MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
                 int candidateDistance = calculateLocationDistanceFromMyEC(candidateLocation);

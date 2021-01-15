@@ -10,10 +10,14 @@ public class MuckrakerBot implements RunnableBot {
     private RobotController controller;
     private Pathfinding pathfinding;
     private static Random random;
+
     private MapLocation scoutTarget;
+    private Direction scoutDirection;
+
     int relativeX;
     int relativeY;
     private static boolean isBlockingEnemyEC;
+
 
     public MuckrakerBot(RobotController controller) throws GameActionException {
         this.controller = controller;
@@ -29,48 +33,161 @@ public class MuckrakerBot implements RunnableBot {
         random = new Random(controller.getID());
         isBlockingEnemyEC = false;
 
-//        for (Map.Entry<MapLocation, Integer> entry : Cache.ALL_KNOWN_FRIENDLY_EC_LOCATIONS.entrySet()) {
-//            relativeX = Pathfinding.relative(entry.getKey(), Cache.CURRENT_LOCATION)[0];
-//            relativeY = Pathfinding.relative(entry.getKey(),Cache.CURRENT_LOCATION)[1];
-//            scoutTarget = new MapLocation(Cache.CURRENT_LOCATION.x - 64 * relativeX, Cache.CURRENT_LOCATION.y - 64 * relativeY);
-//            break;
-//        }
+        // check if scout
+
+        scoutDirection = Cache.myECLocation.directionTo(controller.getLocation());
+        scoutTarget = null;
 
     }
 
     @Override
     public void turn() throws GameActionException {
+        Debug.printByteCode("");
+        if (controller.getInfluence() == 1) scoutRoutine();
+        if (controller.getInfluence() > 1) muckWall(Cache.myECID    );
+    }
 
-//        if (Debug.debug) {
-//            System.out.println("relativeX " + relativeX + ", relativeY " + relativeY);
-//            System.out.println("Scout Target: " + scoutTarget);
-//        }
-
-        Pathfinding.move(Pathfinding.randomLocation());
-        if (1 == 1) return;
-
-
-        if (simpleAttack()) {
-            if (Debug.debug) {
-                System.out.println("Performed Simple Attack");
+    public boolean scoutRoutine() throws GameActionException {
+        if (!controller.isReady()) {
+            return false;
+        }
+        if (random.nextInt(10) > 3) {
+            if (scoutDirection != null) {
+                controller.move(pathfinding.tryMove(scoutDirection));
+                
+            } else if (scoutTarget != null) {
+                controller.move(pathfinding.tryMove(controller.getLocation().directionTo(scoutTarget)));
             }
-            return;
+        } else {
+            controller.move(pathfinding.tryMove(pathfinding.COMPASS[random.nextInt(8)]));
+        }
+        
+        int radius = (int) Math.floor(Math.sqrt(controller.getType().sensorRadiusSquared));
+        int x = controller.getLocation().x;
+        int y = controller.getLocation().y;
+
+        ArrayList<Direction> testDirections = new ArrayList<>();
+
+        MapLocation testLocation = null;
+        for (Direction dir : Pathfinding.COMPASS) {
+            switch (dir) {
+                case NORTH:
+                    testLocation = new MapLocation(x, y + radius);
+                    break;
+                case SOUTH:
+                    testLocation = new MapLocation(x, y - radius);
+                    break;
+                case EAST:
+                    testLocation = new MapLocation(x + radius, y);
+                    break;
+                case WEST:
+                    testLocation = new MapLocation(x - radius, y);
+                    break;
+            }
+            if (testLocation != null && !controller.onTheMap(testLocation)) {
+                testDirections.add(dir);
+                testLocation = null;
+            }
         }
 
-        isBlockingEnemyEC = updateBlockingEnemyEC();
+        if (testDirections.size() > 0) {
+            Debug.printInformation("edge", testDirections.toString());
+        }
+        
+        boolean exit = false;
 
-        if (attackingPoliticianNearEnemyEC()) {
-            if (Debug.debug) {
-                System.out.println("POLITICAN NEAR SCOUT THAT IS NEAR ENEMY EC -- RUN AWAY");
+        for (int i = 1; i <= radius; i++) {
+            for (Direction dir : testDirections) {
+                switch (dir) {
+                    case NORTH:
+                        testLocation = new MapLocation(x, y + i);
+                        if (!controller.onTheMap(testLocation)) {
+                            reportYEdge(testLocation);
+                            exit = true;
+                        }
+                        break;
+                    case SOUTH:
+                        testLocation = new MapLocation(x, y - i);
+                        if (!controller.onTheMap(testLocation)) {
+                            reportYEdge(testLocation);
+                            exit = true;
+                        }
+                        break;
+                    case EAST:
+                        testLocation = new MapLocation(x + i, y);
+                        if (!controller.onTheMap(testLocation)) {
+                            reportXEdge(testLocation);
+                            exit = true;
+                        }
+                        break;
+                    case WEST:
+                        testLocation = new MapLocation(x - i, y);
+                        if (!controller.onTheMap(testLocation)) {
+                            reportXEdge(testLocation);
+                            exit = true;
+                        }
+                        break;
+                }
+                if (exit) {
+                    scoutDirection = Pathfinding.COMPASS[random.nextInt(8)];
+                    break;
+                }
             }
-            return;
         }
 
-        Debug.printByteCode("TURN END");
-//        if ()
+
+        for (RobotInfo info : Cache.ALL_NEARBY_ROBOTS) {
+            if (info.ID != Cache.myECID && info.type == RobotType.ENLIGHTENMENT_CENTER) {
+                reportEC(info);
+            }
+        }
+        Debug.printByteCode("");
+        return true;
+    }
+    
+
+    public void reportXEdge(MapLocation location) throws GameActionException {
+        Communication.checkAndSetFlag(Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(Constants.FLAG_EXTRA_TYPES.SCOUT, Constants.FLAG_LOCATION_TYPES.TOP_OR_BOTTOM_MAP_LOCATION, 0, location));
+    }
+
+    public void reportYEdge(MapLocation location) throws GameActionException {
+        Communication.checkAndSetFlag(Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(Constants.FLAG_EXTRA_TYPES.SCOUT, Constants.FLAG_LOCATION_TYPES.LEFT_OR_RIGHT_MAP_LOCATION, 0, location));
+    }
+
+    public void reportEC(RobotInfo info) throws GameActionException {
+        if (info.team == controller.getTeam()) {
+            Communication.checkAndSetFlag(Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(Constants.FLAG_EXTRA_TYPES.SCOUT, Constants.FLAG_LOCATION_TYPES.MY_EC_LOCATION, 0, info.location));
+        } else if (info.team == Team.NEUTRAL) {
+            Communication.checkAndSetFlag(Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(Constants.FLAG_EXTRA_TYPES.SCOUT, Constants.FLAG_LOCATION_TYPES.NEUTRAL_EC_LOCATION, 0, info.location));
+        } else {
+            Communication.checkAndSetFlag(Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(Constants.FLAG_EXTRA_TYPES.SCOUT, Constants.FLAG_LOCATION_TYPES.ENEMY_EC_LOCATION, 0, info.location));
+        }
+    }
+
+    public void muckWall(int nucleus) throws GameActionException {
+
+        // todo: watch flags for nucleus!
+
+        if (!controller.isReady()) return;
+        boolean move = false;
+        MapLocation center = null;
+        RobotInfo[] nearby = controller.senseNearbyRobots();
+        for (RobotInfo info : nearby) {
+            if (info.ID == nucleus) {
+                move = true;
+                center = info.location;
+                break;
+            }
+
+        }
+        if (move) {
+            Direction dir = center.directionTo(controller.getLocation());
+            controller.move(pathfinding.tryMove(dir));
+        }
     }
 
     //assume robot always tries to surround/get as close as possible to a EC (only 1 distance, extras can roam around to edge map/bounce around)
+
 
     public boolean updateBlockingEnemyEC() {
         for (RobotInfo robot : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
