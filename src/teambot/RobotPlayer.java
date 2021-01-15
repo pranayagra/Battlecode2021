@@ -120,7 +120,7 @@ public strictfp class RobotPlayer {
         for (Direction direction : Constants.directions) {
             if (controller.canMove(direction)) {
                 MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
-                int candidateDistance = Pathfinding.travelDistance(candidateLocation, avoidLocation);
+                int candidateDistance = addedLocationDistance(candidateLocation, avoidLocation);
                 if (candidateDistance > maximizedDistance) {
                     maximizedDistance = candidateDistance;
                     maximizedDirection = direction;
