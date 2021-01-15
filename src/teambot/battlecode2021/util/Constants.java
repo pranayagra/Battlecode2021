@@ -75,7 +75,7 @@ public class Constants {
     };
 
 
-    //  SCHEMA 2: 0b | 7 bits schema type (must start with 0) | 3 bits type of bot | 14 bits information
+    //  SCHEMA 2: 0b | 7 bits schema type (must start with 0) | 3 bits type of bot | 1 bit in danger | 13 bits information
 
     public static final int MOVEMENT_BOT_SCHEMA_SHIFT = 17;
     public static final int MOVEMENT_BOT_SCHEMA_CODE = 0b0010111;
@@ -87,7 +87,9 @@ public class Constants {
         SLANDERER_TYPE,
     }
 
-    public static final int MOVEMENT_BOTS_DATA_BITMASK = (1 << 14) - 1;
+    public static final int MOVEMENT_BOT_DANGER_SHIFT = 13;
+
+    public static final int MOVEMENT_BOTS_DATA_BITMASK = (1 << 13) - 1;
     public static enum MOVEMENT_BOTS_DATA {
         NOT_MOVING,
         MOVING_NORTH,
