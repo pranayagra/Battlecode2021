@@ -37,6 +37,7 @@ public class Cache {
 
     public static int[] EC_FLAGS;
     public static MapLocation myECLocation;
+    public static int myECID;
     public static Map<MapLocation, Integer> ALL_KNOWN_FRIENDLY_EC_LOCATIONS; // Location : RobotID
     public static Map<MapLocation, Integer> ALL_KNOWN_ENEMY_EC_LOCATIONS; // Location : RobotID
 
@@ -80,6 +81,7 @@ public class Cache {
                 if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER) {
                     Debug.printInformation("FOUND EC AT ", robotInfo.location);
                     myECLocation = robotInfo.location;
+                    myECID = robotInfo.ID;
                     break;
                 }
             }
