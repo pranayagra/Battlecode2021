@@ -18,6 +18,8 @@ public class SlandererBot implements RunnableBot {
     private double[] moveRewards;
     private int distanceFromMyEC;
 
+    //TODO: CHECK AND SET FLAG IF WALL IS MISSING AROUND US? and probably set flag based on it
+
     public SlandererBot(RobotController controller) throws GameActionException {
         this.controller = controller;
         init();
@@ -35,34 +37,21 @@ public class SlandererBot implements RunnableBot {
 
     @Override
     public void turn() throws GameActionException {
-
-        // set flag or read EC/nearby flags or something
-
-//        if (!controller.isReady()) return;
-
         spawnInLattice();
-
-//        switch (runFromMuckrakerMove()) {
-//            case 0:
-//                Pathfinding.move(Pathfinding.randomLocation());
-//                Pathfinding.move(Pathfinding.randomLocation());
-//                Pathfinding.move(Pathfinding.randomLocation());
-//                Pathfinding.move(Pathfinding.randomLocation());
-//                break;
-//            default:
-//                break;
-//        }
-
-        // maybe do something else (not sure what)
-
+        Debug.printByteCode("after lattice ");
     }
 
+    /* return: abs(deltaX) + abs(deltaY) between "location" and the starting EC location */
     private int calculateLocationDistanceFromMyEC(MapLocation location) {
-        Debug.printInformation("here", location);
         return Math.abs(location.x - Cache.myECLocation.x) + Math.abs(location.y - Cache.myECLocation.y);
     }
 
-    public boolean checkIfGoodSquare(MapLocation location) {
+    /* Behavior =>
+        Good Square => not blocking the EC AND an odd distance away
+        Bad Square => blocking the EC or an even distance away
+    Return: true if and only if the square is good
+    */
+    private boolean checkIfGoodSquare(MapLocation location) {
         int distance = calculateLocationDistanceFromMyEC(location);
         if (distance <= 2 || distance % 2 == 0) {
             return false;
@@ -70,20 +59,17 @@ public class SlandererBot implements RunnableBot {
         return true;
     }
 
-    public void updateDistanceFromEC() {
-        distanceFromMyEC = calculateLocationDistanceFromMyEC(Cache.CURRENT_LOCATION);
-    }
 
+    /* Create lattice structure of slanderers centered around the EC location
+    * Potential Bugs:
+    *       if two seperate ECs collide slanderers with each other
+    *       if one side of the EC is overproduced and bots can't get further away... is this really a bug tho or a feature?
+    * */
     public void spawnInLattice() throws GameActionException {
-        updateDistanceFromEC();
+        distanceFromMyEC = calculateLocationDistanceFromMyEC(Cache.CURRENT_LOCATION);
         boolean isMyCurrentSquareGood = checkIfGoodSquare(Cache.CURRENT_LOCATION);
 
-        // if in danger
-//        if (checkIfInDanger()) {
-//            unitInDanger();
-//            return;
-//        }
-
+        // if in danger from muckraker, get out
         if (runFromMuckrakerMove() != 0) {
             return;
         }
@@ -93,25 +79,14 @@ public class SlandererBot implements RunnableBot {
         } else {
             currentSquareIsBadExecute();
         }
-
     }
 
-    public void unitInDanger() throws GameActionException {
-        if (!controller.isReady()) return;
-
-        int minimizedDistance = distanceFromMyEC;
-        Direction minimizedDirection = null;
-
-        for (Direction direction : Constants.directions) {
-            if (controller.canMove(direction)) {
-                MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
-                int candidateDistance = calculateLocationDistanceFromMyEC(candidateLocation);
-            }
-        }
-
-        Pathfinding.move(Cache.myECLocation);
-    }
-
+    /* Execute behavior if current square is a "bad" square
+     * Behavior: perform a moving action to square in the following priority ->
+     *          If there exists a good square that the bot can move to regardless of distance, then move to the one that is closest to the EC
+     *          If there exists a bad square that the bot can move to that is further from the EC than the current square, then move to the one that is furthest to the EC
+     *          Else => do nothing
+     * */
     public void currentSquareIsBadExecute() throws GameActionException {
 
         if (!controller.isReady()) return;
@@ -121,7 +96,7 @@ public class SlandererBot implements RunnableBot {
 
         // try to find a good square
 
-        // move further from EC
+        // move further or equal to EC
 
         int goodSquareMinimizedDistance = (int) 1E9;
         Direction goodSquareMinimizedDirection = null;
@@ -155,6 +130,11 @@ public class SlandererBot implements RunnableBot {
 
     }
 
+    /* Execute behavior if current square is a "good" square
+    * Behavior:
+    *           perform a moving action to square if and only if the square is a good square AND it is closer to the EC AND if we are ready
+    *           else: do nothing
+    * */
     public void currentSquareIsGoodExecute() throws GameActionException {
         // try to move towards EC with any ordinal directions that decreases distance (NE, SE, SW, NW)
 
@@ -180,36 +160,26 @@ public class SlandererBot implements RunnableBot {
         }
     }
 
-    public boolean checkIfInDanger() throws GameActionException {
-        boolean inDanger = false;
 
-        if (Cache.ALL_NEARBY_ENEMY_ROBOTS.length > 0) {
-            inDanger = true;
-            int flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Constants.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE);
-            Communication.checkAndSetFlag(flag);
-        }
-        else {
-            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-                int flag = Communication.checkAndGetFlag(robotInfo.ID);
-                if (Communication.decodeIsFlagMovementBotType(flag) && Communication.decodeMovementBotType(flag) == Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE) {
-                    // friendly slanderer
-                    if (Communication.decodeMovementBotData(flag) == Constants.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE) {
-                        inDanger = true;
-                    }
-                }
-            }
-        }
+    /* Check and then execute behavior if the bot needs to run away from Muckrakers
+    Algorithm:
+        1) For all 9 action decisions (no action + move in 8 directions), calculate the location that is furthest from all enemy muckrakers. Call this moveRewards[] + rewardOfStaying
+        2) Set flag to the best reward of the 9 action decisions regardless of feasibility
+        3) Select one of 9 decisions among the valid ones via controller.canMove(direction) (including no action)
+        4) Terminate algorithm UNLESS no muckrakers were found (meaning the rewards were useless)
+        5) Iterate through all friendly robots of type slanderers and find the closest one with a movement flag with danger bit. Call this preferedMovementDirectionIdx
+        6) Attempt to move in preferedMovementDirectionIdx direction. If cannot move, try the next-to directions
+        7) else: return 0
+    Set: flag to danger if muckraker is within sensor range
 
-        return inDanger;
-    }
-
-
-    // return: 0 means we are not moving because there is no reason to move, 1 means we are not moving because we shouldn't move (or can't), 2 means we are moving
+    Return: 0 means we are not moving because there is no reason to move,
+            1 means we are not moving because we shouldn't move (or can't)
+            2 means we are moving to a safer location
+     */
     public int runFromMuckrakerMove() throws GameActionException {
 
-
         //flag indicates best direction to move, not direction I am moving...
-        Debug.printByteCode("runFromMuckrakerMove() => before run " + controller.getCooldownTurns());
+//        Debug.printByteCode("runFromMuckrakerMove() => before run " + controller.getCooldownTurns());
 
         boolean foundEnemyMuckraker = false;
         double rewardOfStaying = 9999; //if valStaying > max(dirs), don't move
@@ -225,8 +195,8 @@ public class SlandererBot implements RunnableBot {
             ++idx;
         }
 
-        Debug.printByteCode("runFromMuckrakerMove() => computed all valid dirs + locations ");
-        Debug.printInformation("valid directions is sized " + canMoveIndicesSize + " and has ", Arrays.toString(canMoveIndices));
+//        Debug.printByteCode("runFromMuckrakerMove() => computed all valid dirs + locations ");
+//        Debug.printInformation("valid directions is sized " + canMoveIndicesSize + " and has ", Arrays.toString(canMoveIndices));
 
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
             if (robotInfo.getType() == RobotType.MUCKRAKER) {
@@ -241,11 +211,11 @@ public class SlandererBot implements RunnableBot {
         }
 
 
-        Debug.printInformation("my location reward is ", rewardOfStaying);
-        Debug.printInformation("location rewards surrounding me is ", Arrays.toString(moveRewards));
-        Debug.printByteCode("runFromMuckrakerMove() => SCANNED ENEMY LOCATIONS ");
+//        Debug.printInformation("my location reward is ", rewardOfStaying);
+//        Debug.printInformation("location rewards surrounding me is ", Arrays.toString(moveRewards));
+//        Debug.printByteCode("runFromMuckrakerMove() => SCANNED ENEMY LOCATIONS ");
         int flag = Communication.encode_MovementBotType_and_MovementBotData
-                (Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Constants.MOVEMENT_BOTS_DATA.NOT_MOVING);
+                (Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Constants.MOVEMENT_BOTS_DATA.NOT_MOVING, false);
         int bestValidDirection = -1;
         double bestValidReward = rewardOfStaying;
 
@@ -260,13 +230,13 @@ public class SlandererBot implements RunnableBot {
                 }
             }
 
-            flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Communication.convert_DirectionInt_MovementBotsData(bestDirection));
+            flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Communication.convert_DirectionInt_MovementBotsData(bestDirection), true);
 
 
             for (int i = 0; i < canMoveIndicesSize; ++i) {
                 if (moveRewards[canMoveIndices[i]] > bestValidReward) {
-                    Debug.printInformation("best valid tuning => canMoveIndices => ", canMoveIndices[i]);
-                    Debug.printInformation("best valid tuning => reward => ", moveRewards[canMoveIndices[i]]);
+//                    Debug.printInformation("best valid tuning => canMoveIndices => ", canMoveIndices[i]);
+//                    Debug.printInformation("best valid tuning => reward => ", moveRewards[canMoveIndices[i]]);
                     bestValidDirection = canMoveIndices[i];
                     bestValidReward = moveRewards[canMoveIndices[i]];
                 }
@@ -275,8 +245,8 @@ public class SlandererBot implements RunnableBot {
 
         /* Set communication for other slanderers if there is a muckraker within my range */
         Communication.checkAndSetFlag(flag);
-        Debug.printInformation("flag is set for ", flag);
-        Debug.printByteCode("runFromMuckrakerMove() => SET FLAG ");
+//        Debug.printInformation("flag is set for ", flag);
+//        Debug.printByteCode("runFromMuckrakerMove() => SET FLAG ");
 
         /* Below is based on movement */
         if (!controller.isReady()) return 1;
@@ -289,7 +259,7 @@ public class SlandererBot implements RunnableBot {
             return 1;
         }
 
-        Debug.printByteCode("runFromMuckrakerMove() => DID NOT FIND ENEMY... ");
+//        Debug.printByteCode("runFromMuckrakerMove() => DID NOT FIND ENEMY... ");
 
         /* No muckrakers were found, so we need to check the flags of nearby slanderer units instead */
         double closestLocation = 9998;
@@ -302,21 +272,23 @@ public class SlandererBot implements RunnableBot {
                 if (dist < closestLocation) { //the closest bot in danger to us is our biggest threat as well
                     int encodedFlag = controller.getFlag(robotInfo.ID);
 
-                    if (Debug.debug) System.out.println("DECODING FLAG " + encodedFlag + " for " + robotInfo.location);
+//                    if (Debug.debug) System.out.println("DECODING FLAG " + encodedFlag + " for " + robotInfo.location);
 
                     if (Communication.decodeIsFlagMovementBotType(encodedFlag)) {
-                        if (Communication.decodeMovementBotType(encodedFlag) == Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE) {
+                        if (Communication.decodeMovementBotType(encodedFlag) == Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE &&
+                                Communication.decodeMovementBotIsDanger(encodedFlag)) {
+
                             Constants.MOVEMENT_BOTS_DATA movementBotsData = Communication.decodeMovementBotData(encodedFlag);
                             preferedMovementDirectionIdx = Communication.convert_MovementBotData_DirectionInt(movementBotsData);
                             closestLocation = dist;
-                            if (Debug.debug) System.out.println("Correct type of flag, setting direction to " + preferedMovementDirectionIdx + " at dist " + dist);
+//                            if (Debug.debug) System.out.println("Correct type of flag, setting direction to " + preferedMovementDirectionIdx + " at dist " + dist);
                         }
                     }
                 }
             }
         }
 
-        Debug.printByteCode("runFromMuckrakerMove() => ITERATED THROUGH FRIENDLY ROBOTS ");
+//        Debug.printByteCode("runFromMuckrakerMove() => ITERATED THROUGH FRIENDLY ROBOTS ");
 
         if (preferedMovementDirectionIdx != -1) {
             if (controller.canMove(Constants.directions[preferedMovementDirectionIdx])) {
@@ -332,6 +304,55 @@ public class SlandererBot implements RunnableBot {
             return 1;
         }
         return 0; // no reason to move
-
     }
+
+
+    /* UNUSED =>
+     * If the unit is in danger, perform a move such that the distance to EC is minimized
+     * NOT COMPLETELY IMPLEMENTED -> just uses Pathfinding.move() currently, which is not expected behavior.
+     *  */
+    private void unitInDanger() throws GameActionException {
+        if (!controller.isReady()) return;
+
+        int minimizedDistance = distanceFromMyEC;
+        Direction minimizedDirection = null;
+
+        for (Direction direction : Constants.directions) {
+            if (controller.canMove(direction)) {
+                MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
+                int candidateDistance = calculateLocationDistanceFromMyEC(candidateLocation);
+            }
+        }
+
+        Pathfinding.move(Cache.myECLocation);
+    }
+
+    /* UNUSED ->
+    Sets communciation to danger if any enemy bot is nearby
+    Return: true if and only if there are any enemy bots nearby OR if any slanderer friendly robot has danger flag */
+    private boolean checkIfInDanger() throws GameActionException {
+        boolean inDanger = false;
+        int flag = 0;
+        if (Cache.ALL_NEARBY_ENEMY_ROBOTS.length > 0) {
+            inDanger = true;
+            flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Constants.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE, true);
+        }
+        else {
+            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+                int encodedFlag = Communication.checkAndGetFlag(robotInfo.ID);
+                if (Communication.decodeIsFlagMovementBotType(encodedFlag) &&
+                        Communication.decodeMovementBotIsDanger(encodedFlag) &&
+                        Communication.decodeMovementBotType(encodedFlag) == Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE) {
+                    // friendly slanderer
+                    if (Communication.decodeMovementBotData(encodedFlag) == Constants.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE) {
+                        inDanger = true;
+                    }
+                }
+            }
+        }
+        Communication.checkAndSetFlag(flag);
+        return inDanger;
+    }
+
+
 }

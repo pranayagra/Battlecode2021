@@ -154,7 +154,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
 
         int spawnType = random.nextInt(2);
-        if (spawnType == 0) {
+        if (spawnType == 2) {
             tryBuildPolitician(13);
         } else if (spawnType == 1) {
             tryBuildSlanderer(1);
