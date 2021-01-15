@@ -196,7 +196,7 @@ public class Pathfinding {
     }
     // Naive movement | error checks
 
-    
+    // BUG: should not naively return COMPASS[(i+4) % 8] since it may be invalid. Also is this the best idea?
     public static Direction tryMove(Direction dir) {
         if (controller.canMove(dir)) {
             return dir;
