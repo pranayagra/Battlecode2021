@@ -72,7 +72,7 @@ public strictfp class RobotPlayer {
                     }
                     int currentTurn = controller.getRoundNum(); //starts at round 1
 
-                    // Debug.resignGame(200);
+                    Debug.resignGame(200);
 
                     Util.loop();
                     runAwayFromAttackFlag(controller);
@@ -117,7 +117,7 @@ public strictfp class RobotPlayer {
         int maximizedDistance = addedLocationDistance(Cache.CURRENT_LOCATION, avoidLocation);
         Direction maximizedDirection = null;
 
-        for (Direction direction : Constants.directions) {
+        for (Direction direction : Constants.DIRECTIONS) {
             if (controller.canMove(direction)) {
                 MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
                 int candidateDistance = addedLocationDistance(candidateLocation, avoidLocation);
