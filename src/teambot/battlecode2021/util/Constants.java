@@ -37,7 +37,8 @@ public class Constants {
     // TODO: ADD MORE STATES
     // (0b1|3 bits EXTRA TYPE set here|???|...
     public static enum FLAG_EXTRA_TYPES {
-        SCOUT_ATTACK,
+        SCOUT,
+        ATTACK,
         VERIFICATION_ENSURANCE,
         DIRECTION_MOVING,
     }
@@ -46,7 +47,7 @@ public class Constants {
 
     }
 
-    public static final Direction[] directions = {
+    public static final Direction[] DIRECTIONS = {
             Direction.NORTH,
             Direction.NORTHEAST,
             Direction.EAST,
