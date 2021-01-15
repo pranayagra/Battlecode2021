@@ -14,6 +14,7 @@ public class PoliticanBot implements RunnableBot {
     private Pathfinding pathfinding;
     private static boolean isTypeAttack;
     private static MapLocation EnemyEC;
+    public static MapLocation neutralEC;
 
     private MapLocation[] friendlySlanderers;
 //    private int[] friendlySlandererRobotIDs;
@@ -37,7 +38,10 @@ public class PoliticanBot implements RunnableBot {
 
     @Override
     public void turn() throws GameActionException {
-
+        if (moveAndDestoryNeutralEC()) {
+            Debug.printInformation("Moving to destory netural EC", "");
+            return;
+        }
         if (chaseMuckrakerUntilExplode()) {
             Debug.printInformation("CHASING MUCKRAKER ", "");
             return;
@@ -68,6 +72,32 @@ public class PoliticanBot implements RunnableBot {
     public boolean leaveBaseToEnterLattice() throws GameActionException {
 
         return false;
+    }
+
+    public boolean moveAndDestoryNeutralEC() throws GameActionException {
+        if (neutralEC == null) {
+            if (Debug.debug) {
+                System.out.println("neutralEC not set");
+            }
+            return false;
+        }
+        int actionRadius = controller.getType().actionRadiusSquared;
+        RobotInfo[] nearbyRobots = controller.senseNearbyRobots(actionRadius);
+        for (RobotInfo robotInfo : nearbyRobots) {
+            if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER && robotInfo.team == Team.NEUTRAL) {
+                // explode if no other nearby robots
+                if (nearbyRobots.length == 1 && controller.canEmpower(actionRadius)) {
+                    controller.empower(actionRadius);
+                    return true;
+                }
+            }
+        }
+        int flag = Communication.POLITICIAN_ATTACK_FLAG;
+        if (controller.canSetFlag(flag)) {
+            controller.setFlag(flag);
+        }
+        pathfinding.move(neutralEC);
+        return true;
     }
 
     //chasing flag -> flagType | robotID
