@@ -32,7 +32,7 @@ public class Util {
         int maximizedDistance = addedLocationDistance(currentLocation, avoidLocation);
         Direction maximizedDirection = null;
 
-        for (Direction direction : Constants.directions) {
+        for (Direction direction : Constants.DIRECTIONS) {
             if (controller.canMove(direction)) {
                 MapLocation candidateLocation = currentLocation.add(direction);
                 int candidateDistance = addedLocationDistance(currentLocation, candidateLocation);

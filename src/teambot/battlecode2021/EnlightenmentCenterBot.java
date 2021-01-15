@@ -153,13 +153,14 @@ public class EnlightenmentCenterBot implements RunnableBot {
 ////        }
 
 
-        int spawnType = random.nextInt(2);
-        if (spawnType == 0) {
-            tryBuildPolitician(13);
-        } else if (spawnType == 1) {
-            tryBuildSlanderer(1);
-        }
+        // int spawnType = random.nextInt(2);
+        // if (spawnType == 0) {
+        //     tryBuildPolitician(13);
+        // } else if (spawnType == 1) {
+        //     tryBuildSlanderer(1);
+        // }
 
+        tryBuildMuckraker(1);
     }
 
     private void setLocationFlag() throws GameActionException {
@@ -227,7 +228,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             return false;
         }
 
-        Direction trybuild = Constants.directions[random.nextInt(8)];
+        Direction trybuild = Constants.DIRECTIONS[random.nextInt(8)];
         if (controller.canBuildRobot(RobotType.SLANDERER, trybuild, influence)) {
             controller.buildRobot(RobotType.SLANDERER, trybuild, influence);
             return true;
@@ -248,6 +249,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         if (!controller.isReady()) {
             return false;
+        }
+
+        Direction trybuild = Constants.DIRECTIONS[random.nextInt(8)];
+        if (controller.canBuildRobot(RobotType.MUCKRAKER, trybuild, influence)) {
+            controller.buildRobot(RobotType.MUCKRAKER, trybuild, influence);
+            return true;
         }
 
         for (Direction dir : RobotPlayer.directions) {
