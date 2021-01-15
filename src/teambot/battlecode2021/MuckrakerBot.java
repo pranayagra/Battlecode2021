@@ -35,10 +35,8 @@ public class MuckrakerBot implements RunnableBot {
 
         // check if scout
 
-        if (controller.getInfluence() == 1) {
-            scoutDirection = Cache.myECLocation.directionTo(controller.getLocation());
-            scoutTarget = null;
-        }
+        scoutDirection = Cache.myECLocation.directionTo(controller.getLocation());
+        scoutTarget = null;
 
     }
 
@@ -46,6 +44,7 @@ public class MuckrakerBot implements RunnableBot {
     public void turn() throws GameActionException {
         Debug.printByteCode("");
         if (controller.getInfluence() == 1) scoutRoutine();
+        if (controller.getInfluence() > 1) muckWall(Cache.myECID    );
     }
 
     public boolean scoutRoutine() throws GameActionException {
@@ -162,6 +161,28 @@ public class MuckrakerBot implements RunnableBot {
             Communication.checkAndSetFlag(Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(Constants.FLAG_EXTRA_TYPES.SCOUT, Constants.FLAG_LOCATION_TYPES.NEUTRAL_EC_LOCATION, 0, info.location));
         } else {
             Communication.checkAndSetFlag(Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(Constants.FLAG_EXTRA_TYPES.SCOUT, Constants.FLAG_LOCATION_TYPES.ENEMY_EC_LOCATION, 0, info.location));
+        }
+    }
+
+    public void muckWall(int nucleus) throws GameActionException {
+
+        // todo: watch flags for nucleus!
+
+        if (!controller.isReady()) return;
+        boolean move = false;
+        MapLocation center = null;
+        RobotInfo[] nearby = controller.senseNearbyRobots((int) Math.ceil(Math.sqrt(controller.getType().actionRadiusSquared)));
+        for (RobotInfo info : nearby) {
+            if (info.ID == nucleus) {
+                move = true;
+                center = info.location;
+                break;
+            }
+
+        }
+        if (move) {
+            Direction dir = center.directionTo(controller.getLocation());
+            controller.move(pathfinding.tryMove(dir));
         }
     }
 
