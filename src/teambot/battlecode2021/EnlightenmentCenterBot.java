@@ -78,8 +78,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 //        POLITICIAN_IDs = new int[64 * 64];
 //        SLANDERER_IDs = new int[64 * 64];
 
-        SCOUT_MUCKRAKER_IDs = new int[100];
-        SCOUT_MUCKRAKER_SZ = 0;
+        SCOUT_MUCKRAKER_IDs = new int[152];
 
         SLANDERER_IDs = new FastQueueSlanderers(152);
         POLITICIAN_DEFENDING_SLANDERER_IDs = new int[200];
@@ -117,6 +116,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
     }
 
+    /* LAZILY removes slanderer from the SLANDERER_IDs object 300 rounds after. It the ID is still valid, it is added to the Defensive Politician list
+    * CAUTION: This list is not up to date if a slanderer is dies within 300 rounds of spawn due to enemy attack
+    *  */
     public void updateSlanderers() {
         if (!SLANDERER_IDs.isEmpty()) {
             if (controller.getRoundNum() - SLANDERER_IDs.getFrontCreationTime() >= 300) { //need to retire slanderer as 1) it got killed or 2) converted
@@ -133,8 +135,41 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     }
 
-    public void readFriendlyScoutFlags() {
+    public void parseScoutFlag(int encoding) {
+        if (Communication.decodeIsFlagLocationType(encoding, true)) {
+            Constants.FLAG_LOCATION_TYPES locationType = Communication.decodeLocationType(encoding);
+            MapLocation locationData = Communication.decodeLocationData(encoding);
+            if (locationType == Constants.FLAG_LOCATION_TYPES.TOP_OR_BOTTOM_MAP_LOCATION) {
 
+            } else if (locationType == Constants.FLAG_LOCATION_TYPES.LEFT_OR_RIGHT_MAP_LOCATION) {
+                
+            }
+
+        }
+    }
+
+    /* Iterative over all friendly scout flags and parses the flag for the information. Assumes the list size will not go over 152 elements (risky)
+    *
+    *
+    *  */
+    public void readFriendlyScoutFlags() throws GameActionException {
+
+        for (int i = 0; i < SCOUT_MUCKRAKER_SZ; ++i) {
+            if (controller.canGetFlag(SCOUT_MUCKRAKER_IDs[i])) {
+                // read flag information
+                parseScoutFlag(controller.getFlag(SCOUT_MUCKRAKER_IDs[i]));
+            } else {
+                // ID no longer exists at index i, (remove)
+                //find first index at max size and go from there
+                while (--SCOUT_MUCKRAKER_SZ >= i + 1) {
+                    if (controller.canGetFlag(SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ])) {
+                        SCOUT_MUCKRAKER_IDs[i] = SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ];
+                        parseScoutFlag(controller.getFlag(SCOUT_MUCKRAKER_IDs[i]));
+                        break;
+                    }
+                }
+            }
+        }
     }
 
 
@@ -145,6 +180,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     public void defaultTurn() throws GameActionException {
         updateSlanderers();
+
         readFriendlyScoutFlags();
         readFriendlyECFlags();
 
