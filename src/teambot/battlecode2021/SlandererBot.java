@@ -1,6 +1,7 @@
 package teambot.battlecode2021;
 
 import battlecode.common.*;
+import com.sun.tools.internal.jxc.ap.Const;
 import teambot.*;
 import teambot.battlecode2021.util.*;
 
@@ -15,6 +16,7 @@ public class SlandererBot implements RunnableBot {
     private int[] canMoveIndices;
     private MapLocation[] moveLocs;
     private double[] moveRewards;
+    private int distanceFromMyEC;
 
     public SlandererBot(RobotController controller) throws GameActionException {
         this.controller = controller;
@@ -25,7 +27,7 @@ public class SlandererBot implements RunnableBot {
     public void init() throws GameActionException {
         this.pathfinding = new Pathfinding();
         pathfinding.init(controller);
-
+        distanceFromMyEC = 1;
         moveLocs = new MapLocation[9];
         moveRewards = new double[9];
         canMoveIndices = new int[9];
@@ -38,20 +40,168 @@ public class SlandererBot implements RunnableBot {
 
 //        if (!controller.isReady()) return;
 
-        switch (runFromMuckrakerMove()) {
-            case 0:
-                Pathfinding.move(Pathfinding.randomLocation());
-                Pathfinding.move(Pathfinding.randomLocation());
-                Pathfinding.move(Pathfinding.randomLocation());
-                Pathfinding.move(Pathfinding.randomLocation());
-                break;
-            default:
-                break;
-        }
+        spawnInLattice();
+
+//        switch (runFromMuckrakerMove()) {
+//            case 0:
+//                Pathfinding.move(Pathfinding.randomLocation());
+//                Pathfinding.move(Pathfinding.randomLocation());
+//                Pathfinding.move(Pathfinding.randomLocation());
+//                Pathfinding.move(Pathfinding.randomLocation());
+//                break;
+//            default:
+//                break;
+//        }
 
         // maybe do something else (not sure what)
 
+    }
 
+    private int calculateLocationDistanceFromMyEC(MapLocation location) {
+        Debug.printInformation("here", location);
+        return Math.abs(location.x - Cache.myECLocation.x) + Math.abs(location.y - Cache.myECLocation.y);
+    }
+
+    public boolean checkIfGoodSquare(MapLocation location) {
+        int distance = calculateLocationDistanceFromMyEC(location);
+        if (distance <= 2 || distance % 2 == 0) {
+            return false;
+        }
+        return true;
+    }
+
+    public void updateDistanceFromEC() {
+        distanceFromMyEC = calculateLocationDistanceFromMyEC(Cache.CURRENT_LOCATION);
+    }
+
+    public void spawnInLattice() throws GameActionException {
+        updateDistanceFromEC();
+        boolean isMyCurrentSquareGood = checkIfGoodSquare(Cache.CURRENT_LOCATION);
+
+        // if in danger
+//        if (checkIfInDanger()) {
+//            unitInDanger();
+//            return;
+//        }
+
+        if (runFromMuckrakerMove() != 0) {
+            return;
+        }
+
+        if (isMyCurrentSquareGood) {
+            currentSquareIsGoodExecute();
+        } else {
+            currentSquareIsBadExecute();
+        }
+
+    }
+
+    public void unitInDanger() throws GameActionException {
+        if (!controller.isReady()) return;
+
+        int minimizedDistance = distanceFromMyEC;
+        Direction minimizedDirection = null;
+
+        for (Direction direction : Constants.directions) {
+            if (controller.canMove(direction)) {
+                MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
+                int candidateDistance = calculateLocationDistanceFromMyEC(candidateLocation);
+            }
+        }
+
+        Pathfinding.move(Cache.myECLocation);
+    }
+
+    public void currentSquareIsBadExecute() throws GameActionException {
+
+        if (!controller.isReady()) return;
+
+        int badSquareMaximizedDistance = distanceFromMyEC;
+        Direction badSquareMaximizedDirection = null;
+
+        // try to find a good square
+
+        // move further from EC
+
+        int goodSquareMinimizedDistance = (int) 1E9;
+        Direction goodSquareMinimizedDirection = null;
+
+        for (Direction direction : Constants.directions) {
+            if (controller.canMove(direction)) {
+                MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
+                int candidateDistance = calculateLocationDistanceFromMyEC(candidateLocation);
+                boolean isGoodSquare = checkIfGoodSquare(candidateLocation);
+                if (isGoodSquare) {
+                    if (goodSquareMinimizedDistance > candidateDistance) {
+                        goodSquareMinimizedDistance = candidateDistance;
+                        goodSquareMinimizedDirection = direction;
+                    }
+                } else {
+                    if (badSquareMaximizedDistance <= candidateDistance) {
+                        badSquareMaximizedDistance = candidateDistance;
+                        badSquareMaximizedDirection = direction;
+                    }
+                }
+            }
+        }
+
+        if (goodSquareMinimizedDirection != null) {
+            controller.move(goodSquareMinimizedDirection);
+        } else if (badSquareMaximizedDirection != null) {
+            controller.move(badSquareMaximizedDirection);
+        } else {
+            // stuck, forfeit turn
+        }
+
+    }
+
+    public void currentSquareIsGoodExecute() throws GameActionException {
+        // try to move towards EC with any ordinal directions that decreases distance (NE, SE, SW, NW)
+
+        if (!controller.isReady()) return;
+
+        int moveTowardsDistance = distanceFromMyEC;
+        Direction moveTowardsDirection = null;
+
+        for (Direction direction : Constants.directions) {
+            if (controller.canMove(direction)) {
+                MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
+                int candidateDistance = calculateLocationDistanceFromMyEC(candidateLocation);
+                boolean isGoodSquare = checkIfGoodSquare(candidateLocation);
+                if (isGoodSquare && candidateDistance < moveTowardsDistance) {
+                    moveTowardsDistance = candidateDistance;
+                    moveTowardsDirection = direction;
+                }
+            }
+        }
+
+        if (moveTowardsDirection != null) {
+            controller.move(moveTowardsDirection);
+        }
+    }
+
+    public boolean checkIfInDanger() throws GameActionException {
+        boolean inDanger = false;
+
+        if (Cache.ALL_NEARBY_ENEMY_ROBOTS.length > 0) {
+            inDanger = true;
+            int flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Constants.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE);
+            Communication.checkAndSetFlag(flag);
+        }
+        else {
+
+            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+                int flag = Communication.checkAndGetFlag(robotInfo.ID);
+                if (Communication.decodeIsFlagMovementBotType(flag) && Communication.decodeMovementBotType(flag) == Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE) {
+                    //friendly slanderer
+                    if (Communication.decodeMovementBotData(flag) == Constants.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE) {
+                        inDanger = true;
+                    }
+                }
+            }
+        }
+
+        return inDanger;
     }
 
 
@@ -95,8 +245,8 @@ public class SlandererBot implements RunnableBot {
         Debug.printInformation("my location reward is ", rewardOfStaying);
         Debug.printInformation("location rewards surrounding me is ", Arrays.toString(moveRewards));
         Debug.printByteCode("runFromMuckrakerMove() => SCANNED ENEMY LOCATIONS ");
-        int flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.NOOP, 7, Cache.CURRENT_LOCATION);;
+        int flag = Communication.encode_MovementBotType_and_MovementBotData
+                (Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Constants.MOVEMENT_BOTS_DATA.NOT_MOVING);
         int bestValidDirection = -1;
         double bestValidReward = rewardOfStaying;
 
@@ -111,10 +261,8 @@ public class SlandererBot implements RunnableBot {
                 }
             }
 
-            if (bestDirection != -1) {
-                flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.DIRECTION_MOVING, Constants.FLAG_LOCATION_TYPES.NOOP, bestDirection, Cache.CURRENT_LOCATION);
-            }
+            flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Communication.convert_DirectionInt_MovementBotsData(bestDirection));
+
 
             for (int i = 0; i < canMoveIndicesSize; ++i) {
                 if (moveRewards[canMoveIndices[i]] > bestValidReward) {
@@ -157,11 +305,12 @@ public class SlandererBot implements RunnableBot {
 
                     if (Debug.debug) System.out.println("DECODING FLAG " + encodedFlag + " for " + robotInfo.location);
 
-                    if (Communication.decodeIsFlagLocationType(encodedFlag, false)) {
-                        if (Communication.decodeExtraType(encodedFlag) == Constants.FLAG_EXTRA_TYPES.DIRECTION_MOVING) {
-                            preferedMovementDirectionIdx = Communication.decodeExtraData(encodedFlag);
-                            if (Debug.debug) System.out.println("Correct type of flag, setting direction to " + preferedMovementDirectionIdx + " at dist " + dist);
+                    if (Communication.decodeIsFlagMovementBotType(encodedFlag)) {
+                        if (Communication.decodeMovementBotType(encodedFlag) == Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE) {
+                            Constants.MOVEMENT_BOTS_DATA movementBotsData = Communication.decodeMovementBotData(encodedFlag);
+                            preferedMovementDirectionIdx = Communication.convert_MovementBotData_DirectionInt(movementBotsData);
                             closestLocation = dist;
+                            if (Debug.debug) System.out.println("Correct type of flag, setting direction to " + preferedMovementDirectionIdx + " at dist " + dist);
                         }
                     }
                 }
