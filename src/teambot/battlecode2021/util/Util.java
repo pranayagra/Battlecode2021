@@ -20,8 +20,6 @@ public class Util {
 
     }
 
-<<<<<<< HEAD
-
     private int addedLocationDistance(MapLocation one, MapLocation two) {
         return Math.abs(one.x - two.x) + Math.abs(one.y - two.y);
     }
@@ -51,7 +49,4 @@ public class Util {
 
         return false;
     }
-
-=======
->>>>>>> 7b8bd63adc5e16a6a11633b6a7e03ae910f501d1
 }

@@ -153,7 +153,6 @@ public class EnlightenmentCenterBot implements RunnableBot {
 ////        }
 
 
-<<<<<<< HEAD
         // int spawnType = random.nextInt(2);
         // if (spawnType == 0) {
         //     tryBuildPolitician(13);
@@ -167,13 +166,6 @@ public class EnlightenmentCenterBot implements RunnableBot {
             }
         } else {
             tryBuildMuckraker(1);
-=======
-        int spawnType = random.nextInt(2);
-        if (spawnType == 2) {
-            tryBuildPolitician(13);
-        } else if (spawnType == 1) {
-            tryBuildSlanderer(1);
->>>>>>> 7b8bd63adc5e16a6a11633b6a7e03ae910f501d1
         }
     }
 
