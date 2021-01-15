@@ -20,4 +20,33 @@ public class Util {
 
     }
 
+    private int addedLocationDistance(MapLocation one, MapLocation two) {
+        return Math.abs(one.x - two.x) + Math.abs(one.y - two.y);
+    }
+
+    public boolean moveAwayFromLocation(MapLocation currentLocation, MapLocation avoidLocation) throws GameActionException {
+
+        if (!controller.isReady()) return false;
+
+        int maximizedDistance = addedLocationDistance(currentLocation, avoidLocation);
+        Direction maximizedDirection = null;
+
+        for (Direction direction : Constants.DIRECTIONS) {
+            if (controller.canMove(direction)) {
+                MapLocation candidateLocation = currentLocation.add(direction);
+                int candidateDistance = addedLocationDistance(currentLocation, candidateLocation);
+                if (candidateDistance > maximizedDistance) {
+                    maximizedDistance = candidateDistance;
+                    maximizedDirection = direction;
+                }
+            }
+        }
+
+        if (maximizedDirection != null) {
+            controller.move(maximizedDirection);
+            return true;
+        }
+
+        return false;
+    }
 }

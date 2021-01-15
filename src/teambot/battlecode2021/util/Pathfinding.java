@@ -22,6 +22,17 @@ public class Pathfinding {
     static double gradient;
     static int stuckTurns;
 
+    public static Direction[] COMPASS = {
+        Direction.NORTH,
+        Direction.NORTHEAST,
+        Direction.EAST,
+        Direction.SOUTHEAST,
+        Direction.SOUTH,
+        Direction.SOUTHWEST,
+        Direction.WEST,
+        Direction.NORTHWEST
+    };
+
     public static int move(MapLocation targetLoc) throws GameActionException {
         //Debugging
         if (Debug.debug) {
@@ -184,6 +195,28 @@ public class Pathfinding {
         return 0;
     }
     // Naive movement | error checks
+
+    
+    public static Direction tryMove(Direction dir) {
+        if (controller.canMove(dir)) {
+            return dir;
+        }
+
+        int i = 0;
+        while (COMPASS[i] != dir) {
+            i++;
+        }
+
+        for (int j = 1; j < 4; j++) {
+            if (controller.canMove(COMPASS[(i + j) % 8])) {
+                return COMPASS[(i + j) % 8];
+            } else if (controller.canMove(COMPASS[(i - j + 8) % 8])) {
+                return COMPASS[(i - j + 8) % 8];
+            }
+        }
+
+        return COMPASS[(i + 4) % 8];
+    }
 
     public static Boolean naiveMove(Direction dir) throws GameActionException {
         if (controller.canMove(dir)) {
