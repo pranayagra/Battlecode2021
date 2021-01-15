@@ -5,8 +5,10 @@ public class Constants {
 
     /* COMMUNCATION */
 
-    public static final int SCHEMA_BIT = 23;
-    public static final int EXTRA_LOCATION_SCHEMA = 1 << SCHEMA_BIT;
+
+    /* SCHEMA 1: 0b1 | 3 bits extraType | 3 bits locationType | 3 bits extraData | 14 bits location X+Y */
+    public static final int LOCATION_SCHEMA_BIT = 23;
+    public static final int EXTRA_LOCATION_SCHEMA = 1 << LOCATION_SCHEMA_BIT;
 
 
     // The values for a flag with location information -> 10 "free" bits | 7 X coord bits | 7 Y coord bits
@@ -57,5 +59,50 @@ public class Constants {
             Direction.WEST,
             Direction.NORTHWEST,
     };
+
+    public static final Direction[] ordinalDirections = {
+            Direction.NORTHEAST,
+            Direction.SOUTHEAST,
+            Direction.SOUTHWEST,
+            Direction.NORTHWEST,
+    };
+
+    public static final Direction[] cardinalDirections = {
+            Direction.NORTH,
+            Direction.EAST,
+            Direction.SOUTH,
+            Direction.WEST,
+    };
+
+
+    //  SCHEMA 2: 0b | 7 bits schema type (must start with 0) | 3 bits type of bot | 14 bits information
+
+    public static final int MOVEMENT_BOT_SCHEMA_SHIFT = 17;
+    public static final int MOVEMENT_BOT_SCHEMA_CODE = 0b0010111;
+
+    public static final int MOVEMENT_BOT_TYPE_SHIFT = 14;
+    public static enum MOVEMENT_BOTS_TYPES {
+        MUCKRAKER_TYPE,
+        POLITICIAN_TYPE,
+        SLANDERER_TYPE,
+    }
+
+    public static final int MOVEMENT_BOTS_DATA_BITMASK = (1 << 14) - 1;
+    public static enum MOVEMENT_BOTS_DATA {
+        NOT_MOVING,
+        MOVING_NORTH,
+        MOVING_NORTHEAST,
+        MOVING_EAST,
+        MOVING_SOUTHEAST,
+        MOVING_SOUTH,
+        MOVING_SOUTHWEST,
+        MOVING_WEST,
+        MOVING_NORTHWEST,
+        IN_DANGER_MOVE,
+    }
+
+
+    // SCHEMA: 0b011 | 21 bits |
+
 
 }

@@ -73,7 +73,9 @@ public class Debug {
 
     public static void printInformation(String uniqueMSG, Object data) {
         if (debug) {
-            System.out.println(uniqueMSG + " => " + robotType() + " at " + robotLocation() + ": " + data.toString());
+            String objectPrint = "NULL object";
+            if (data != null) objectPrint = data.toString();
+            System.out.println(uniqueMSG + " => " + robotType() + " at " + robotLocation() + ": " + objectPrint);
         }
     }
 
