@@ -189,11 +189,10 @@ public class SlandererBot implements RunnableBot {
             Communication.checkAndSetFlag(flag);
         }
         else {
-
             for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
                 int flag = Communication.checkAndGetFlag(robotInfo.ID);
                 if (Communication.decodeIsFlagMovementBotType(flag) && Communication.decodeMovementBotType(flag) == Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE) {
-                    //friendly slanderer
+                    // friendly slanderer
                     if (Communication.decodeMovementBotData(flag) == Constants.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE) {
                         inDanger = true;
                     }
