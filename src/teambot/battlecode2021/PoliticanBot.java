@@ -19,6 +19,8 @@ public class PoliticanBot implements RunnableBot {
     private MapLocation[] friendlySlanderers;
 //    private int[] friendlySlandererRobotIDs;
 
+    //TODO: Politican bot upgrade movement (currently bugged and random movement) + fix explosion bug/optimize explosion radius
+
     public PoliticanBot(RobotController controller) throws GameActionException {
         this.controller = controller;
         init();
@@ -38,10 +40,10 @@ public class PoliticanBot implements RunnableBot {
 
     @Override
     public void turn() throws GameActionException {
-        if (moveAndDestoryNeutralEC()) {
-            Debug.printInformation("Moving to destory netural EC", "");
-            return;
-        }
+//        if (moveAndDestoryNeutralEC()) {
+//            Debug.printInformation("Moving to destory netural EC", "");
+//            return;
+//        }
         if (chaseMuckrakerUntilExplode()) {
             Debug.printInformation("CHASING MUCKRAKER ", "");
             return;
