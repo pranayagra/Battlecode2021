@@ -20,12 +20,11 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int[] ATTACKING_POLITICIAN_IDs;
 
     /* Politicians that are defending slanderers -- high prio */
-    private static int[] POLITICIAN_DEFENDING_SLANDERER_SZ;
+    private static int POLITICIAN_DEFENDING_SLANDERER_SZ;
     private static int[] POLITICIAN_DEFENDING_SLANDERER_IDs;
 
     /* Slanderer, useful to communicate danger or production of muckrakers -- mid prio (depending on implemention of wall) */
-    private static int SLANDERER_SZ;
-    private static int[] SLANDERER_IDs;
+    private static FastQueueSlanderers SLANDERER_IDs;
 
     /* I do not think we need to store these, maybe only if we want to communicate to the EC we are getting attacked heavily -- low prio */
     private static int WALL_MUCKRAKER_SZ;
@@ -82,6 +81,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
         SCOUT_MUCKRAKER_IDs = new int[100];
         SCOUT_MUCKRAKER_SZ = 0;
 
+        SLANDERER_IDs = new FastQueueSlanderers(152);
+        POLITICIAN_DEFENDING_SLANDERER_IDs = new int[200];
+
         Debug.printByteCode("AFTER ARRAY INIT ");
         Debug.printByteCode("AFTER ITERATION 64^2 TIMES ");
 
@@ -115,6 +117,18 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
     }
 
+    public void updateSlanderers() {
+        if (!SLANDERER_IDs.isEmpty()) {
+            if (controller.getRoundNum() - SLANDERER_IDs.getFrontCreationTime() >= 300) { //need to retire slanderer as 1) it got killed or 2) converted
+                int id = SLANDERER_IDs.getFrontID();
+                SLANDERER_IDs.removeFront();
+                if (controller.canGetFlag(id) && POLITICIAN_DEFENDING_SLANDERER_SZ < POLITICIAN_DEFENDING_SLANDERER_IDs.length) {
+                    POLITICIAN_DEFENDING_SLANDERER_IDs[POLITICIAN_DEFENDING_SLANDERER_SZ++] = id;
+                }
+            }
+        }
+    }
+
     public void readFriendlyECFlags() {
 
     }
@@ -130,6 +144,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     * */
 
     public void defaultTurn() throws GameActionException {
+        updateSlanderers();
         readFriendlyScoutFlags();
         readFriendlyECFlags();
 
@@ -251,9 +266,6 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
             controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
 
-            SLANDERER_IDs[SLANDERER_SZ++] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
-
-
         }
 
     }
@@ -269,6 +281,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //TODO: should spawn slanderer, which default behavior is to build lattice
         if (controller.canBuildRobot(RobotType.SLANDERER, direction, influence)) {
             controller.buildRobot(RobotType.SLANDERER, direction, influence);
+            SLANDERER_IDs.push(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID, controller.getRoundNum());
         }
     }
 
