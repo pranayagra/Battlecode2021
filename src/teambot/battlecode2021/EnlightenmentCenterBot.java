@@ -4,10 +4,36 @@ import battlecode.common.*;
 import teambot.*;
 import teambot.battlecode2021.util.*;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
+
+class EC_OBJECT {
+
+    int upperBoundConviction;
+    Constants.FLAG_LOCATION_TYPES locationFlagType;
+    Team team;
+
+    public EC_OBJECT(int upperBoundHealth, Constants.FLAG_LOCATION_TYPES locationFlagType) {
+        this.upperBoundConviction = upperBoundHealth;
+        this.locationFlagType = locationFlagType;
+        switch (locationFlagType) {
+            case MY_EC_LOCATION:
+                this.team = Cache.OUR_TEAM;
+            case ENEMY_EC_LOCATION:
+                this.team = Cache.OPPONENT_TEAM;
+            default:
+                this.team = Team.NEUTRAL;
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "EC_OBJECT{" +
+                "upperBoundConviction=" + upperBoundConviction +
+                ", locationFlagType=" + locationFlagType +
+                ", team=" + team +
+                '}';
+    }
+}
 
 public class EnlightenmentCenterBot implements RunnableBot {
     private RobotController controller;
@@ -36,6 +62,16 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     //TODO: need to think of building requests when we cannot build on a certain round or have too many requests.. we probably want some type of priority here
     private static int[] buildRequests; //want to store -> the necessary information (type, influence, direction, deltaDirectionAllowed) and how old the request is?
+
+    private static int foundNorth;
+    private static int foundEast;
+    private static int foundSouth;
+    private static int foundWest;
+
+    //Behavior: if does not exist, add to map. If exists, check type (neutral, friendly, enemy) and see if it has changed
+    private static Map <MapLocation, EC_OBJECT> foundECs;
+
+    private static boolean enemyECInSensorRange = false;
 
     private static int num_validIDS;
     private static int[] validIDS;
@@ -73,18 +109,22 @@ public class EnlightenmentCenterBot implements RunnableBot {
         num_ALL_ENEMY_EC_LOCATIONs = 0;
         ALL_ENEMY_EC_LOCATIONS = new MapLocation[MAX_ECS_PER_TEAM * 4];
 
-        Debug.printByteCode("BEFORE ARRAY INIT ");
-//        MUCKRAKER_IDs = new int[64 * 64];
-//        POLITICIAN_IDs = new int[64 * 64];
-//        SLANDERER_IDs = new int[64 * 64];
+
+        /* NEW STUFF BELOW */
 
         SCOUT_MUCKRAKER_IDs = new int[152];
 
         SLANDERER_IDs = new FastQueueSlanderers(152);
         POLITICIAN_DEFENDING_SLANDERER_IDs = new int[200];
 
-        Debug.printByteCode("AFTER ARRAY INIT ");
-        Debug.printByteCode("AFTER ITERATION 64^2 TIMES ");
+        foundECs = new HashMap<>();
+
+        for (RobotInfo robotInfo : controller.senseNearbyRobots(-1, Cache.OPPONENT_TEAM)) {
+            if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER) {
+                enemyECInSensorRange = true;
+                break;
+            }
+        }
 
     }
 
@@ -93,27 +133,36 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Debug.printRobotInformation();
         Debug.printMapInformation();
 
-        switch (controller.getRoundNum()) {
-            case 1:
-                round1();
-                return;
-            case 2:
-                defaultTurn();
-                round2();
-                break;
-            default:
-                defaultTurn();
-                break;
-        }
+//        switch (controller.getRoundNum()) {
+//            case 1:
+//                round1();
+//                return;
+//            case 2:
+//                defaultTurn();
+//                round2();
+//                break;
+//            default:
+//                defaultTurn();
+//                break;
+//        }
 
-        if (EC_ID_CURRENT_BRUTE_FORCE <= EC_ID_END_BRUTE_FORCE) {
-            brute_force_ids();
-        }
+//        if (EC_ID_CURRENT_BRUTE_FORCE <= EC_ID_END_BRUTE_FORCE) {
+//            brute_force_ids();
+//        }
+
+        defaultTurn();
+
+        Debug.printInformation("NORTH -> ", foundNorth);
+        Debug.printInformation("EAST -> ", foundEast);
+        Debug.printInformation("SOUTH -> ", foundSouth);
+        Debug.printInformation("WEST -> ", foundWest);
+
+        Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
+
         Debug.printECInformation();
 
-        if (Clock.getBytecodesLeft() <= 2000) {
-            return;
-        }
+        Debug.printByteCode("END TURN BYTECODE => ");
+
     }
 
     /* LAZILY removes slanderer from the SLANDERER_IDs object 300 rounds after. It the ID is still valid, it is added to the Defensive Politician list
@@ -129,23 +178,36 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 }
             }
         }
-    }
-
-    public void readFriendlyECFlags() {
-
+        Debug.printInformation("updateSlanderers() => ", " VALID ");
     }
 
     public void parseScoutFlag(int encoding) {
         if (Communication.decodeIsFlagLocationType(encoding, true)) {
+            //SCHEMA 1 FLAG
             Constants.FLAG_LOCATION_TYPES locationType = Communication.decodeLocationType(encoding);
             MapLocation locationData = Communication.decodeLocationData(encoding);
-            if (locationType == Constants.FLAG_LOCATION_TYPES.TOP_OR_BOTTOM_MAP_LOCATION) {
-
-            } else if (locationType == Constants.FLAG_LOCATION_TYPES.LEFT_OR_RIGHT_MAP_LOCATION) {
-                
+            switch (locationType) {
+                case TOP_OR_BOTTOM_MAP_LOCATION:
+                    if (foundNorth == 0 && Communication.decodeExtraData(encoding) == 1) foundNorth = locationData.y;
+                    else if (foundSouth == 0 && Communication.decodeExtraData(encoding) == 3) foundSouth = locationData.y;
+                    break;
+                case LEFT_OR_RIGHT_MAP_LOCATION:
+                    if (foundEast == 0 && Communication.decodeExtraData(encoding) == 2) foundEast = locationData.x;
+                    else if (foundWest == 0 && Communication.decodeExtraData(encoding) == 4) foundWest = locationData.x;
+                    break;
             }
-
+        } else if (Communication.decodeIsFlagRelativeLocationType(encoding)) {
+            //SCHEMA 3 FLAG
+            //This technically has a bug where unique locations could map to the same place or we send a scout even tho its already been taken, but I don't think it really matters too much
+            Constants.FLAG_LOCATION_TYPES locationType = Communication.decodeRelativeLocationType(encoding);
+            MapLocation locationData = Communication.decodeRelativeLocationData(encoding);
+            int healthData = Communication.decodeRelativeHealthData(encoding);
+            EC_OBJECT ec_Object = new EC_OBJECT(healthData, locationType);
+            foundECs.put(locationData, ec_Object);
+        } else {
+            //USELESS SCOUT
         }
+        Debug.printInformation("parseScoutFlag() => ", " VALID ");
     }
 
     /* Iterative over all friendly scout flags and parses the flag for the information. Assumes the list size will not go over 152 elements (risky)
@@ -170,6 +232,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 }
             }
         }
+        Debug.printInformation("readFriendlyScoutFlags() => ", " VALID ");
     }
 
 
@@ -180,9 +243,25 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     public void defaultTurn() throws GameActionException {
         updateSlanderers();
-
         readFriendlyScoutFlags();
-        readFriendlyECFlags();
+
+        if (SCOUT_MUCKRAKER_SZ < 8) {
+            spawnScoutMuckraker(1, randomValidDirection());
+        }
+
+        if (SLANDERER_IDs.getSize() < 8) {
+            spawnLatticeSlanderer((int)(controller.getInfluence() * 0.1), randomValidDirection());
+        }
+
+        int ran = random.nextInt(5);
+        if (ran <= 2) spawnDefendingPolitician(15, randomValidDirection());
+        else if (ran <= 3) spawnLatticeSlanderer((int)(controller.getInfluence() * 0.1), randomValidDirection());
+        else if (ran == 4) spawnWallMuckraker(2, randomValidDirection());
+
+
+
+
+//        readFriendlyECFlags();
 
 //        if (MUCKRAKER_NUM < 8) {
 //            tryBuildMuckraker(1);
@@ -208,13 +287,13 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
 
 
-        if (controller.getRoundNum() > 10) {
-            if (Cache.ALL_NEARBY_FRIENDLY_ROBOTS.length < 100) {
-                spawnWallMuckraker(2, randomValidDirection());
-            }
-        } else {
-            spawnScoutMuckraker(1, randomValidDirection());
-        }
+//        if (controller.getRoundNum() > 10) {
+//            if (Cache.ALL_NEARBY_FRIENDLY_ROBOTS.length < 100) {
+//                spawnWallMuckraker(2, randomValidDirection());
+//            }
+//        } else {
+//            spawnScoutMuckraker(1, randomValidDirection());
+//        }
     }
 
     private void setLocationFlag() throws GameActionException {
@@ -301,7 +380,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //TODO: should spawn muckraker in location
         if (controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
             controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
-
+            SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ++] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
         }
 
     }

@@ -104,7 +104,15 @@ public class Constants {
     }
 
 
+    public static final int RELATIVE_LOCATION_SCHEMA_SHIFT = 21;
+    public static final int RELATIVE_LOCATION_SCHEMA_CODE = 0b011;
+    // SCHEMA 3: 0b | 3 bits schema type (must start with 0 and differ from other SCHEMA codes) | 3 bits type location |
+    public static final int RELATIIVE_LOCATION_IDENTIFIER_SHIFT = 21;
+
+
     // SCHEMA: 0b011 | 21 bits |
+
+    // SCHEMA 4: 0b010 => we can add more bits if needed, but any new SCHEMA must have these 3 bits in the beginning at MINIMUM
 
 
 }

@@ -22,6 +22,10 @@ public class FastQueueSlanderers {
         return size == 0;
     }
 
+    public int getSize() {
+        return size;
+    }
+
     public void reset() {
         size = 0;
     }

@@ -16,6 +16,8 @@ public class PoliticanBot implements RunnableBot {
     private static MapLocation EnemyEC;
     public static MapLocation neutralEC;
 
+    private static int ECFlagForAttackBot;
+
     private MapLocation[] friendlySlanderers;
 //    private int[] friendlySlandererRobotIDs;
 
@@ -32,8 +34,15 @@ public class PoliticanBot implements RunnableBot {
         pathfinding.init(controller);
 
         random = new Random(controller.getID());
-        isTypeAttack = random.nextInt(4) < 3 ? true : false; //[0, 1, 2, 3] 75% attack, 25% defend
-        friendlySlanderers = new MapLocation[10];
+
+        if (Cache.CONVICTION % 50 == 3) { //53, 103, 153, etc influence are attackPoliticanBotsOnECFlagLocation
+            isTypeAttack = true;
+            if (controller.canGetFlag(Cache.myECID)) {
+                ECFlagForAttackBot = controller.getFlag(Cache.myECID);
+            }
+        }
+
+        friendlySlanderers = new MapLocation[80];
 //        friendlySlandererRobotIDs = new int[999];
 
     }

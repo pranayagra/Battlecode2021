@@ -247,11 +247,10 @@ public class MuckrakerBot implements RunnableBot {
 
                 if (locationTypePrevious == null || locationTypePrevious != locationTypeNew) { //if null or if the type of EC has since changed
                     foundECs.put(info.location, locationTypeNew); //overwrite or add
-                    int flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                            Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, locationTypeNew, Constants.MOVEMENT_BOTS_TYPES.MUCKRAKER_TYPE.ordinal(), info.location);
+                    int flag = Communication.encode_LocationType_and_RelativeLocationDataANDHealthData(locationTypeNew, info.location, info.conviction);
                     Debug.printInformation(locationTypeNew + " AT LOCATION " + info.location + " => ", flag);
                     communicationQueue.add(flag);
-                    //TODO: also communicate EC health next turn... not sure if we can somehow do this in 1 command instead...
+                    //TODO: also communicate EC health next turn... not sure if we can somehow do this in 1 command instead... DONE -> added new flag schema (SCHEMA 3) that uses less precise location for conviction information in 1 turn
                     //I guess we can do in one command if we use at least 9 bits => 6 extraBits + make location less accurate by 4 bits? not sure best way to do this
                     // (might be better to create a diff type of flag SCHEMA instead of changing the current one
                     // We can use relative location SCHEMA instead here ig.... 0b 3 bit schema | 3 location type bits | 8 relative location bits | 10 bits EC amount (value*50 system seems decent?)
@@ -279,7 +278,7 @@ public class MuckrakerBot implements RunnableBot {
                 foundNorthEdge = testLocation;
                 Debug.printInformation("NORTH EDGE AT ", foundNorthEdge);
                 int flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.TOP_OR_BOTTOM_MAP_LOCATION, Constants.MOVEMENT_BOTS_TYPES.MUCKRAKER_TYPE.ordinal(), testLocation);
+                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.TOP_OR_BOTTOM_MAP_LOCATION, 1, testLocation);
                 communicationQueue.add(flag);
                 return;
             }
@@ -297,7 +296,7 @@ public class MuckrakerBot implements RunnableBot {
                 foundSouthEdge = testLocation;
                 Debug.printInformation("SOUTH EDGE AT ", foundSouthEdge);
                 int flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.TOP_OR_BOTTOM_MAP_LOCATION, Constants.MOVEMENT_BOTS_TYPES.MUCKRAKER_TYPE.ordinal(), testLocation);
+                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.TOP_OR_BOTTOM_MAP_LOCATION, 3, testLocation);
                 communicationQueue.add(flag);
                 return;
             }
@@ -315,7 +314,7 @@ public class MuckrakerBot implements RunnableBot {
                 foundEastEdge = testLocation;
                 Debug.printInformation("EAST EDGE AT ", foundEastEdge);
                 int flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.LEFT_OR_RIGHT_MAP_LOCATION, Constants.MOVEMENT_BOTS_TYPES.MUCKRAKER_TYPE.ordinal(), testLocation);
+                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.LEFT_OR_RIGHT_MAP_LOCATION, 2, testLocation);
                 communicationQueue.add(flag);
                 return;
             }
@@ -333,7 +332,7 @@ public class MuckrakerBot implements RunnableBot {
                 foundWestEdge = testLocation;
                 Debug.printInformation("WEST EDGE AT ", foundWestEdge);
                 int flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.LEFT_OR_RIGHT_MAP_LOCATION, Constants.MOVEMENT_BOTS_TYPES.MUCKRAKER_TYPE.ordinal(), testLocation);
+                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.LEFT_OR_RIGHT_MAP_LOCATION, 4, testLocation);
                 communicationQueue.add(flag);
                 return;
             }
