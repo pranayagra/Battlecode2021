@@ -76,7 +76,6 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int num_validIDS;
     private static int[] validIDS;
 
-
     public static int num_ALL_MY_EC_LOCATIONs;
     public static int[] ALL_MY_EC_IDS;
     public static MapLocation[] ALL_MY_EC_LOCATIONS;
@@ -210,29 +209,36 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Debug.printInformation("parseScoutFlag() => ", " VALID ");
     }
 
+    // I have first few
+
     /* Iterative over all friendly scout flags and parses the flag for the information. Assumes the list size will not go over 152 elements (risky)
     *
     *
     *  */
     public void readFriendlyScoutFlags() throws GameActionException {
-
+        Debug.printInformation("readFriendlyScoutFlags() => ", " START ");
         for (int i = 0; i < SCOUT_MUCKRAKER_SZ; ++i) {
             if (controller.canGetFlag(SCOUT_MUCKRAKER_IDs[i])) {
                 // read flag information
+                Debug.printInformation("readFriendlyScoutFlags() => ", " got flag. parse ");
                 parseScoutFlag(controller.getFlag(SCOUT_MUCKRAKER_IDs[i]));
+                Debug.printInformation("readFriendlyScoutFlags() => ", " finished flag. finished parsing ");
             } else {
                 // ID no longer exists at index i, (remove)
                 //find first index at max size and go from there
                 while (--SCOUT_MUCKRAKER_SZ >= i + 1) {
+                    Debug.printInformation("readFriendlyScoutFlags() => " + SCOUT_MUCKRAKER_SZ, " trying to swap");
                     if (controller.canGetFlag(SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ])) {
+                        Debug.printInformation("readFriendlyScoutFlags() => ", " START PARSE ");
                         SCOUT_MUCKRAKER_IDs[i] = SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ];
                         parseScoutFlag(controller.getFlag(SCOUT_MUCKRAKER_IDs[i]));
+                        Debug.printInformation("readFriendlyScoutFlags() => ", " FINISHED PARSE ");
                         break;
                     }
                 }
             }
         }
-        Debug.printInformation("readFriendlyScoutFlags() => ", " VALID ");
+        Debug.printInformation("readFriendlyScoutFlags() => ", " END ");
     }
 
 
@@ -245,18 +251,15 @@ public class EnlightenmentCenterBot implements RunnableBot {
         updateSlanderers();
         readFriendlyScoutFlags();
 
+        int ran = random.nextInt(5);
+
         if (SCOUT_MUCKRAKER_SZ < 8) {
             spawnScoutMuckraker(1, randomValidDirection());
             Debug.printInformation("Spawned Scout => ", "VALID");
-        }
-
-        if (SLANDERER_IDs.getSize() < 8) {
+        } else if (SLANDERER_IDs.getSize() < 8) {
             spawnLatticeSlanderer((int)(controller.getInfluence() * 0.1), randomValidDirection());
             Debug.printInformation("Spawned Slanderer => ", "VALID");
-        }
-
-        int ran = random.nextInt(5);
-        if (ran <= 2) {
+        } else if (ran <= 2) {
             spawnDefendingPolitician(15, randomValidDirection());
             Debug.printInformation("spawnDefendingPolitician => ", "VALID");
         }
