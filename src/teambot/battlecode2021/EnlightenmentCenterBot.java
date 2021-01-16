@@ -247,16 +247,27 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         if (SCOUT_MUCKRAKER_SZ < 8) {
             spawnScoutMuckraker(1, randomValidDirection());
+            Debug.printInformation("Spawned Scout => ", "VALID");
         }
 
         if (SLANDERER_IDs.getSize() < 8) {
             spawnLatticeSlanderer((int)(controller.getInfluence() * 0.1), randomValidDirection());
+            Debug.printInformation("Spawned Slanderer => ", "VALID");
         }
 
         int ran = random.nextInt(5);
-        if (ran <= 2) spawnDefendingPolitician(15, randomValidDirection());
-        else if (ran <= 3) spawnLatticeSlanderer((int)(controller.getInfluence() * 0.1), randomValidDirection());
-        else if (ran == 4) spawnWallMuckraker(2, randomValidDirection());
+        if (ran <= 2) {
+            spawnDefendingPolitician(15, randomValidDirection());
+            Debug.printInformation("spawnDefendingPolitician => ", "VALID");
+        }
+        else if (ran <= 3) {
+            spawnLatticeSlanderer((int)(controller.getInfluence() * 0.1), randomValidDirection());
+            Debug.printInformation("spawnLatticeSlanderer => ", "VALID");
+        }
+        else if (ran == 4) {
+            spawnWallMuckraker(2, randomValidDirection());
+            Debug.printInformation("spawnWallMuckraker => ", "VALID");
+        }
 
 
 
@@ -378,7 +389,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     private void spawnScoutMuckraker(int influence, Direction direction) throws GameActionException {
         //TODO: should spawn muckraker in location
-        if (controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
+        if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
             controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
             SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ++] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
         }
@@ -387,22 +398,24 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     private void spawnWallMuckraker(int influence, Direction direction) throws GameActionException {
         //TODO: should spawn muckrakers to build wall
-        if (controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
+        if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
             controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
         }
     }
 
     private void spawnLatticeSlanderer(int influence, Direction direction) throws GameActionException {
         //TODO: should spawn slanderer, which default behavior is to build lattice
-        if (controller.canBuildRobot(RobotType.SLANDERER, direction, influence)) {
+        if (direction != null && controller.canBuildRobot(RobotType.SLANDERER, direction, influence)) {
             controller.buildRobot(RobotType.SLANDERER, direction, influence);
+            Debug.printInformation("PUSHING TO SLANDERER ", " BEFORE");
             SLANDERER_IDs.push(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID, controller.getRoundNum());
+            Debug.printInformation("PUSHING TO SLANDERER ", " AFTER");
         }
     }
 
     private void spawnDefendingPolitician(int influence, Direction direction) throws GameActionException {
         //TODO: should defend slanderers outside the muckrakers wall
-        if (controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
+        if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
         }
     }
@@ -410,7 +423,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private void spawnAttackingPolitician(int influence, Direction direction) throws GameActionException {
         //TODO: should only be called if the politician is meant to attack some base -> need to create politician with enough influence, set my EC flag to the location + attacking poli
         //Assumption: politician upon creation should read EC flag and know it's purpose in life. It can determine what to do then
-        if (controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
+        if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
         }
     }

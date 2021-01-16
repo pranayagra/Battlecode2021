@@ -35,12 +35,15 @@ public class Communication {
         return flag;
     }
 
-    /* SCHEMA 2: 0b | 7 bits schema code (must start with 0) | 3 bits type of bot | 14 bits information */
-    public static int encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES movementBotType, Constants.MOVEMENT_BOTS_DATA movementBotData, boolean inDanger) {
+    /* SCHEMA 2: 0b | 7 bits schema code (must start with 0) | 3 bits type of bot | 1 danger bit | 1 bit reset | 8 bits hot-one encoding | 4 bits information */
+    public static int encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES movementBotType, boolean isResetBitOn, boolean inDanger, int wallHoleData, Constants.MOVEMENT_BOTS_DATA movementBotData) {
         int flag = (Constants.MOVEMENT_BOT_SCHEMA_CODE << Constants.MOVEMENT_BOT_SCHEMA_SHIFT) +
                 (movementBotType.ordinal() << Constants.MOVEMENT_BOT_TYPE_SHIFT) +
+                (wallHoleData << Constants.MOVEMENT_BOT_WALLHOLE_SHIFT) +
                 movementBotData.ordinal();
         if (inDanger) flag += (1 << Constants.MOVEMENT_BOT_DANGER_SHIFT);
+        if (isResetBitOn) flag += (1 << Constants.MOVEMENT_BOT_RESET_SHIFT);
+
         Debug.printInformation("encode_MovementBotType_and_MovementBotData() FINAL flag ", flag);
         return flag;
     }
@@ -100,6 +103,14 @@ public class Communication {
 
     public static boolean decodeMovementBotIsDanger(int encoding) {
         return ((encoding >> Constants.MOVEMENT_BOT_DANGER_SHIFT) & 0b1) == 1;
+    }
+
+    public static boolean decodeMovementBotIsResetBitOn(int encoding) {
+        return ((encoding >> Constants.MOVEMENT_BOT_RESET_SHIFT) & 0b1) == 1;
+    }
+
+    public static int decodeMovementBotWallHoleData(int encoding) {
+        return ((encoding >> Constants.MOVEMENT_BOT_WALLHOLE_SHIFT) & 0b11111111);
     }
 
     public static Constants.MOVEMENT_BOTS_TYPES decodeMovementBotType(int encoding) {
