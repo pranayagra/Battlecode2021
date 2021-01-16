@@ -249,6 +249,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
             spawnScoutMuckraker(1, randomValidDirection());
             Debug.printInformation("Spawned Scout => ", "VALID");
         }
+        spawnScoutMuckraker(1, randomValidDirection());
+
+        /*
 
         if (SLANDERER_IDs.getSize() < 8) {
             spawnLatticeSlanderer((int)(controller.getInfluence() * 0.1), randomValidDirection());
@@ -268,6 +271,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             spawnWallMuckraker(2, randomValidDirection());
             Debug.printInformation("spawnWallMuckraker => ", "VALID");
         }
+        */
 
 
 

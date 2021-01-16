@@ -120,23 +120,5 @@ public class Cache {
 //            }
 //        }
 
-
-        /*
-        if (ROBOT_TYPE == RobotType.ENLIGHTENMENT_CENTER) {
-            if (MAP_WIDTH == 0 || MAP_HEIGHT == 0 || MAP_BOTTOM == 0 || MAP_TOP == 0 || MAP_LEFT == 0 || MAP_RIGHT == 0) {
-                for (Integer robotID : EC_ALL_PRODUCED_ROBOT_IDS) {
-                    // TODO: CHECK FOR specific robotID flag if MAP information is missing from EC
-                }
-                if (MAP_WIDTH != 0 && (MAP_LEFT ^ MAP_RIGHT) != 0) {
-                    if (MAP_LEFT == 0) MAP_LEFT = MAP_RIGHT - MAP_WIDTH;
-                    if (MAP_RIGHT == 0) MAP_RIGHT = MAP_LEFT + MAP_WIDTH;
-                }
-                if (MAP_HEIGHT != 0 && (MAP_HEIGHT ^ MAP_BOTTOM) != 0) {
-                    if (MAP_HEIGHT == 0) MAP_HEIGHT = MAP_BOTTOM + MAP_HEIGHT;
-                    if (MAP_BOTTOM == 0) MAP_BOTTOM = MAP_HEIGHT - MAP_HEIGHT;
-                }
-            }
-        }*/
-
     }
 }
