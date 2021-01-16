@@ -205,7 +205,10 @@ public class Communication {
     public static Constants.FLAG_EXTRA_TYPES decodeExtraType(int encoding) {
         // ENUM_TYPE of index ((encoding >> 20) & 0b111)
         int identifier = (encoding >> Constants.EXTRA_IDENTIFIER_SHIFT) & Constants.EXTRA_IDENTIFIER_BITMASK;
-        Constants.FLAG_EXTRA_TYPES extraType = Constants.FLAG_EXTRA_TYPES.values()[identifier];
+
+        Constants.FLAG_EXTRA_TYPES extraType = Constants.FLAG_EXTRA_TYPES.NOOP;
+        if (identifier < Constants.FLAG_EXTRA_TYPES.values().length) extraType = Constants.FLAG_EXTRA_TYPES.values()[identifier];
+
 //        Debug.printInformation("decodeExtraType() ", extraType);
         return extraType;
     }

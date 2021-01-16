@@ -39,6 +39,7 @@ public class Constants {
     // TODO: ADD MORE STATES
     // (0b1|3 bits EXTRA TYPE set here|???|...
     public static enum FLAG_EXTRA_TYPES {
+        NOOP,
         SCOUT,
         ATTACK,
         VERIFICATION_ENSURANCE,
