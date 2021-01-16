@@ -42,6 +42,7 @@ public strictfp class RobotPlayer {
         Util.init(controller);
         Cache.init(controller);
         Debug.init(controller);
+        Scout.init(controller);
         Communication.init(controller);
 
         RunnableBot bot;

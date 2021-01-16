@@ -257,23 +257,18 @@ public class EnlightenmentCenterBot implements RunnableBot {
             spawnScoutMuckraker(1, randomValidDirection());
             Debug.printInformation("Spawned Scout => ", "VALID");
         } else if (SLANDERER_IDs.getSize() < 8) {
-            spawnLatticeSlanderer((int)(controller.getInfluence() * 0.1), randomValidDirection());
-            Debug.printInformation("Spawned Slanderer => ", "VALID");
+                spawnLatticeSlanderer((int) (controller.getInfluence() * 0.1), randomValidDirection());
+                Debug.printInformation("Spawned Slanderer => ", "VALID");
         } else if (ran <= 2) {
-            spawnDefendingPolitician(15, randomValidDirection());
-            Debug.printInformation("spawnDefendingPolitician => ", "VALID");
+                spawnDefendingPolitician(15, randomValidDirection());
+                Debug.printInformation("spawnDefendingPolitician => ", "VALID");
+        } else if (ran <= 3) {
+                spawnLatticeSlanderer((int) (controller.getInfluence() * 0.1), randomValidDirection());
+                Debug.printInformation("spawnLatticeSlanderer => ", "VALID");
+        } else if (ran == 4) {
+                spawnWallMuckraker(2, randomValidDirection());
+                Debug.printInformation("spawnWallMuckraker => ", "VALID");
         }
-        else if (ran <= 3) {
-            spawnLatticeSlanderer((int)(controller.getInfluence() * 0.1), randomValidDirection());
-            Debug.printInformation("spawnLatticeSlanderer => ", "VALID");
-        }
-        else if (ran == 4) {
-            spawnWallMuckraker(2, randomValidDirection());
-            Debug.printInformation("spawnWallMuckraker => ", "VALID");
-        }
-
-
-
 
 //        readFriendlyECFlags();
 
