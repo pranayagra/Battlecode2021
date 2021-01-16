@@ -14,10 +14,13 @@ public class Util {
 
     public static void loop() throws GameActionException {
         Cache.loop();
+        Communication.hasSetFlag = false;
     }
 
     public static void postLoop() throws GameActionException {
-
+        // Scouting
+        Scout.scoutMapEdges();
+        Communication.loop();
     }
 
     private int addedLocationDistance(MapLocation one, MapLocation two) {
@@ -27,7 +30,7 @@ public class Util {
     public boolean moveAwayFromLocation(MapLocation currentLocation, MapLocation avoidLocation) throws GameActionException {
 
         if (!controller.isReady()) return false;
-
+        
         int maximizedDistance = addedLocationDistance(currentLocation, avoidLocation);
         Direction maximizedDirection = null;
 

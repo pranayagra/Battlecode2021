@@ -233,6 +233,7 @@ public class SlandererBot implements RunnableBot {
 
             flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, false, true, 0, Communication.convert_DirectionInt_MovementBotsData(bestDirection));
 
+
             for (int i = 0; i < canMoveIndicesSize; ++i) {
                 if (moveRewards[canMoveIndices[i]] > bestValidReward) {
 //                    Debug.printInformation("best valid tuning => canMoveIndices => ", canMoveIndices[i]);
