@@ -45,6 +45,53 @@ public class Communication {
         return flag;
     }
 
+    /* SCHEMA 3: 0b | 3 bits schema code (011) | 2 bits locationType (one of the first 4 items) | 1 bit X isPositive | 4 bits X (compress by x4) | 1 bit Y isPositive | 4 bits Y (compress by x4) | 9 bits data (value * 50 = conviction) */
+    public static int encode_LocationType_and_RelativeLocationDataANDHealthData(Constants.FLAG_LOCATION_TYPES locationType, MapLocation locationData, int conviction) {
+        int flag = (Constants.RELATIVE_LOCATION_SCHEMA_CODE << Constants.RELATIVE_LOCATION_SCHEMA_SHIFT) +
+                (locationType.ordinal() << Constants.RELATIIVE_LOCATION_IDENTIFIER_SHIFT);
+
+        //relativeLocationData should be vector from start (EC) position to current (end) position
+        int deltaX = locationData.x - Cache.myECLocation.x;
+        int deltaY = locationData.y - Cache.myECLocation.y;
+        int healthData = (conviction + 49) / 50; //round up
+        healthData = Math.max(healthData, 511); //2^9-1 is max for bits, which represents
+
+        flag += (((((deltaX < 0) ? 1 : 0) << 4) + (Math.abs(deltaX) >> 2)) << 14);
+        flag += (((((deltaY < 0) ? 1 : 0) << 4) + (Math.abs(deltaY) >> 2)) << 9);
+        flag += healthData;
+        return flag;
+    }
+
+    public static boolean decodeIsFlagRelativeLocationType(int encoding) {
+        boolean valid = (encoding >> Constants.RELATIVE_LOCATION_SCHEMA_SHIFT) == Constants.RELATIVE_LOCATION_SCHEMA_CODE;
+        return valid;
+    }
+
+    /* return the type (meaning) of the location that was encoded. Assumes decodeIsFlagRelativeLocationType() is called first */
+    public static Constants.FLAG_LOCATION_TYPES decodeRelativeLocationType(int encoding) {
+        // ENUM_TYPE of index ((encoding >> 21) & 0b111)
+        int identifier = (encoding >> Constants.RELATIVE_LOCATION_SCHEMA_SHIFT) & 0b11;
+        Constants.FLAG_LOCATION_TYPES locationType = Constants.FLAG_LOCATION_TYPES.values()[identifier];
+//        Debug.printInformation("decodeLocationType() ", locationType);
+        return locationType;
+    }
+
+    public static MapLocation decodeRelativeLocationData(int encoding) {
+        MapLocation locationData = Cache.myECLocation; //risky in edge-case situations with 2 ECs nearby
+
+        int deltaX = ((((encoding >> 14) & 0b1111) << 2) + 2);
+        if (((encoding >> 18) & 1) == 1) deltaX *= -1;
+
+        int deltaY = ((((encoding >> 9) & 0b1111) << 2) + 2);
+        if (((encoding >> 13) & 1) == 1) deltaY *= -1;
+
+        return (locationData.translate(deltaX, deltaY));
+    }
+
+    public static int decodeRelativeHealthData(int encoding) {
+        return (encoding & 0b111111111) * 50;
+    }
+
     public static boolean decodeIsFlagMovementBotType(int encoding) {
         boolean valid = (encoding >> Constants.MOVEMENT_BOT_SCHEMA_SHIFT) == Constants.MOVEMENT_BOT_SCHEMA_CODE;
 //        Debug.printInformation("decodeIsFlagMovementBotType() ", valid);
