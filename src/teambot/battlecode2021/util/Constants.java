@@ -88,6 +88,8 @@ public class Constants {
     }
 
     public static final int MOVEMENT_BOT_DANGER_SHIFT = 13;
+    public static final int MOVEMENT_BOT_RESET_SHIFT = 12;
+    public static final int MOVEMENT_BOT_WALLHOLE_SHIFT = 4;
 
     public static final int MOVEMENT_BOTS_DATA_BITMASK = (1 << 13) - 1;
     public static enum MOVEMENT_BOTS_DATA {
