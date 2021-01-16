@@ -216,7 +216,7 @@ public class SlandererBot implements RunnableBot {
 //        Debug.printInformation("location rewards surrounding me is ", Arrays.toString(moveRewards));
 //        Debug.printByteCode("runFromMuckrakerMove() => SCANNED ENEMY LOCATIONS ");
         int flag = Communication.encode_MovementBotType_and_MovementBotData
-                (Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Constants.MOVEMENT_BOTS_DATA.NOT_MOVING, false);
+                (Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, false, false, 0, Constants.MOVEMENT_BOTS_DATA.NOT_MOVING);
         int bestValidDirection = -1;
         double bestValidReward = rewardOfStaying;
 
@@ -231,7 +231,7 @@ public class SlandererBot implements RunnableBot {
                 }
             }
 
-            flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Communication.convert_DirectionInt_MovementBotsData(bestDirection), true);
+            flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, false, true, 0, Communication.convert_DirectionInt_MovementBotsData(bestDirection));
 
 
             for (int i = 0; i < canMoveIndicesSize; ++i) {
@@ -341,7 +341,7 @@ public class SlandererBot implements RunnableBot {
         int flag = 0;
         if (Cache.ALL_NEARBY_ENEMY_ROBOTS.length > 0) {
             inDanger = true;
-            flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, Constants.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE, true);
+            flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE,false,true,0,Constants.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE);
         }
         else {
             for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {

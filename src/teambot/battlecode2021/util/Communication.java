@@ -1,7 +1,9 @@
 package teambot.battlecode2021.util;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
@@ -248,6 +250,17 @@ public class Communication {
 
         if (controller.canSetFlag(flag)) {
             controller.setFlag(flag);
+            hasSetFlag = true;
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean checkAndAddFlag(int flag) throws GameActionException {
+//        flag ^= SEED; // basic encryption
+        
+        if (controller.canSetFlag(flag)) {
+            communicationQueue.add(flag);
             return true;
         }
         return false;
@@ -262,9 +275,6 @@ public class Communication {
         return flag;
     }
 
-
-
-
     /* SCHEMA: 0b0 | 23 bits */
 
 
@@ -277,5 +287,19 @@ public class Communication {
         }
         return false;
     }
+
+
+    /* Communication Queue System */
+
+    private static Queue<Integer> communicationQueue = new LinkedList<Integer>();
+    public static boolean hasSetFlag;
+
+    public static void loop() throws GameActionException {
+        if (!hasSetFlag && communicationQueue.size() > 0) {
+            int flag = communicationQueue.poll();
+            checkAndSetFlag(flag);
+        }
+    }
+
 
 }

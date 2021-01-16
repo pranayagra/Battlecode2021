@@ -1,7 +1,6 @@
 package teambot.battlecode2021;
 
 import battlecode.common.*;
-import com.sun.tools.internal.jxc.ap.Const;
 import teambot.RunnableBot;
 import teambot.battlecode2021.util.*;
 
@@ -19,18 +18,9 @@ public class MuckrakerBot implements RunnableBot {
     int relativeY;
     private static boolean isBlockingEnemyEC;
 
-
-    // if already reported (not null), do not report again!
-
-    private static MapLocation foundNorthEdge;
-    private static MapLocation foundEastEdge;
-    private static MapLocation foundSouthEdge;
-    private static MapLocation foundWestEdge;
-
     //Behavior: if does not exist, add to map. If exists, check type (neutral, friendly, enemy) and see if it has changed
     private static Map<MapLocation, Constants.FLAG_LOCATION_TYPES> foundECs;
 
-    private static Queue<Integer> communicationQueue;
     private static boolean updatedFlagThisRound;
 
 
@@ -44,8 +34,6 @@ public class MuckrakerBot implements RunnableBot {
 
         this.pathfinding = new Pathfinding();
         pathfinding.init(controller);
-
-        communicationQueue = new LinkedList<Integer>();
 
         random = new Random(controller.getID());
         isBlockingEnemyEC = false;
@@ -64,37 +52,26 @@ public class MuckrakerBot implements RunnableBot {
     public void turn() throws GameActionException {
         updatedFlagThisRound = false;
 
-        if (controller.getInfluence() == 1) {
-            scoutRoutine();
-        } else if (controller.getInfluence() > 1) {
-            //TODO: close wall if and only if we can sense an enemy (move a rank up or down, not sure which)
-            //TODO: create a structure around slanderers, not EC
-            //TODO: some type of communication between EC spawn location (or flag) and direction (or location) to fill wall, which is intitated by slanderers?
-            muckWall(Cache.myECID);
-        }
+        int type = controller.getInfluence();
+        switch (type) {
+            case 1:
+                scoutRoutine();
+                break;
+            case 2:
+                muckWall(Cache.myECID);
+                //TODO: close wall if and only if we can sense an enemy (move a rank up or down, not sure which)
+                //TODO: create a structure around slanderers, not EC
+                //TODO: some type of communication between EC spawn location (or flag) and direction (or location) to fill wall, which is intitated by slanderers?
+                break;
+            case 3:
 
-        /* If we did not set the flag this round, then pick the next item from the communicationQueue */
-        if (!updatedFlagThisRound && !communicationQueue.isEmpty()) {
-            int flag = communicationQueue.poll();
-            Communication.checkAndSetFlag(flag);
-            updatedFlagThisRound = true;
+            default:
+                break;
         }
 
         Debug.printByteCode("turn() => END");
     }
 
-
-    /*
-    * Algorithm:
-    *   1) Attempt to move with scout movement
-    *   2) update location and all nearby robots since we move first
-    *   3) scout ECs and add any new ECs or team-changed ECs to the communicationQueue
-    *   4) scout map edges and add any new found edges to the communicationQueue
-    *
-    * Enhancements:
-    *   1) to save bytecode on cooldown rounds, if we did not make a move, there is no reason to scoutMapEdges since it could have not updated. scoutECs() could have changed though
-    *
-    * */
     public boolean scoutRoutine() throws GameActionException {
 
         scoutMovement();
@@ -104,8 +81,7 @@ public class MuckrakerBot implements RunnableBot {
         Cache.ALL_NEARBY_ROBOTS = controller.senseNearbyRobots();
 
         scoutECs();
-        scoutMapEdges();
-
+        
         Debug.printByteCode("scoutRoutine() => END");
         return true;
     }
@@ -118,9 +94,14 @@ public class MuckrakerBot implements RunnableBot {
     // Bug: tryMove() may return invalid direction
     public void muckWall(int nucleus) throws GameActionException {
 
-        // todo: watch flags for nucleus!
+        // TODO: watch flags for nucleus!
 
         if (!controller.isReady()) return;
+        // TODO: Do pathfinding when not ready
+
+        if (simpleAttack()) {
+            return;
+        }
 
         boolean move = false;
         MapLocation center = null;
@@ -130,7 +111,6 @@ public class MuckrakerBot implements RunnableBot {
                 center = info.location;
                 break;
             }
-
         }
         if (move) {
             Direction dir = center.directionTo(controller.getLocation());
@@ -139,7 +119,6 @@ public class MuckrakerBot implements RunnableBot {
     }
 
     //assume robot always tries to surround/get as close as possible to a EC (only 1 distance, extras can roam around to edge map/bounce around)
-
 
     public boolean updateBlockingEnemyEC() {
         for (RobotInfo robot : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
@@ -188,7 +167,6 @@ public class MuckrakerBot implements RunnableBot {
             if (robot.type.canBeExposed()) {
                 // It's a slanderer... go get them!
                 if (controller.canExpose(robot.location)) {
-                    System.out.println("e x p o s e d");
                     controller.expose(robot.location);
                     return true;
                 }
@@ -238,7 +216,7 @@ public class MuckrakerBot implements RunnableBot {
     *
     * Changelog: removed avoiding the current EC because we could lose it mid-game, but it is not added to the communicationQueue since we prepopulate the map
     * */
-    private void scoutECs() {
+    private void scoutECs() throws GameActionException {
         for (RobotInfo info : Cache.ALL_NEARBY_ROBOTS) { //incorrect use of cache due to location - reminder update
             if (info.type == RobotType.ENLIGHTENMENT_CENTER) {
                 Debug.printInformation( "checking EC location " + info.location + " => ", "");
@@ -249,92 +227,12 @@ public class MuckrakerBot implements RunnableBot {
                     foundECs.put(info.location, locationTypeNew); //overwrite or add
                     int flag = Communication.encode_LocationType_and_RelativeLocationDataANDHealthData(locationTypeNew, info.location, info.conviction);
                     Debug.printInformation(locationTypeNew + " AT LOCATION " + info.location + " => ", flag);
-                    communicationQueue.add(flag);
+                    Communication.checkAndAddFlag(flag);
                     //TODO: also communicate EC health next turn... not sure if we can somehow do this in 1 command instead... DONE -> added new flag schema (SCHEMA 3) that uses less precise location for conviction information in 1 turn
                     //I guess we can do in one command if we use at least 9 bits => 6 extraBits + make location less accurate by 4 bits? not sure best way to do this
                     // (might be better to create a diff type of flag SCHEMA instead of changing the current one
                     // We can use relative location SCHEMA instead here ig.... 0b 3 bit schema | 3 location type bits | 8 relative location bits | 10 bits EC amount (value*50 system seems decent?)
                 }
-            }
-        }
-    }
-
-    /* Check if any of the 4 cardinal directions can detect some edge of the map and add it to the communicationQueue if so */
-    private void scoutMapEdges() throws GameActionException {
-        checkNorthDirection(Cache.CURRENT_LOCATION, Cache.SENSOR_RADIUS);
-        checkSouthDirection(Cache.CURRENT_LOCATION, Cache.SENSOR_RADIUS);
-        checkEastDirection(Cache.CURRENT_LOCATION, Cache.SENSOR_RADIUS);
-        checkWestDirection(Cache.CURRENT_LOCATION, Cache.SENSOR_RADIUS);
-    }
-
-    /* Tries to find the north edge location and adds it to the communicationQueue if and only if we can sense the location */
-    private void checkNorthDirection(MapLocation center, int radius) throws GameActionException {
-        if (foundNorthEdge != null) return; //already found
-        if (controller.onTheMap(center.translate(0, radius))) return; //the furthest distance is already on the map (so the remaining must also be)
-
-        for (int i = radius - 1; i >= 0; --i) {
-            MapLocation testLocation = center.translate(0, i);
-            if (controller.onTheMap(testLocation)) {
-                foundNorthEdge = testLocation;
-                Debug.printInformation("NORTH EDGE AT ", foundNorthEdge);
-                int flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.TOP_OR_BOTTOM_MAP_LOCATION, 1, testLocation);
-                communicationQueue.add(flag);
-                return;
-            }
-        }
-    }
-
-    /* Tries to find the south edge location and adds it to the communicationQueue if and only if we can sense the location */
-    private void checkSouthDirection(MapLocation center, int radius) throws GameActionException {
-        if (foundSouthEdge != null) return; //already found
-        if (controller.onTheMap(center.translate(0, -radius))) return; //the furthest distance is already on the map (so the remaining must also be)
-
-        for (int i = radius - 1; i >= 0; --i) {
-            MapLocation testLocation = center.translate(0, -i);
-            if (controller.onTheMap(testLocation)) {
-                foundSouthEdge = testLocation;
-                Debug.printInformation("SOUTH EDGE AT ", foundSouthEdge);
-                int flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.TOP_OR_BOTTOM_MAP_LOCATION, 3, testLocation);
-                communicationQueue.add(flag);
-                return;
-            }
-        }
-    }
-
-    /* Tries to find the east edge location and adds it to the communicationQueue if and only if we can sense the location */
-    private void checkEastDirection(MapLocation center, int radius) throws GameActionException {
-        if (foundEastEdge != null) return; //already found
-        if (controller.onTheMap(center.translate(radius, 0))) return; //the furthest distance is already on the map (so the remaining must also be)
-
-        for (int i = radius - 1; i >= 0; --i) {
-            MapLocation testLocation = center.translate(i, 0);
-            if (controller.onTheMap(testLocation)) { //find first valid location
-                foundEastEdge = testLocation;
-                Debug.printInformation("EAST EDGE AT ", foundEastEdge);
-                int flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.LEFT_OR_RIGHT_MAP_LOCATION, 2, testLocation);
-                communicationQueue.add(flag);
-                return;
-            }
-        }
-    }
-
-    /* Tries to find the west edge location and adds it to the communicationQueue if and only if we can sense the location */
-    private void checkWestDirection(MapLocation center, int radius) throws GameActionException {
-        if (foundWestEdge != null) return; //already found
-        if (controller.onTheMap(center.translate(-radius, 0))) return; //the furthest distance is already on the map (so the remaining must also be)
-
-        for (int i = radius - 1; i >= 0; --i) {
-            MapLocation testLocation = center.translate(-i, 0);
-            if (controller.onTheMap(testLocation)) { //find first valid location
-                foundWestEdge = testLocation;
-                Debug.printInformation("WEST EDGE AT ", foundWestEdge);
-                int flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.LEFT_OR_RIGHT_MAP_LOCATION, 4, testLocation);
-                communicationQueue.add(flag);
-                return;
             }
         }
     }
@@ -349,5 +247,19 @@ public class MuckrakerBot implements RunnableBot {
             return Constants.FLAG_LOCATION_TYPES.NEUTRAL_EC_LOCATION;
         }
     }
+
+
+    /* 
+    * Guide 
+    * Moves to location not adjacent to friendly EC
+    * And displays information
+    */
+
+
+    /*
+    private void GuideRoutine() {
+        if (Pathfinding.distan)
+    }
+    */
 
 }
