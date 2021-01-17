@@ -49,10 +49,14 @@ public class PoliticanBot implements RunnableBot {
 
     @Override
     public void turn() throws GameActionException {
-//        if (moveAndDestoryNeutralEC()) {
-//            Debug.printInformation("Moving to destory netural EC", "");
-//            return;
-//        }
+        if (moveAndDestroyNeutralEC()) {
+            Debug.printInformation("Moving to destroy netural EC", "");
+            return;
+        }
+        if (moveAndDestroyEnemyEC()) {
+            Debug.printInformation("Moving to destroy enemy EC", "");
+            return;
+        }
         if (chaseMuckrakerUntilExplode()) {
             Debug.printInformation("CHASING MUCKRAKER ", "");
             return;
@@ -85,6 +89,48 @@ public class PoliticanBot implements RunnableBot {
         return false;
     }
 
+    private boolean moveAndDestroyEnemyEC() throws GameActionException {
+        if (EnemyEC == null) {
+            Debug.printInformation("EnemyEC not set", null);
+            return false;
+        }
+        if (!isTypeAttack) {
+            Debug.printInformation("isTypeAttack is false", null);
+            return false;
+        }
+
+        int actionRadius = Cache.ROBOT_TYPE.actionRadiusSquared;
+        RobotInfo[] nearbyRobots = controller.senseNearbyRobots(actionRadius);
+        for (RobotInfo robotInfo : nearbyRobots) {
+            if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER && robotInfo.team == controller.getTeam().opponent()) {
+                // explode if no other nearby allied muckrakers or slanderers
+                int squaredDistance = controller.getLocation().distanceSquaredTo(robotInfo.getLocation());
+                RobotInfo[] nearbyAlliedRobots = controller.senseNearbyRobots(squaredDistance, controller.getTeam());
+                boolean safeToEmpower = true;
+                for (RobotInfo nearbyAlliedRobot : nearbyAlliedRobots) {
+                    if (nearbyAlliedRobot.type == RobotType.MUCKRAKER || nearbyAlliedRobot.type == RobotType.SLANDERER) {
+                        safeToEmpower = false;
+                    }
+                }
+                if (safeToEmpower && controller.canEmpower(actionRadius)) {
+                    controller.empower(squaredDistance);
+                    return true;
+                } else if (!safeToEmpower) {
+                    int flag = CommunicationMovement.encodeMovement(false, true,
+                            CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.NOOP,
+                            CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, true, 0);
+                    if (controller.canSetFlag(flag)) {
+                        controller.setFlag(flag);
+                        Comms.hasSetFlag = true;
+                    }
+                }
+            }
+        }
+
+        pathfinding.move(EnemyEC);
+        return true;
+
+    }
 
     //Assumptions: neutralEC is found by a scout and communicated to the EC
     //Bugs:
@@ -101,12 +147,13 @@ public class PoliticanBot implements RunnableBot {
     //      we only explode if it is a 1-shot (with some extra for health). If it is no longer a 1-shot, this politican is repurposed.
     //      check for enemy politicians?
     //      We may want a way to clear enemies that just surround the neutral EC with weak targets but do not capture
-    public boolean moveAndDestoryNeutralEC() throws GameActionException {
-
+    public boolean moveAndDestroyNeutralEC() throws GameActionException {
         if (neutralEC == null) {
-            if (Debug.debug) {
-                System.out.println("neutralEC not set");
-            }
+            Debug.printInformation("neutralEC not set", null);
+            return false;
+        }
+        if (!isTypeAttack) {
+            Debug.printInformation("isTypeAttack is false", null);
             return false;
         }
 
@@ -114,18 +161,29 @@ public class PoliticanBot implements RunnableBot {
         RobotInfo[] nearbyRobots = controller.senseNearbyRobots(actionRadius);
         for (RobotInfo robotInfo : nearbyRobots) {
             if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER && robotInfo.team == Team.NEUTRAL) {
-                // explode if no other nearby robots
-                //TODO: pranay's comment -> I think 1 is too risky since the enemy might have a bot nearby? not sure...
-                if (nearbyRobots.length == 1 && controller.canEmpower(actionRadius)) {
-                    controller.empower(actionRadius);
+                // explode if no other nearby allied muckrakers or slanderers
+                int squaredDistance = controller.getLocation().distanceSquaredTo(robotInfo.getLocation());
+                RobotInfo[] nearbyAlliedRobots = controller.senseNearbyRobots(squaredDistance, controller.getTeam());
+                boolean safeToEmpower = true;
+                for (RobotInfo nearbyAlliedRobot : nearbyAlliedRobots) {
+                    if (nearbyAlliedRobot.type == RobotType.MUCKRAKER || nearbyAlliedRobot.type == RobotType.SLANDERER) {
+                        safeToEmpower = false;
+                    }
+                }
+                if (safeToEmpower && controller.canEmpower(actionRadius)) {
+                    controller.empower(squaredDistance);
                     return true;
+                } else if (!safeToEmpower) {
+                    int flag = CommunicationMovement.encodeMovement(false, true,
+                            CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.NOOP,
+                            CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
+                    if (controller.canSetFlag(flag)) {
+                        controller.setFlag(flag);
+                        Comms.hasSetFlag = true;
+                    }
                 }
             }
         }
-        int flag = CommunicationMovement.encodeMovement(false, true,
-                CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.NOOP,
-                CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
-        Comms.checkAndAddFlag(flag);
 
         pathfinding.move(neutralEC);
         return true;
@@ -139,7 +197,7 @@ public class PoliticanBot implements RunnableBot {
     //      explosion radius
     //      sometimes we move which causes us to not be able to cast ability until later
     //      there are some bugs with not exploding at the right time, or multiple bots exloding at the same time
-    //      
+    //
     public boolean chaseMuckrakerUntilExplode() throws GameActionException {
 
         int friendlySlanderersSize = 0;
