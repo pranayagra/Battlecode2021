@@ -5,6 +5,8 @@ import battlecode.common.MapLocation;
 
 public class CommunicationECSpawnFlag {
 
+    /* DONE */
+
     public static final int FLAG_CODE = 0b101;
 
     public static final int LOCATION_DATA_NBITS = 7;

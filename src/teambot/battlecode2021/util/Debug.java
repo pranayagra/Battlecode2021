@@ -111,17 +111,6 @@ public class Debug {
         }
     }
 
-//    public static void printECInformation() {
-////        assertValues();
-//        if (debug) {
-//            System.out.println(robotType() + " at " + robotLocation() + " knows: " + ECInformationOutput());
-//        }
-//    }
-
-//    private static String ECInformationOutput() {
-//        return "[List of EC locations: " + Arrays.toString("a") + "]";
-//    }
-
     private static String mapInformationOutput() {
         return "[Map Width: " + mapWidth() + ", Map Height: " + mapHeight() + ", Map Left Edge: " +
                 mapLeftEdge() + ", Map Right Edge: " + mapRightEdge() + ", Map Top Edge: " + mapTopEdge() + ", Map Bot Edge: " + mapBotEdge() + "]";

@@ -4,6 +4,7 @@ import battlecode.common.*;
 import teambot.RunnableBot;
 import teambot.battlecode2021.util.*;
 
+import java.nio.file.Path;
 import java.util.*;
 
 public class MuckrakerBot implements RunnableBot {
@@ -12,16 +13,11 @@ public class MuckrakerBot implements RunnableBot {
     private static Random random;
 
     private MapLocation scoutTarget;
-    private Direction scoutDirection;
-
-    int relativeX;
-    int relativeY;
-    private static boolean isBlockingEnemyEC;
 
     //Behavior: if does not exist, add to map. If exists, check type (neutral, friendly, enemy) and see if it has changed
     private static Map<MapLocation, CommunicationLocation.FLAG_LOCATION_TYPES> foundECs;
 
-    private static boolean updatedFlagThisRound;
+    boolean listenToECInsturction;
 
 
     public MuckrakerBot(RobotController controller) throws GameActionException {
@@ -36,36 +32,30 @@ public class MuckrakerBot implements RunnableBot {
         pathfinding.init(controller);
 
         random = new Random(controller.getID());
-        isBlockingEnemyEC = false;
 
         foundECs = new HashMap();
         foundECs.put(Cache.myECLocation, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION);
 
         // check if scout
-
-        scoutDirection = Cache.myECLocation.directionTo(Cache.CURRENT_LOCATION);
-        scoutTarget = null;
-
+        listenToECInsturction = true;
     }
 
     @Override
     public void turn() throws GameActionException {
-        updatedFlagThisRound = false;
 
-        int type = controller.getInfluence();
-        switch (type) {
-            case 1:
-                scoutRoutine();
+
+        switch (Cache.EC_INFO_ACTION) {
+            case ATTACK_LOCATION:
                 break;
-            case 2:
+            case DEFEND_LOCATION:
                 muckWall(Cache.myECID);
                 //TODO: close wall if and only if we can sense an enemy (move a rank up or down, not sure which)
                 //TODO: create a structure around slanderers, not EC
                 //TODO: some type of communication between EC spawn location (or flag) and direction (or location) to fill wall, which is intitated by slanderers?
                 break;
-            case 3:
-
-            default:
+            case SCOUT_LOCATION:
+                scoutTarget = Cache.EC_INFO_LOCATION;
+                scoutRoutine();
                 break;
         }
 
@@ -168,23 +158,13 @@ public class MuckrakerBot implements RunnableBot {
         }
 
         Direction moveDirection = null;
+        int moveRes = Pathfinding.move(scoutTarget);
+        Debug.printInformation("SCOUT MOVE RESULT", moveRes);
 
-        if (random.nextInt(10) > 3) { //60% of the time pathfind
-            if (scoutDirection != null) {
-                moveDirection = pathfinding.toMovePreferredDirection(scoutDirection, 4);
-
-            } else if (scoutTarget != null) {
-                moveDirection = pathfinding.toMovePreferredDirection(Cache.CURRENT_LOCATION.directionTo(scoutTarget), 4);
-
-            }
-        } else {
-            moveDirection = pathfinding.randomValidDirection();
-        }
-
-        if (moveDirection != null) {
-            controller.move(moveDirection);
-            return true;
-        }
+//        if (moveDirection != null) {
+//            controller.move(moveDirection);
+//            return true;
+//        }
 
         return false;
     }
@@ -198,7 +178,6 @@ public class MuckrakerBot implements RunnableBot {
     private void scoutECs() throws GameActionException {
         for (RobotInfo info : Cache.ALL_NEARBY_ROBOTS) { //incorrect use of cache due to location - reminder update
             if (info.type == RobotType.ENLIGHTENMENT_CENTER) {
-                Debug.printInformation( "checking EC location " + info.location + " => ", "");
                 CommunicationLocation.FLAG_LOCATION_TYPES locationTypePrevious = foundECs.get(info.location);
                 CommunicationLocation.FLAG_LOCATION_TYPES locationTypeNew = getECType(info.team);
 
