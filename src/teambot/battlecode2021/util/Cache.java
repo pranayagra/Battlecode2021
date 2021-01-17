@@ -35,6 +35,10 @@ public class Cache {
 
     public static MapLocation myECLocation;
     public static int myECID;
+    public static Map<MapLocation, Integer> ALL_KNOWN_FRIENDLY_EC_LOCATIONS; // Location : RobotID
+    public static Map<MapLocation, Integer> ALL_KNOWN_ENEMY_EC_LOCATIONS; // Location : RobotID
+    //Behavior: if does not exist, add to map. If exists, check type (neutral, friendly, enemy) and see if it has changed
+    public static Map<MapLocation, CommunicationLocation.FLAG_LOCATION_TYPES> FOUND_ECS;
 
     public static double PASSABILITY; // not sure about this...
     public static double COOLDOWN; // not sure...
@@ -57,9 +61,12 @@ public class Cache {
         ID = controller.getID();
         NUM_ROUNDS_SINCE_SPAWN = 0;
         SENSOR_RADIUS = (int) Math.floor(Math.sqrt(Cache.ROBOT_TYPE.sensorRadiusSquared));
+        ALL_KNOWN_FRIENDLY_EC_LOCATIONS = new HashMap<>();
+        ALL_KNOWN_ENEMY_EC_LOCATIONS = new HashMap<>();
+        FOUND_ECS = new HashMap();
 
+        // Find EC spawn
         myECLocation = Cache.CURRENT_LOCATION;
-
         if (ROBOT_TYPE != RobotType.ENLIGHTENMENT_CENTER) {
             for (RobotInfo robotInfo : controller.senseNearbyRobots(2, OUR_TEAM)) {
                 if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER && controller.canGetFlag(robotInfo.ID)) {

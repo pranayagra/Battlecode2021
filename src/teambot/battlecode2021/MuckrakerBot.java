@@ -14,10 +14,7 @@ public class MuckrakerBot implements RunnableBot {
 
     private MapLocation scoutTarget;
 
-    //Behavior: if does not exist, add to map. If exists, check type (neutral, friendly, enemy) and see if it has changed
-    private static Map<MapLocation, CommunicationLocation.FLAG_LOCATION_TYPES> foundECs;
-
-    boolean listenToECInsturction;
+    boolean listenToECInstruction;
 
 
     public MuckrakerBot(RobotController controller) throws GameActionException {
@@ -33,16 +30,14 @@ public class MuckrakerBot implements RunnableBot {
 
         random = new Random(controller.getID());
 
-        foundECs = new HashMap();
-        foundECs.put(Cache.myECLocation, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION);
+        Cache.FOUND_ECS.put(Cache.myECLocation, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION);
 
         // check if scout
-        listenToECInsturction = true;
+        listenToECInstruction = true;
     }
 
     @Override
     public void turn() throws GameActionException {
-
 
         switch (Cache.EC_INFO_ACTION) {
             case ATTACK_LOCATION:
@@ -63,16 +58,7 @@ public class MuckrakerBot implements RunnableBot {
     }
 
     public boolean scoutRoutine() throws GameActionException {
-
         scoutMovement();
-
-        /* REMEMBER TO BE CAREFUL USING LOCATION/ENVIRONMENT CACHE VARIABLES SINCE WE MOVE FIRST! UPDATE FIRST */
-        Cache.CURRENT_LOCATION = controller.getLocation();
-        Cache.ALL_NEARBY_ROBOTS = controller.senseNearbyRobots();
-
-        scoutECs();
-        
-        Debug.printByteCode("scoutRoutine() => END");
         return true;
     }
 
@@ -146,11 +132,6 @@ public class MuckrakerBot implements RunnableBot {
     /*
      * Functionality:
      *      Perform a movement to optimize scouting of the map
-     * Bugs:
-     *      I think this code is not safe (pathfinding.tryMove() can return an invalid direction which will cause an exception to controller.move())
-     * Enhancements:
-     *      Find a better way to scout the map (can possibly set target locations based on spawn or something)
-     *
      * */
     private boolean scoutMovement() throws GameActionException {
         if (!controller.isReady()) {
@@ -162,64 +143,6 @@ public class MuckrakerBot implements RunnableBot {
 
         return false;
     }
-
-    /* Find all ECs in sensor range and communicate it if and only if
-    *  1) the bot has never seen it before OR
-    *  2) the bot previously scouted it but has since changed teams (ally, enemy, neutral)
-    *
-    * Changelog: removed avoiding the current EC because we could lose it mid-game, but it is not added to the communicationQueue since we prepopulate the map
-    * */
-    private void scoutECs() throws GameActionException {
-        for (RobotInfo info : Cache.ALL_NEARBY_ROBOTS) { //incorrect use of cache due to location - reminder update
-            if (info.type == RobotType.ENLIGHTENMENT_CENTER) {
-                CommunicationLocation.FLAG_LOCATION_TYPES locationTypePrevious = foundECs.get(info.location);
-                CommunicationLocation.FLAG_LOCATION_TYPES locationTypeNew = getECType(info.team);
-
-                if (locationTypePrevious == null || locationTypePrevious != locationTypeNew) { //if null or if the type of EC has since changed
-                    foundECs.put(info.location, locationTypeNew); //overwrite or add
-                    Debug.printInformation( "setting EC Found Flags => ", info.location);
-                    int flag = CommunicationLocation.encodeLOCATION(false, false, locationTypeNew, info.location);
-                    Comms.checkAndAddFlag(flag);
-                    flag = CommunicationECInfo.encodeECInfo(false, false, getCommunicatedUnitTeamForECInfo(info.team), info.conviction);
-                    Comms.checkAndAddFlag(flag);
-                    flag = CommunicationRobotID.encodeRobotID(false,true, CommunicationRobotID.COMMUNICATION_UNIT_TYPE.EC, getCommunicatedUnitTeamForRobotID(info.team), info.ID);
-                    Comms.checkAndAddFlag(flag);
-                }
-            }
-        }
-    }
-
-    /* Converts the EC Team to a Location Flag Type for communication purposes */
-    private CommunicationLocation.FLAG_LOCATION_TYPES getECType(Team ECTeam) {
-        if (ECTeam.equals(Cache.OUR_TEAM)) {
-            return CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION;
-        } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
-            return CommunicationLocation.FLAG_LOCATION_TYPES.ENEMY_EC_LOCATION;
-        } else {
-            return CommunicationLocation.FLAG_LOCATION_TYPES.NEUTRAL_EC_LOCATION;
-        }
-    }
-
-    private CommunicationECInfo.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForECInfo(Team ECTeam) {
-        if (ECTeam.equals(Cache.OUR_TEAM)) {
-            return CommunicationECInfo.COMMUNICATION_UNIT_TEAM.MY;
-        } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
-            return CommunicationECInfo.COMMUNICATION_UNIT_TEAM.ENEMY;
-        } else {
-            return CommunicationECInfo.COMMUNICATION_UNIT_TEAM.NEUTRAL;
-        }
-    }
-
-    private CommunicationRobotID.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForRobotID(Team ECTeam) {
-        if (ECTeam.equals(Cache.OUR_TEAM)) {
-            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.MY;
-        } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
-            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.ENEMY;
-        } else {
-            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.NEUTRAL;
-        }
-    }
-
 
     /* 
     * Guide 

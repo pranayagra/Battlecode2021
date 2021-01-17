@@ -192,6 +192,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         defaultTurn();
 
+        /*
         Debug.printInformation("NORTH -> ", Cache.MAP_TOP);
         Debug.printInformation("EAST -> ", Cache.MAP_RIGHT);
         Debug.printInformation("SOUTH -> ", Cache.MAP_BOTTOM);
@@ -200,6 +201,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Debug.printInformation("HEIGHT -> ", Cache.MAP_WIDTH);
 
         Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
+        */
 
 //        Debug.printECInformation();
 
@@ -438,9 +440,11 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     private boolean setFlagForSpawnedUnit(Direction direction, CommunicationECSpawnFlag.ACTION actionType, CommunicationECSpawnFlag.SAFE_QUADRANT safeQuadrant, MapLocation locationData) throws GameActionException {
         int flag = CommunicationECSpawnFlag.encodeSpawnInfo(direction, actionType, safeQuadrant, locationData);
-        if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
-            Comms.hasSetFlag = true;
-            controller.setFlag(flag);
+        if (!Comms.canScheduleFlag(controller.getRoundNum()+1)) {
+            Debug.printInformation("Warning - Potential Schedule Conflict at turn", controller.getRoundNum()+1);
+            return false;
+        }
+        if (Comms.scheduleFlag(controller.getRoundNum()+1, flag)) {
             return true;
         }
         return false;
@@ -456,11 +460,13 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         if (location == null) location = spawnLocationNull();
 
+        // Only build if message can be sent out
         if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
-            controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
-            SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ++] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
-            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.SCOUT_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
-            return true;
+            if (setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.SCOUT_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location)) {
+                controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
+                SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ++] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
+                return true;
+            }
         }
         return false;
 

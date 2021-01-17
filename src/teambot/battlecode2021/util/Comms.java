@@ -22,6 +22,27 @@ public abstract class Comms {
         return ((encoding >> 19) & 1) == 1;
     }
 
+    /* Scheduled Communication System*/
+    private static int[] schedule = new int[1501];
+
+    public static boolean canScheduleFlag(int turn) {
+        if (turn > 1500) {
+            return false;
+        }
+        if (schedule[turn] == 0) {
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean scheduleFlag(int turn, int flag) {
+        if (controller.canSetFlag(flag)) {
+            schedule[turn] = flag;
+            return true;
+        }
+        return false;
+    }
+
     /* Communication Queue System */
 
     public static void checkAndAddFlag(int flag) throws GameActionException {
@@ -37,9 +58,19 @@ public abstract class Comms {
     private static Queue<Integer> communicationQueue = new LinkedList<Integer>();
     public static boolean hasSetFlag;
 
+    /* Set all flags here */
+
     public static void loop() throws GameActionException {
+
+        int flag = schedule[controller.getRoundNum()];
+        if (flag != 0) {
+            if (controller.canSetFlag(flag)) {
+                controller.setFlag(flag);
+                hasSetFlag = true;
+            }   
+        }
         if (!hasSetFlag && communicationQueue.size() > 0) {
-            int flag = communicationQueue.poll();
+            flag = communicationQueue.poll();
             if (controller.canSetFlag(flag)) {
                 controller.setFlag(flag);
             }
