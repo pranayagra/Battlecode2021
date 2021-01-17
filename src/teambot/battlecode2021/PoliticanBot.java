@@ -65,23 +65,6 @@ public class PoliticanBot implements RunnableBot {
             Pathfinding.move(Pathfinding.randomLocation());
             return;
         }
-
-//        if (isTypeAttack) {
-//            if (attackingPoliticianNearEnemyEC()) {
-//                if (Debug.debug) {
-//                    System.out.println("ATTACKING POLITICIAN NEAR ENEMY EC -- ATTACK");
-//                }
-//
-//                if (!controller.isReady()) {
-//                    return;
-//                }
-//
-//                if (explodeEC(EnemyEC)) {
-//
-//                }
-//                return;
-//            }
-//        }
     }
 
     public boolean leaveBaseToEnterLattice() throws GameActionException {

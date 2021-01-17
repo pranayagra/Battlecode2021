@@ -50,11 +50,14 @@ class EC_Information {
                 ", locationFlagType=" + locationFlagType +
                 '}';
     }
-
 }
+
 
 public class EnlightenmentCenterBot implements RunnableBot {
     private RobotController controller;
+
+    private static MapLocation[] SCOUT_LOCATIONS;
+    private static int SCOUT_LOCATIONS_CURRENT;
 
     /*
     private static int EC_ID_CURRENT_BRUTE_FORCE;
@@ -83,11 +86,6 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     //TODO: need to think of building requests when we cannot build on a certain round or have too many requests.. we probably want some type of priority here
     private static int[] buildRequests; //want to store -> the necessary information (type, influence, direction, deltaDirectionAllowed) and how old the request is?
-
-    private static int foundNorth;
-    private static int foundEast;
-    private static int foundSouth;
-    private static int foundWest;
 
     private static int[][] processRobotFlags;
     private static int[] processRobotFlagsSZ1D; //the size of the cols for each row
@@ -122,6 +120,19 @@ public class EnlightenmentCenterBot implements RunnableBot {
     @Override
     public void init() throws GameActionException {
         random = new Random(controller.getID());
+
+        SCOUT_LOCATIONS = new MapLocation[]{
+                new MapLocation(-62,-62),
+                new MapLocation(62, 62),
+                new MapLocation(-62, 62),
+                new MapLocation(62, -62),
+                new MapLocation(-62, 0),
+                new MapLocation(62, 0),
+                new MapLocation(0, 62),
+                new MapLocation(62, 0),
+        };
+        SCOUT_LOCATIONS_CURRENT = 0;
+
 
         /*
         EC_ID_CURRENT_BRUTE_FORCE = 10000;
@@ -181,10 +192,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         defaultTurn();
 
-        Debug.printInformation("NORTH -> ", foundNorth);
-        Debug.printInformation("EAST -> ", foundEast);
-        Debug.printInformation("SOUTH -> ", foundSouth);
-        Debug.printInformation("WEST -> ", foundWest);
+        Debug.printInformation("NORTH -> ", Cache.MAP_TOP);
+        Debug.printInformation("EAST -> ", Cache.MAP_RIGHT);
+        Debug.printInformation("SOUTH -> ", Cache.MAP_BOTTOM);
+        Debug.printInformation("WEST -> ", Cache.MAP_LEFT);
+        Debug.printInformation("HEIGHT -> ", Cache.MAP_HEIGHT);
+        Debug.printInformation("HEIGHT -> ", Cache.MAP_BOTTOM);
 
         Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
 
@@ -216,16 +229,16 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         switch (locationType) {
             case NORTH_MAP_LOCATION:
-                foundNorth = locationData.y;
+                Cache.MAP_TOP = locationData.y;
                 break;
             case SOUTH_MAP_LOCATION:
-                foundSouth = locationData.y;
+                Cache.MAP_BOTTOM = locationData.y;
                 break;
             case EAST_MAP_LOCATION:
-                foundEast = locationData.x;
+                Cache.MAP_RIGHT = locationData.x;
                 break;
             case WEST_MAP_LOCATION:
-                foundWest = locationData.x;
+                Cache.MAP_LEFT = locationData.x;
                 break;
             case MY_EC_LOCATION: //ADD STUFF HERE
             case ENEMY_EC_LOCATION:
@@ -372,19 +385,23 @@ public class EnlightenmentCenterBot implements RunnableBot {
         int ran = random.nextInt(5);
 
         if (SCOUT_MUCKRAKER_SZ < 8) {
-            spawnScoutMuckraker(1, randomValidDirection());
-            Debug.printInformation("Spawned Scout => ", "VALID");
+            MapLocation targetLocation = Cache.START_LOCATION.translate(SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].x, SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].y);
+            Direction preferredDirection = Cache.START_LOCATION.directionTo(targetLocation);
+            if (spawnScoutMuckraker(1, toBuildDirection(preferredDirection,4), targetLocation)) {
+                SCOUT_LOCATIONS_CURRENT = (++SCOUT_LOCATIONS_CURRENT) % SCOUT_LOCATIONS.length;
+                Debug.printInformation("Spawned Scout => ", targetLocation);
+            }
         } else if (SLANDERER_IDs.getSize() < 8) {
                 spawnLatticeSlanderer((int) (controller.getInfluence() * 0.1), randomValidDirection());
                 Debug.printInformation("Spawned Slanderer => ", "VALID");
         } else if (ran <= 2) {
-                spawnDefendingPolitician(15, randomValidDirection());
+                spawnDefendingPolitician(15, randomValidDirection(), null);
                 Debug.printInformation("spawnDefendingPolitician => ", "VALID");
         } else if (ran <= 3) {
                 spawnLatticeSlanderer((int) (controller.getInfluence() * 0.1), randomValidDirection());
                 Debug.printInformation("spawnLatticeSlanderer => ", "VALID");
         } else if (ran == 4) {
-                spawnWallMuckraker(2, randomValidDirection());
+                spawnWallMuckraker(2, randomValidDirection(), null);
                 Debug.printInformation("spawnWallMuckraker => ", "VALID");
         }
 
@@ -429,23 +446,33 @@ public class EnlightenmentCenterBot implements RunnableBot {
         return false;
     }
 
-    private void spawnScoutMuckraker(int influence, Direction direction) throws GameActionException {
+    private MapLocation spawnLocationNull() {
+//        return Cache.CURRENT_LOCATION;
+        return Pathfinding.randomLocation();
+    }
+
+    private boolean spawnScoutMuckraker(int influence, Direction direction, MapLocation location) throws GameActionException {
         //TODO: should spawn muckraker in location
+
+        if (location == null) location = spawnLocationNull();
+
         if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
             controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
             SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ++] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
-            MapLocation scoutLocation = Pathfinding.randomLocation();
-            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.SCOUT_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, scoutLocation);
+            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.SCOUT_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
+            return true;
         }
+        return false;
 
     }
 
-    private void spawnWallMuckraker(int influence, Direction direction) throws GameActionException {
+    private void spawnWallMuckraker(int influence, Direction direction, MapLocation location) throws GameActionException {
         //TODO: should spawn muckrakers to build wall
+        if (location == null) location = spawnLocationNull();
+
         if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
             controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
-            MapLocation locationData = Pathfinding.randomLocation();
-            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, locationData);
+            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
         }
     }
 
@@ -459,26 +486,26 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
     }
 
-    private void spawnDefendingPolitician(int influence, Direction direction) throws GameActionException {
+    private void spawnDefendingPolitician(int influence, Direction direction, MapLocation location) throws GameActionException {
         //TODO: should defend slanderers outside the muckrakers wall
+        if (location == null) location = spawnLocationNull();
         if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
-            MapLocation locationData = Pathfinding.randomLocation();
-            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, locationData);
+            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
         }
     }
 
-    private void spawnAttackingPolitician(int influence, Direction direction) throws GameActionException {
+    private void spawnAttackingPolitician(int influence, Direction direction, MapLocation location) throws GameActionException {
         //TODO: should only be called if the politician is meant to attack some base -> need to create politician with enough influence, set my EC flag to the location + attacking poli
         //Assumption: politician upon creation should read EC flag and know it's purpose in life. It can determine what to do then
+        if (location == null) location = spawnLocationNull();
         if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
-            MapLocation locationData = Pathfinding.randomLocation();
-            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, locationData);
+            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
         }
     }
 
-        /*
+    /*
     private void setLocationFlag() throws GameActionException {
         int encodedFlag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
                 Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.MY_EC_LOCATION, 0, Cache.CURRENT_LOCATION);

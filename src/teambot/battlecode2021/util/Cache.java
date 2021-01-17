@@ -13,15 +13,12 @@ public class Cache {
     public static RobotInfo[] ALL_NEARBY_ROBOTS;
     public static RobotInfo[] ALL_NEARBY_FRIENDLY_ROBOTS;
     public static RobotInfo[] ALL_NEARBY_ENEMY_ROBOTS;
-    public static int[] ALL_NEARBY_FRIENDLY_ROBOT_FLAGS;
     public static MapLocation CURRENT_LOCATION;
     public static RobotType ROBOT_TYPE;
     public static int INFLUENCE;
     public static int CONVICTION;
     public static int ID;
     public static int SENSOR_RADIUS;
-
-    public static MapLocation MAP_CENTER_LOCATION;
 
     // The size of the map
     //TODO: IMPLEMENT MAP DIMENSION UPDATES (based on partly with EC communication)
@@ -36,31 +33,19 @@ public class Cache {
     public static int MAP_RIGHT;
     public static int MAP_SYMMETRIC_TYPE;
 
-    public static int[] EC_FLAGS;
     public static MapLocation myECLocation;
     public static int myECID;
-    public static Map<MapLocation, Integer> ALL_KNOWN_FRIENDLY_EC_LOCATIONS; // Location : RobotID
-    public static Map<MapLocation, Integer> ALL_KNOWN_ENEMY_EC_LOCATIONS; // Location : RobotID
 
     public static double PASSABILITY; // not sure about this...
     public static double COOLDOWN; // not sure...
 
-    // for slanderer specifically important
     public static int NUM_ROUNDS_SINCE_SPAWN;
 
-    //TODO: IMPLEMENT - REFACTOR SO IT'S JUST A METHOD TO SAVE A STATE AND WE USE CURR_POSITION - START_POSITION...
-    // The moves we have performed from birth. So if we find something useful, we can set our flags accordingly with only taking 6 + 6 bits and communicate to the EC(s) the absolute location
     public static MapLocation START_LOCATION;
-    public static Map<MapLocation, Integer> SAVE_DELTA_STATE; //TODO: KNOW WHAT EACH INTEGER REPRESENTS, OR
-
-    //TODO: The EC needs to have additional parameters to hold all the IDs of the robots it produced
-    public static Set<Integer> EC_ALL_PRODUCED_ROBOT_IDS; // IDs of the robots that were produced by the EC (class specific)
-
-    //TODO: Save in 128x128 map the passability of grid (we need 128x128 since we do not know the offset of the map)
 
 
-    // EC specific information
-    public static int TOTAL_NUMBER_OF_ECS;
+    public static CommunicationECSpawnFlag.ACTION EC_INFO_ACTION;
+    public static MapLocation EC_INFO_LOCATION;
 
     public static void init(RobotController controller) throws GameActionException {
         Cache.controller = controller;
@@ -72,9 +57,6 @@ public class Cache {
         ID = controller.getID();
         NUM_ROUNDS_SINCE_SPAWN = 0;
         SENSOR_RADIUS = (int) Math.floor(Math.sqrt(Cache.ROBOT_TYPE.sensorRadiusSquared));
-        EC_ALL_PRODUCED_ROBOT_IDS = new HashSet<>();
-        ALL_KNOWN_FRIENDLY_EC_LOCATIONS = new HashMap<>();
-        ALL_KNOWN_ENEMY_EC_LOCATIONS = new HashMap<>();
 
         myECLocation = Cache.CURRENT_LOCATION;
 
@@ -85,7 +67,6 @@ public class Cache {
                     if (CommunicationECSpawnFlag.decodeIsSchemaType(encoding)) {
                         Direction directionFromEC = robotInfo.location.directionTo(START_LOCATION);
                         if (CommunicationECSpawnFlag.decodeDirection(encoding).equals(directionFromEC)) {
-                            Debug.printInformation("Cache.Init() ECLocation -> ", robotInfo.location);
                             myECLocation = robotInfo.location;
                             myECID = robotInfo.ID;
                             processECSpawnInfo(encoding);
@@ -101,17 +82,17 @@ public class Cache {
 
     }
 
-    //TODO:
+    //TODO: change depending on flag.
     private static void processECSpawnInfo(int encoding) {
-        CommunicationECSpawnFlag.ACTION actionInfo = CommunicationECSpawnFlag.decodeAction(encoding);
+        EC_INFO_ACTION = CommunicationECSpawnFlag.decodeAction(encoding);
         CommunicationECSpawnFlag.SAFE_QUADRANT safeQuadrant = CommunicationECSpawnFlag.decodeSafeQuadrant(encoding);
-        MapLocation locationData = CommunicationECSpawnFlag.decodeLocationData(encoding);
+        EC_INFO_LOCATION = CommunicationECSpawnFlag.decodeLocationData(encoding);
+        Debug.printInformation("INFORMATION FROM EC IS " + EC_INFO_ACTION + " AND " + EC_INFO_LOCATION, "");
 
         // DO SOMETHING HERE
     }
 
     public static void loop() throws GameActionException {
-
         ++NUM_ROUNDS_SINCE_SPAWN;
         ALL_NEARBY_ROBOTS = controller.senseNearbyRobots();
         ALL_NEARBY_FRIENDLY_ROBOTS = controller.senseNearbyRobots(-1, OUR_TEAM);
@@ -122,18 +103,12 @@ public class Cache {
         PASSABILITY = controller.sensePassability(CURRENT_LOCATION);
         COOLDOWN = controller.getCooldownTurns();
 
-//        if (ROBOT_TYPE != RobotType.ENLIGHTENMENT_CENTER) {
-//            for (RobotInfo robot : ALL_NEARBY_ENEMY_ROBOTS) {
-//                if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER && robot.team == OPPONENT_TEAM) {
-//                    MapLocation EC_MAP = robot.getLocation();
-//                    int flag = Communication.makeFlag_SpecificedLocation(EC_MAP, "ENEMY_EC");
-//                    if (controller.canSetFlag(flag)) {
-//                        controller.setFlag(flag);
-//                        break;
-//                    }
-//                }
-//            }
-//        }
+        if (MAP_TOP != 0 && MAP_BOTTOM != 0) {
+            MAP_HEIGHT = MAP_TOP - MAP_BOTTOM;
+        }
 
+        if (MAP_LEFT != 0 && MAP_RIGHT != 0) {
+            MAP_WIDTH = MAP_RIGHT - MAP_LEFT;
+        }
     }
 }

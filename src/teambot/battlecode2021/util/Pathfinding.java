@@ -43,7 +43,7 @@ public class Pathfinding {
         // Is it ready
         if (!controller.isReady()) return 0;
         // Is target out of the map
-        if (!controller.onTheMap(Cache.CURRENT_LOCATION.add(Cache.CURRENT_LOCATION.directionTo(targetLoc)))) return 2;
+        if (targetLoc == null || !controller.onTheMap(Cache.CURRENT_LOCATION.add(Cache.CURRENT_LOCATION.directionTo(targetLoc)))) return 2;
         // At destination
         if (targetLoc.equals(Cache.CURRENT_LOCATION)) {
             isBugging = false;
