@@ -232,7 +232,7 @@ public class PoliticanBot implements RunnableBot {
         if (enemyMuckrakerInRange && friendlySlanderersSize > 0) { //If I have both a muckraker and slanderer in range of me, alert danger by inDanger to slanderers!
 
             // I THINK SET MOVEMENT_BOTS_DATA to EC -> LOCATION value
-            Direction dangerDirection = Cache.myECLocation.directionTo(Cache.CURRENT_LOCATION);
+            Direction dangerDirection = Cache.myECLocation.directionTo(toTarget);
             flag = CommunicationMovement.encodeMovement(true, true,
                     CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.convert_DirectionInt_MovementBotsData(dangerDirection.ordinal()),
                     CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, true, 0);
