@@ -205,9 +205,6 @@ public class SlandererBot implements RunnableBot {
             ++idx;
         }
 
-//        Debug.printByteCode("runFromMuckrakerMove() => computed all valid dirs + locations ");
-//        Debug.printInformation("valid directions is sized " + canMoveIndicesSize + " and has ", Arrays.toString(canMoveIndices));
-
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
             if (robotInfo.getType() == RobotType.MUCKRAKER) {
                 foundEnemyMuckraker = true;
@@ -223,7 +220,7 @@ public class SlandererBot implements RunnableBot {
 
 //        Debug.printInformation("my location reward is ", rewardOfStaying);
 //        Debug.printInformation("location rewards surrounding me is ", Arrays.toString(moveRewards));
-//        Debug.printByteCode("runFromMuckrakerMove() => SCANNED ENEMY LOCATIONS ");
+
         int flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.SL, CommunicationMovement.MOVEMENT_BOTS_DATA.NOT_MOVING, CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
         int bestValidDirection = -1;
         double bestValidReward = rewardOfStaying;
@@ -244,8 +241,6 @@ public class SlandererBot implements RunnableBot {
 
             for (int i = 0; i < canMoveIndicesSize; ++i) {
                 if (moveRewards[canMoveIndices[i]] > bestValidReward) {
-//                    Debug.printInformation("best valid tuning => canMoveIndices => ", canMoveIndices[i]);
-//                    Debug.printInformation("best valid tuning => reward => ", moveRewards[canMoveIndices[i]]);
                     bestValidDirection = canMoveIndices[i];
                     bestValidReward = moveRewards[canMoveIndices[i]];
                 }
@@ -254,7 +249,8 @@ public class SlandererBot implements RunnableBot {
 
         //TODO: THINK -> if a politican has both a muckraker and slanderer in range, then
         // 1) should this slanderer just RUN away towards the EC |OR|
-        // 2) should this slanderer SET its flag to danger (to announce to neighboring slanderers to run) and then RUN away towards EC? <-- I think this one
+        // 2) should this slanderer SET its flag to danger (so neighboring slanderers will also run) and then RUN away towards EC?
+        // 3) this slanderer SET its flag to danger (so neighboring slanderers will also run) and then RUN away from POLI direction <-- I think this one
         int bestDirectionBasedOnPoliticianDangerIdx = -1;
         if (!foundEnemyMuckraker) {
             for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
@@ -267,7 +263,7 @@ public class SlandererBot implements RunnableBot {
                         CommunicationMovement.MOVEMENT_BOTS_DATA badArea = CommunicationMovement.decodeMyPreferredMovement(encodedFlag);
                         int badIdx = CommunicationMovement.convert_MovementBotData_DirectionInt(badArea);
                         Direction bestDirection = Constants.DIRECTIONS[badIdx].opposite();
-                        Debug.printInformation("BEST DIRECTION AWAY FROM POLI IS", bestDirection);
+//                        Debug.printInformation("BEST DIRECTION AWAY FROM POLI IS", bestDirection);
                         bestDirectionBasedOnPoliticianDangerIdx = bestDirection.ordinal();
                         flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.SL,
                                 CommunicationMovement.convert_DirectionInt_MovementBotsData(bestDirectionBasedOnPoliticianDangerIdx),
@@ -306,23 +302,16 @@ public class SlandererBot implements RunnableBot {
                 if (dist < closestLocation) { //the closest bot in danger to us is our biggest threat as well
                     int encodedFlag = controller.getFlag(robotInfo.ID);
 
-//                    if (Debug.debug) System.out.println("DECODING FLAG " + encodedFlag + " for " + robotInfo.location);
-
                     if (CommunicationMovement.decodeIsSchemaType(encodedFlag)) {
                         if (CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.SL && CommunicationMovement.decodeIsDangerBit(encodedFlag)) {
                             CommunicationMovement.MOVEMENT_BOTS_DATA movementBotsData = CommunicationMovement.decodeMyPreferredMovement(encodedFlag);
                             preferedMovementDirectionIdx = CommunicationMovement.convert_MovementBotData_DirectionInt(movementBotsData);
                             closestLocation = dist;
-//                            if (Debug.debug) System.out.println("Correct type of flag, setting direction to " + preferedMovementDirectionIdx + " at dist " + dist);
                         }
                     }
                 }
             }
         }
-
-
-//        Debug.printByteCode("runFromMuckrakerMove() => ITERATED THROUGH FRIENDLY ROBOTS ");
-
 
         if (preferedMovementDirectionIdx != -1) {
             Direction direction = Pathfinding.toMovePreferredDirection(Constants.DIRECTIONS[preferedMovementDirectionIdx], 1);
