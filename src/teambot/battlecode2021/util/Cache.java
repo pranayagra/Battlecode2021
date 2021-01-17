@@ -85,23 +85,16 @@ public class Cache {
                     if (CommunicationECSpawnFlag.decodeIsSchemaType(encoding)) {
                         Direction directionFromEC = robotInfo.location.directionTo(START_LOCATION);
                         if (CommunicationECSpawnFlag.decodeDirection(encoding).equals(directionFromEC)) {
-                            Debug.printInformation("FOUND MY EC AT ", robotInfo.location);
+                            Debug.printInformation("Cache.Init() ECLocation -> ", robotInfo.location);
                             myECLocation = robotInfo.location;
                             myECID = robotInfo.ID;
-
                             processECSpawnInfo(encoding);
-
                             break;
                         }
                     }
-
-
-
-
                 }
             }
         }
-        Debug.printInformation("MY EC LOCATION IS ", myECLocation);
 
         //TODO: Not sure if I like using hashmap to store EC locations (is it bytecode expensive? Is there a different solution / can we create our own structure to hold ECs)?
         //TODO: Not sure how to determine / unadd if EC is captured/lost. I guess it's more reactive as we loop through...
