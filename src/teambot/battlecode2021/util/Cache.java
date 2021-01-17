@@ -62,7 +62,7 @@ public class Cache {
     // EC specific information
     public static int TOTAL_NUMBER_OF_ECS;
 
-    public static void init(RobotController controller) {
+    public static void init(RobotController controller) throws GameActionException {
         Cache.controller = controller;
         OUR_TEAM = controller.getTeam();
         OPPONENT_TEAM = OUR_TEAM.opponent();
@@ -80,11 +80,24 @@ public class Cache {
 
         if (ROBOT_TYPE != RobotType.ENLIGHTENMENT_CENTER) {
             for (RobotInfo robotInfo : controller.senseNearbyRobots(2, OUR_TEAM)) {
-                if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER) {
-                    Debug.printInformation("FOUND EC AT ", robotInfo.location);
-                    myECLocation = robotInfo.location;
-                    myECID = robotInfo.ID;
-                    break;
+                if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER && controller.canGetFlag(robotInfo.ID)) {
+                    int encoding = controller.getFlag(robotInfo.ID);
+                    if (CommunicationECSpawnFlag.decodeIsSchemaType(encoding)) {
+                        Direction directionFromEC = robotInfo.location.directionTo(START_LOCATION);
+                        if (CommunicationECSpawnFlag.decodeDirection(encoding).equals(directionFromEC)) {
+                            Debug.printInformation("FOUND MY EC AT ", robotInfo.location);
+                            myECLocation = robotInfo.location;
+                            myECID = robotInfo.ID;
+
+                            processECSpawnInfo(encoding);
+
+                            break;
+                        }
+                    }
+
+
+
+
                 }
             }
         }
@@ -93,6 +106,15 @@ public class Cache {
         //TODO: Not sure if I like using hashmap to store EC locations (is it bytecode expensive? Is there a different solution / can we create our own structure to hold ECs)?
         //TODO: Not sure how to determine / unadd if EC is captured/lost. I guess it's more reactive as we loop through...
 
+    }
+
+    //TODO:
+    private static void processECSpawnInfo(int encoding) {
+        CommunicationECSpawnFlag.ACTION actionInfo = CommunicationECSpawnFlag.decodeAction(encoding);
+        CommunicationECSpawnFlag.SAFE_QUADRANT safeQuadrant = CommunicationECSpawnFlag.decodeSafeQuadrant(encoding);
+        MapLocation locationData = CommunicationECSpawnFlag.decodeLocationData(encoding);
+
+        // DO SOMETHING HERE
     }
 
     public static void loop() throws GameActionException {
