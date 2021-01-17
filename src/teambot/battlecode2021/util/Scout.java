@@ -32,6 +32,22 @@ public class Scout {
     // Changed to one function instead of four
     private static void checkEdge(Direction dir, MapLocation center, int radius) throws GameActionException {
 
+        // added switch so we do not communicate the same message and backlog queue.
+        switch(dir) {
+            case NORTH:
+                if (Cache.MAP_TOP != 0) return;
+                break;
+            case SOUTH:
+                if (Cache.MAP_BOTTOM != 0) return;
+                break;
+            case EAST:
+                if (Cache.MAP_RIGHT != 0) return;
+                break;
+            case WEST:
+                if (Cache.MAP_LEFT != 0) return;
+                break;
+        }
+
         int x = dir.getDeltaX();
         int y = dir.getDeltaY();
         if (controller.onTheMap(center.translate(x*radius, y*radius))) return; //the furthest distance is already on the map (so the remaining must also be)
