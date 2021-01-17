@@ -1,19 +1,29 @@
 package teambot.battlecode2021;
 
 import battlecode.common.*;
+import mushroombot.battlecode2021.util.Communication;
 import teambot.*;
 import teambot.battlecode2021.util.*;
 
 import java.util.*;
 
-class EC_OBJECT {
+class EC_Information {
 
-    int upperBoundConviction;
-    Constants.FLAG_LOCATION_TYPES locationFlagType;
+    MapLocation location;
+    int health;
+    int robotID;
     Team team;
+    int roundFound;
+    CommunicationLocation.FLAG_LOCATION_TYPES locationFlagType;
 
-    public EC_OBJECT(int upperBoundHealth, Constants.FLAG_LOCATION_TYPES locationFlagType) {
-        this.upperBoundConviction = upperBoundHealth;
+    public EC_Information(MapLocation location) {
+        this.location = location;
+        this.health = Integer.MAX_VALUE >> 2;
+        this.robotID = Integer.MAX_VALUE >> 2;
+
+    }
+
+    public void setTeam(CommunicationLocation.FLAG_LOCATION_TYPES locationFlagType) {
         this.locationFlagType = locationFlagType;
         switch (locationFlagType) {
             case MY_EC_LOCATION:
@@ -25,21 +35,32 @@ class EC_OBJECT {
         }
     }
 
+    public void setRoundFound(int currentRound) {
+        this.roundFound = currentRound;
+    }
+
     @Override
     public String toString() {
-        return "EC_OBJECT{" +
-                "upperBoundConviction=" + upperBoundConviction +
-                ", locationFlagType=" + locationFlagType +
+        return "EC_Information{" +
+                "location=" + location +
+                ", health=" + health +
+                ", robotID=" + robotID +
                 ", team=" + team +
+                ", roundFound=" + roundFound +
+                ", locationFlagType=" + locationFlagType +
                 '}';
     }
+
 }
 
 public class EnlightenmentCenterBot implements RunnableBot {
     private RobotController controller;
 
+    /*
     private static int EC_ID_CURRENT_BRUTE_FORCE;
     private static int EC_ID_END_BRUTE_FORCE;
+
+     */
 
     /* Politicians that are attacking -- mid prio (should only be at most 100) */
     private static int ATTACKING_POLITICIAN_SZ;
@@ -68,11 +89,16 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int foundSouth;
     private static int foundWest;
 
+    private static int[][] processRobotFlags;
+    private static int[] processRobotFlagsSZ1D; //the size of the cols for each row
+    private static int processRobotFlagsSZ; //the size of the rows
+
     //Behavior: if does not exist, add to map. If exists, check type (neutral, friendly, enemy) and see if it has changed
-    private static Map <MapLocation, EC_OBJECT> foundECs;
+    private static Map <MapLocation, EC_Information> foundECs;
 
     private static boolean enemyECInSensorRange = false;
 
+    /*
     private static int num_validIDS;
     private static int[] validIDS;
 
@@ -84,6 +110,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     public static MapLocation[] ALL_ENEMY_EC_LOCATIONS;
 
     private final int MAX_ECS_PER_TEAM = 3;
+    */
 
     private static Random random;
 
@@ -96,6 +123,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     public void init() throws GameActionException {
         random = new Random(controller.getID());
 
+        /*
         EC_ID_CURRENT_BRUTE_FORCE = 10000;
         EC_ID_END_BRUTE_FORCE = EC_ID_CURRENT_BRUTE_FORCE + 4096;
         num_validIDS = 0;
@@ -107,6 +135,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         num_ALL_ENEMY_EC_LOCATIONs = 0;
         ALL_ENEMY_EC_LOCATIONS = new MapLocation[MAX_ECS_PER_TEAM * 4];
+
+         */
 
 
         /* NEW STUFF BELOW */
@@ -158,7 +188,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
 
-        Debug.printECInformation();
+//        Debug.printECInformation();
 
         Debug.printByteCode("END TURN BYTECODE => ");
 
@@ -167,7 +197,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     /* LAZILY removes slanderer from the SLANDERER_IDs object 300 rounds after. It the ID is still valid, it is added to the Defensive Politician list
     * CAUTION: This list is not up to date if a slanderer is dies within 300 rounds of spawn due to enemy attack
     *  */
-    public void updateSlanderers() {
+    public void slanderersToPoliticians() {
         if (!SLANDERER_IDs.isEmpty()) {
             if (controller.getRoundNum() - SLANDERER_IDs.getFrontCreationTime() >= 300) { //need to retire slanderer as 1) it got killed or 2) converted
                 int id = SLANDERER_IDs.getFrontID();
@@ -180,36 +210,109 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Debug.printInformation("updateSlanderers() => ", " VALID ");
     }
 
-    public void parseScoutFlag(int encoding) {
-        if (Communication.decodeIsFlagLocationType(encoding, true)) {
-            //SCHEMA 1 FLAG
-            Constants.FLAG_LOCATION_TYPES locationType = Communication.decodeLocationType(encoding);
-            MapLocation locationData = Communication.decodeLocationData(encoding);
-            switch (locationType) {
-                case TOP_OR_BOTTOM_MAP_LOCATION:
-                    if (foundNorth == 0 && Communication.decodeExtraData(encoding) == 1) foundNorth = locationData.y;
-                    else if (foundSouth == 0 && Communication.decodeExtraData(encoding) == 3) foundSouth = locationData.y;
-                    break;
-                case LEFT_OR_RIGHT_MAP_LOCATION:
-                    if (foundEast == 0 && Communication.decodeExtraData(encoding) == 2) foundEast = locationData.x;
-                    else if (foundWest == 0 && Communication.decodeExtraData(encoding) == 4) foundWest = locationData.x;
-                    break;
-            }
-        } else if (Communication.decodeIsFlagRelativeLocationType(encoding)) {
-            //SCHEMA 3 FLAG
-            //This technically has a bug where unique locations could map to the same place or we send a scout even tho its already been taken, but I don't think it really matters too much
-            Constants.FLAG_LOCATION_TYPES locationType = Communication.decodeRelativeLocationType(encoding);
-            MapLocation locationData = Communication.decodeRelativeLocationData(encoding);
-            int healthData = Communication.decodeRelativeHealthData(encoding);
-            EC_OBJECT ec_Object = new EC_OBJECT(healthData, locationType);
-            foundECs.put(locationData, ec_Object);
-        } else {
-            //USELESS SCOUT
+    private boolean parseCommsLocation(int encoding) {
+        CommunicationLocation.FLAG_LOCATION_TYPES locationType = CommunicationLocation.decodeLocationType(encoding);
+        MapLocation locationData = CommunicationLocation.decodeLocationData(encoding);
+
+        switch (locationType) {
+            case NORTH_MAP_LOCATION:
+                foundNorth = locationData.y;
+                break;
+            case SOUTH_MAP_LOCATION:
+                foundSouth = locationData.y;
+                break;
+            case EAST_MAP_LOCATION:
+                foundEast = locationData.x;
+                break;
+            case WEST_MAP_LOCATION:
+                foundWest = locationData.x;
+                break;
+            case MY_EC_LOCATION: //ADD STUFF HERE
+            case ENEMY_EC_LOCATION:
+            case NEUTRAL_EC_LOCATION:
+                EC_Information EC_info = foundECs.get(locationData);
+                if (EC_info == null) EC_info = new EC_Information(locationData);
+                // update information
+                EC_info.setRoundFound(controller.getRoundNum());
+                EC_info.setTeam(locationType);
+                foundECs.put(locationData, EC_info);
+                break;
         }
+        return true;
+    }
+
+    private boolean parseCommsRobotID(int encoding, MapLocation knownLocation) {
+        CommunicationRobotID.COMMUNICATION_UNIT_TYPE communicatedUnitType = CommunicationRobotID.decodeCommunicatedUnitType(encoding);
+        CommunicationRobotID.COMMUNICATION_UNIT_TEAM communicatedUnitTeam = CommunicationRobotID.decodeCommunicatedUnitTeam(encoding);
+        int robotID = CommunicationRobotID.decodeRobotID(encoding);
+        switch (communicatedUnitType) {
+            case EC:
+                if (knownLocation == null) return false;
+                EC_Information EC_info = foundECs.get(knownLocation);
+                if (EC_info == null) return false;
+                EC_info.robotID = robotID;
+                foundECs.put(knownLocation, EC_info);
+                break;
+            case SL:
+                break;
+            case PO:
+                break;
+            case MU:
+                break;
+        }
+        return true;
+    }
+
+    private boolean parseECInfo(int encoding, MapLocation knownLocation) {
+        if (knownLocation == null) return false;
+        int ECHealth = CommunicationECInfo.decodeRobotHealth(encoding);
+        CommunicationECInfo.COMMUNICATION_UNIT_TEAM ECTeam = CommunicationECInfo.decodeCommunicatedUnitTeam(encoding);
+        EC_Information EC_info = foundECs.get(knownLocation);
+        if (EC_info == null) return false;
+        EC_info.health = ECHealth;
+        return true;
+    }
+
+    public void parseFlag(int encoding, MapLocation knownLocation) {
+        if (CommunicationLocation.decodeIsSchemaType(encoding)) {
+            // LOCATION TYPE =>
+            parseCommsLocation(encoding);
+        } else if (CommunicationRobotID.decodeIsSchemaType(encoding)) {
+            parseCommsRobotID(encoding, knownLocation);
+        } else if (CommunicationECInfo.decodeIsSchemaType(encoding)) {
+            parseECInfo(encoding, knownLocation);
+        } else if (CommunicationMovement.decodeIsSchemaType(encoding)) {
+
+        }
+
         Debug.printInformation("parseScoutFlag() => ", " VALID ");
     }
 
     // I have first few
+
+    public void urgentFlagRecieved(int encoding) {
+
+    }
+
+    public void processValidFlag(int encoding) {
+
+        if (Comms.decodeIsUrgent(encoding)) {
+            urgentFlagRecieved(encoding);
+            return;
+        }
+
+        if (Comms.decodeIsLastFlag(encoding)) {
+
+            parseFlag(encoding, null);
+            //execute all flags received here based (might be multiple)!
+
+
+        } else {
+
+            //ADD flag to the IDs set of flags
+        }
+
+    }
 
     /* Iterative over all friendly scout flags and parses the flag for the information. Assumes the list size will not go over 152 elements (risky)
     *
@@ -218,11 +321,11 @@ public class EnlightenmentCenterBot implements RunnableBot {
     public void readFriendlyScoutFlags() throws GameActionException {
         Debug.printInformation("readFriendlyScoutFlags() => ", " START ");
         for (int i = 0; i < SCOUT_MUCKRAKER_SZ; ++i) {
+
             if (controller.canGetFlag(SCOUT_MUCKRAKER_IDs[i])) {
                 // read flag information
-                Debug.printInformation("readFriendlyScoutFlags() => ", " got flag. parse ");
-                parseScoutFlag(controller.getFlag(SCOUT_MUCKRAKER_IDs[i]));
-                Debug.printInformation("readFriendlyScoutFlags() => ", " finished flag. finished parsing ");
+                int encoding = Comms.getFlag(SCOUT_MUCKRAKER_IDs[i]);
+                processValidFlag(encoding);
             } else {
                 // ID no longer exists at index i, (remove)
                 //find first index at max size and go from there
@@ -231,7 +334,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
                     if (controller.canGetFlag(SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ])) {
                         Debug.printInformation("readFriendlyScoutFlags() => ", " START PARSE ");
                         SCOUT_MUCKRAKER_IDs[i] = SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ];
-                        parseScoutFlag(controller.getFlag(SCOUT_MUCKRAKER_IDs[i]));
+                        int encoding = Comms.getFlag(SCOUT_MUCKRAKER_IDs[i]);
+                        processValidFlag(encoding);
                         Debug.printInformation("readFriendlyScoutFlags() => ", " FINISHED PARSE ");
                         break;
                     }
@@ -241,6 +345,20 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Debug.printInformation("readFriendlyScoutFlags() => ", " END ");
     }
 
+    private void processAllECInformation() {
+
+        for (Map.Entry<MapLocation, EC_Information> entry : foundECs.entrySet()) {
+
+            MapLocation location = entry.getKey();
+            EC_Information EC_info = entry.getValue();
+            if (controller.getRoundNum() - 20 > EC_info.roundFound) {
+                //its been 20 rounds since I found this...
+                //send scout in direction to see what happened?
+            }
+        }
+
+    }
+
 
     /*
     *
@@ -248,7 +366,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     * */
 
     public void defaultTurn() throws GameActionException {
-        updateSlanderers();
+        slanderersToPoliticians();
         readFriendlyScoutFlags();
 
         int ran = random.nextInt(5);
@@ -270,47 +388,18 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 Debug.printInformation("spawnWallMuckraker => ", "VALID");
         }
 
-//        readFriendlyECFlags();
-
-//        if (MUCKRAKER_NUM < 8) {
-//            tryBuildMuckraker(1);
-//            return;
-//        }
-
-//        tryBuildSlanderer(1);
-//
-////        boolean spawnMuckraker = random.nextInt(2) == 1;
-////        if (spawnMuckraker) {
-////            tryBuildMuckraker(1);
-////        } else {
-////            tryBuildSlanderer(2);
-////        }
-
-
-        // int spawnType = random.nextInt(2);
-        // if (spawnType == 0) {
-        //     tryBuildPolitician(13);
-        // } else if (spawnType == 1) {
-        //     tryBuildSlanderer(1);
-        // }
-
-
-
-//        if (controller.getRoundNum() > 10) {
-//            if (Cache.ALL_NEARBY_FRIENDLY_ROBOTS.length < 100) {
-//                spawnWallMuckraker(2, randomValidDirection());
-//            }
-//        } else {
-//            spawnScoutMuckraker(1, randomValidDirection());
-//        }
+        processAllECInformation();
     }
 
+    /*
     private void setLocationFlag() throws GameActionException {
         int encodedFlag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
                 Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.MY_EC_LOCATION, 0, Cache.CURRENT_LOCATION);
         Debug.printInformation("setLocationFlag()", encodedFlag);
         Communication.checkAndSetFlag(encodedFlag);
     }
+
+
 
     private void round1() throws GameActionException {
         setLocationFlag();
@@ -355,7 +444,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 ALL_MY_EC_IDS[num_ALL_MY_EC_LOCATIONs++] = EC_ID_CURRENT_BRUTE_FORCE;
             }
         }
-    }
+    } */
 
     /* Greedily returns the closest valid direction to preferredDirection within the directionFlexibilityDelta value (2 means allow for 2 clockwise 45 deg in both directions)
     Returns null if no valid direction with specification

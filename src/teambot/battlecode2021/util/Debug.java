@@ -6,7 +6,7 @@ import teambot.battlecode2021.EnlightenmentCenterBot;
 import java.util.Arrays;
 
 public class Debug {
-    public static boolean debug = true;
+    public static boolean debug = false;
     public static RobotController controller;
 
     public static void init(RobotController controller) {
@@ -111,16 +111,16 @@ public class Debug {
         }
     }
 
-    public static void printECInformation() {
-//        assertValues();
-        if (debug) {
-            System.out.println(robotType() + " at " + robotLocation() + " knows: " + ECInformationOutput());
-        }
-    }
+//    public static void printECInformation() {
+////        assertValues();
+//        if (debug) {
+//            System.out.println(robotType() + " at " + robotLocation() + " knows: " + ECInformationOutput());
+//        }
+//    }
 
-    private static String ECInformationOutput() {
-        return "[List of EC locations: " + Arrays.toString(EnlightenmentCenterBot.ALL_MY_EC_LOCATIONS) + "]";
-    }
+//    private static String ECInformationOutput() {
+//        return "[List of EC locations: " + Arrays.toString("a") + "]";
+//    }
 
     private static String mapInformationOutput() {
         return "[Map Width: " + mapWidth() + ", Map Height: " + mapHeight() + ", Map Left Edge: " +

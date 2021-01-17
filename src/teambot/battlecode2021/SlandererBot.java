@@ -2,6 +2,7 @@ package teambot.battlecode2021;
 
 import battlecode.common.*;
 import com.sun.tools.internal.jxc.ap.Const;
+import mushroombot.battlecode2021.util.Communication;
 import teambot.*;
 import teambot.battlecode2021.util.*;
 
@@ -18,6 +19,9 @@ public class SlandererBot implements RunnableBot {
     private double[] moveRewards;
     private int distanceFromMyEC;
 
+    private int[] safeSpawnDirections;
+    private int[] enemySpawnDirections;
+
     //TODO: CHECK AND SET FLAG IF WALL IS MISSING AROUND US? and probably set flag based on it
 
     public SlandererBot(RobotController controller) throws GameActionException {
@@ -33,6 +37,8 @@ public class SlandererBot implements RunnableBot {
         moveLocs = new MapLocation[9];
         moveRewards = new double[9];
         canMoveIndices = new int[9];
+        safeSpawnDirections = new int[8];
+        enemySpawnDirections = new int[8];
     }
 
     @Override
@@ -215,8 +221,7 @@ public class SlandererBot implements RunnableBot {
 //        Debug.printInformation("my location reward is ", rewardOfStaying);
 //        Debug.printInformation("location rewards surrounding me is ", Arrays.toString(moveRewards));
 //        Debug.printByteCode("runFromMuckrakerMove() => SCANNED ENEMY LOCATIONS ");
-        int flag = Communication.encode_MovementBotType_and_MovementBotData
-                (Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, false, false, 0, Constants.MOVEMENT_BOTS_DATA.NOT_MOVING);
+        int flag = CommunicationMovement.encodeMovement(false, true, CommunicationMovement.MY_UNIT_TYPE.SL, CommunicationMovement.MOVEMENT_BOTS_DATA.NOT_MOVING, CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
         int bestValidDirection = -1;
         double bestValidReward = rewardOfStaying;
 
@@ -231,8 +236,7 @@ public class SlandererBot implements RunnableBot {
                 }
             }
 
-            flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, false, true, 0, Communication.convert_DirectionInt_MovementBotsData(bestDirection));
-
+            flag = CommunicationMovement.encodeMovement(false, true,CommunicationMovement.MY_UNIT_TYPE.SL, CommunicationMovement.convert_DirectionInt_MovementBotsData(bestDirection), CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_TOWARDS_ME, false, true, 0);
 
             for (int i = 0; i < canMoveIndicesSize; ++i) {
                 if (moveRewards[canMoveIndices[i]] > bestValidReward) {
@@ -246,8 +250,9 @@ public class SlandererBot implements RunnableBot {
 
         /* Set communication for other slanderers if there is a muckraker within my range */
 
-        if (flag != Communication.checkAndGetFlag(flag))  {
-            Communication.checkAndSetFlag(flag);
+        if (controller.canSetFlag(flag)) {
+            Comms.hasSetFlag = true;
+            controller.setFlag(flag);
         }
 
 //        Debug.printInformation("flag is set for ", flag);
@@ -279,12 +284,10 @@ public class SlandererBot implements RunnableBot {
 
 //                    if (Debug.debug) System.out.println("DECODING FLAG " + encodedFlag + " for " + robotInfo.location);
 
-                    if (Communication.decodeIsFlagMovementBotType(encodedFlag)) {
-                        if (Communication.decodeMovementBotType(encodedFlag) == Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE &&
-                                Communication.decodeMovementBotIsDanger(encodedFlag)) {
-
-                            Constants.MOVEMENT_BOTS_DATA movementBotsData = Communication.decodeMovementBotData(encodedFlag);
-                            preferedMovementDirectionIdx = Communication.convert_MovementBotData_DirectionInt(movementBotsData);
+                    if (CommunicationMovement.decodeIsSchemaType(encodedFlag)) {
+                        if (CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.SL && CommunicationMovement.decodeIsDangerBit(encodedFlag)) {
+                            CommunicationMovement.MOVEMENT_BOTS_DATA movementBotsData = CommunicationMovement.decodeMyPreferredMovement(encodedFlag);
+                            preferedMovementDirectionIdx = CommunicationMovement.convert_MovementBotData_DirectionInt(movementBotsData);
                             closestLocation = dist;
 //                            if (Debug.debug) System.out.println("Correct type of flag, setting direction to " + preferedMovementDirectionIdx + " at dist " + dist);
                         }
@@ -332,33 +335,4 @@ public class SlandererBot implements RunnableBot {
 
         Pathfinding.move(Cache.myECLocation);
     }
-
-    /* UNUSED ->
-    Sets communciation to danger if any enemy bot is nearby
-    Return: true if and only if there are any enemy bots nearby OR if any slanderer friendly robot has danger flag */
-    private boolean checkIfInDanger() throws GameActionException {
-        boolean inDanger = false;
-        int flag = 0;
-        if (Cache.ALL_NEARBY_ENEMY_ROBOTS.length > 0) {
-            inDanger = true;
-            flag = Communication.encode_MovementBotType_and_MovementBotData(Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE, false, true, 0, Constants.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE);
-        }
-        else {
-            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-                int encodedFlag = Communication.checkAndGetFlag(robotInfo.ID);
-                if (Communication.decodeIsFlagMovementBotType(encodedFlag) &&
-                        Communication.decodeMovementBotIsDanger(encodedFlag) &&
-                        Communication.decodeMovementBotType(encodedFlag) == Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE) {
-                    // friendly slanderer
-                    if (Communication.decodeMovementBotData(encodedFlag) == Constants.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE) {
-                        inDanger = true;
-                    }
-                }
-            }
-        }
-        Communication.checkAndSetFlag(flag);
-        return inDanger;
-    }
-
-
 }

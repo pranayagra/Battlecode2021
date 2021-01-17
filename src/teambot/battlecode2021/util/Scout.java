@@ -52,26 +52,22 @@ public class Scout {
             if (controller.onTheMap(scanLocation)) {
                 if (dir == Direction.NORTH) {
                     Cache.MAP_TOP=scanLocation.y;
-                    flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.TOP_OR_BOTTOM_MAP_LOCATION, 1, scanLocation);
+                    flag = CommunicationLocation.encodeLOCATION(false, true, CommunicationLocation.FLAG_LOCATION_TYPES.NORTH_MAP_LOCATION, scanLocation);
                 }
                 else if (dir == Direction.SOUTH) {
                     Cache.MAP_BOTTOM=scanLocation.y;
-                    flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.TOP_OR_BOTTOM_MAP_LOCATION, 3, scanLocation);
+                    flag = CommunicationLocation.encodeLOCATION(false, true, CommunicationLocation.FLAG_LOCATION_TYPES.SOUTH_MAP_LOCATION, scanLocation);
                 }
                 else if (dir == Direction.EAST) {
                     Cache.MAP_RIGHT=scanLocation.x;
-                    flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.LEFT_OR_RIGHT_MAP_LOCATION, 2, scanLocation);
+                    flag = CommunicationLocation.encodeLOCATION(false, true, CommunicationLocation.FLAG_LOCATION_TYPES.EAST_MAP_LOCATION, scanLocation);
                 }
                 else {
                     Cache.MAP_LEFT=scanLocation.x;
-                    flag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
-                        Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.LEFT_OR_RIGHT_MAP_LOCATION, 4, scanLocation);
+                    flag = CommunicationLocation.encodeLOCATION(false, true, CommunicationLocation.FLAG_LOCATION_TYPES.WEST_MAP_LOCATION, scanLocation);
                 }
-                Debug.printInformation("Found edge",dir);
-                Communication.checkAndAddFlag(flag);
+                Debug.printInformation("Found edge", dir);
+                Comms.checkAndAddFlag(flag);
                 return;
             }
         }
