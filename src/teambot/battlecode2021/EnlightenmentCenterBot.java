@@ -421,7 +421,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     private boolean setFlagForSpawnedUnit(Direction direction, CommunicationECSpawnFlag.ACTION actionType, CommunicationECSpawnFlag.SAFE_QUADRANT safeQuadrant, MapLocation locationData) throws GameActionException {
         int flag = CommunicationECSpawnFlag.encodeSpawnInfo(direction, actionType, safeQuadrant, locationData);
-        if (controller.canSetFlag(flag)) {
+        if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
             Comms.hasSetFlag = true;
             controller.setFlag(flag);
             return true;
@@ -477,8 +477,6 @@ public class EnlightenmentCenterBot implements RunnableBot {
             setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, locationData);
         }
     }
-
-
 
         /*
     private void setLocationFlag() throws GameActionException {
