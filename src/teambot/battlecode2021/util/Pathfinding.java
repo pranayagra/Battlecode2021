@@ -272,4 +272,10 @@ public class Pathfinding {
         return res;
     }
 
+    public static int calculateSquaredDistance(MapLocation loc1, MapLocation loc2) {
+        int dx = Math.abs(loc1.x - loc2.x);
+        int dy = Math.abs(loc1.y - loc2.y);
+        return (int) (Math.pow(dx, 2) + Math.pow(dy, 2));
+    }
+
 }
