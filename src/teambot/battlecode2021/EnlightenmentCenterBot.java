@@ -391,7 +391,88 @@ public class EnlightenmentCenterBot implements RunnableBot {
         processAllECInformation();
     }
 
-    /*
+    /* Greedily returns the closest valid direction to preferredDirection within the directionFlexibilityDelta value (2 means allow for 2 clockwise 45 deg in both directions)
+    Returns null if no valid direction with specification
+    directionFlexibilityDelta: max value 4 */
+    private Direction toBuildDirection(Direction preferredDirection, int directionFlexibilityDelta) {
+
+        if (!controller.isReady()) return null;
+
+        if (controller.canBuildRobot(RobotType.MUCKRAKER, preferredDirection, 1)) {
+            return preferredDirection;
+        }
+
+        Direction left = preferredDirection;
+        Direction right = preferredDirection;
+        for (int i = 1; i <= directionFlexibilityDelta; ++i) {
+            right = right.rotateRight();
+            left = left.rotateLeft();
+            if (controller.canBuildRobot(RobotType.MUCKRAKER, right, 1)) return right;
+            if (controller.canBuildRobot(RobotType.MUCKRAKER, left, 1)) return left;
+        }
+        return null;
+    }
+
+    /* Finds a random valid direction.
+    returns null if no valid direction */
+    private Direction randomValidDirection() {
+        return toBuildDirection(Constants.DIRECTIONS[random.nextInt(8)], 4);
+    }
+
+    private boolean setFlagForSpawnedUnit(Direction direction, CommunicationECSpawnFlag.ACTION actionType, CommunicationECSpawnFlag.SAFE_QUADRANT safeQuadrant, MapLocation locationData) throws GameActionException {
+        int flag = CommunicationECSpawnFlag.encodeSpawnInfo(direction, actionType, safeQuadrant, locationData);
+        if (controller.canSetFlag(flag)) {
+            Comms.hasSetFlag = true;
+            controller.setFlag(flag);
+            return true;
+        }
+        return false;
+    }
+
+    private void spawnScoutMuckraker(int influence, Direction direction) throws GameActionException {
+        //TODO: should spawn muckraker in location
+        if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
+            controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
+            SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ++] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
+        }
+
+    }
+
+    private void spawnWallMuckraker(int influence, Direction direction) throws GameActionException {
+        //TODO: should spawn muckrakers to build wall
+        if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
+            controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
+        }
+    }
+
+    private void spawnLatticeSlanderer(int influence, Direction direction) throws GameActionException {
+        //TODO: should spawn slanderer, which default behavior is to build lattice
+        if (direction != null && controller.canBuildRobot(RobotType.SLANDERER, direction, influence)) {
+            controller.buildRobot(RobotType.SLANDERER, direction, influence);
+            Debug.printInformation("PUSHING TO SLANDERER ", " BEFORE");
+            SLANDERER_IDs.push(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID, controller.getRoundNum());
+            Debug.printInformation("PUSHING TO SLANDERER ", " AFTER");
+        }
+    }
+
+    private void spawnDefendingPolitician(int influence, Direction direction) throws GameActionException {
+        //TODO: should defend slanderers outside the muckrakers wall
+        if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
+            controller.buildRobot(RobotType.POLITICIAN, direction, influence);
+        }
+    }
+
+    private void spawnAttackingPolitician(int influence, Direction direction) throws GameActionException {
+        //TODO: should only be called if the politician is meant to attack some base -> need to create politician with enough influence, set my EC flag to the location + attacking poli
+        //Assumption: politician upon creation should read EC flag and know it's purpose in life. It can determine what to do then
+        if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
+            controller.buildRobot(RobotType.POLITICIAN, direction, influence);
+        }
+    }
+
+
+
+        /*
     private void setLocationFlag() throws GameActionException {
         int encodedFlag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
                 Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.MY_EC_LOCATION, 0, Cache.CURRENT_LOCATION);
@@ -445,73 +526,4 @@ public class EnlightenmentCenterBot implements RunnableBot {
             }
         }
     } */
-
-    /* Greedily returns the closest valid direction to preferredDirection within the directionFlexibilityDelta value (2 means allow for 2 clockwise 45 deg in both directions)
-    Returns null if no valid direction with specification
-    directionFlexibilityDelta: max value 4 */
-    private Direction toBuildDirection(Direction preferredDirection, int directionFlexibilityDelta) {
-
-        if (!controller.isReady()) return null;
-
-        if (controller.canBuildRobot(RobotType.MUCKRAKER, preferredDirection, 1)) {
-            return preferredDirection;
-        }
-
-        Direction left = preferredDirection;
-        Direction right = preferredDirection;
-        for (int i = 1; i <= directionFlexibilityDelta; ++i) {
-            right = right.rotateRight();
-            left = left.rotateLeft();
-            if (controller.canBuildRobot(RobotType.MUCKRAKER, right, 1)) return right;
-            if (controller.canBuildRobot(RobotType.MUCKRAKER, left, 1)) return left;
-        }
-        return null;
-    }
-
-    /* Finds a random valid direction.
-    returns null if no valid direction */
-    private Direction randomValidDirection() {
-        return toBuildDirection(Constants.DIRECTIONS[random.nextInt(8)], 4);
-    }
-
-    private void spawnScoutMuckraker(int influence, Direction direction) throws GameActionException {
-        //TODO: should spawn muckraker in location
-        if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
-            controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
-            SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ++] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
-        }
-
-    }
-
-    private void spawnWallMuckraker(int influence, Direction direction) throws GameActionException {
-        //TODO: should spawn muckrakers to build wall
-        if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
-            controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
-        }
-    }
-
-    private void spawnLatticeSlanderer(int influence, Direction direction) throws GameActionException {
-        //TODO: should spawn slanderer, which default behavior is to build lattice
-        if (direction != null && controller.canBuildRobot(RobotType.SLANDERER, direction, influence)) {
-            controller.buildRobot(RobotType.SLANDERER, direction, influence);
-            Debug.printInformation("PUSHING TO SLANDERER ", " BEFORE");
-            SLANDERER_IDs.push(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID, controller.getRoundNum());
-            Debug.printInformation("PUSHING TO SLANDERER ", " AFTER");
-        }
-    }
-
-    private void spawnDefendingPolitician(int influence, Direction direction) throws GameActionException {
-        //TODO: should defend slanderers outside the muckrakers wall
-        if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
-            controller.buildRobot(RobotType.POLITICIAN, direction, influence);
-        }
-    }
-
-    private void spawnAttackingPolitician(int influence, Direction direction) throws GameActionException {
-        //TODO: should only be called if the politician is meant to attack some base -> need to create politician with enough influence, set my EC flag to the location + attacking poli
-        //Assumption: politician upon creation should read EC flag and know it's purpose in life. It can determine what to do then
-        if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
-            controller.buildRobot(RobotType.POLITICIAN, direction, influence);
-        }
-    }
 }
