@@ -94,6 +94,7 @@ public class Scout {
                 Debug.printInformation( "checking EC location " + info.location + " => ", "");
                 CommunicationLocation.FLAG_LOCATION_TYPES locationTypePrevious = Cache.FOUND_ECS.get(info.location);
                 CommunicationLocation.FLAG_LOCATION_TYPES locationTypeNew = getECType(info.team);
+                //TODO: add some age factor so we still report every so often even if the team has not changed
                 if (locationTypePrevious == null || locationTypePrevious != locationTypeNew) { //if null or if the type of EC has since changed
                     Cache.FOUND_ECS.put(info.location, locationTypeNew); //overwrite or add
                     int flag = CommunicationLocation.encodeLOCATION(false, false, locationTypeNew, info.location);
