@@ -34,10 +34,18 @@ public class MuckrakerBot implements RunnableBot {
 
         // check if scout
         listenToECInstruction = true;
+        
+        if (Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.SCOUT_LOCATION) {
+            scoutTarget = Cache.EC_INFO_LOCATION;
+        }
     }
 
     @Override
     public void turn() throws GameActionException {
+
+        if (simpleAttack()) {
+            return;
+        }
 
         switch (Cache.EC_INFO_ACTION) {
             case ATTACK_LOCATION:
@@ -49,7 +57,6 @@ public class MuckrakerBot implements RunnableBot {
                 //TODO: some type of communication between EC spawn location (or flag) and direction (or location) to fill wall, which is intitated by slanderers?
                 break;
             case SCOUT_LOCATION:
-                scoutTarget = Cache.EC_INFO_LOCATION;
                 scoutRoutine();
                 break;
         }
@@ -132,6 +139,12 @@ public class MuckrakerBot implements RunnableBot {
     /*
      * Functionality:
      *      Perform a movement to optimize scouting of the map
+     *      
+     *      If discovered all edges of the map
+     *      Stochastically select a direction which leads the muckracker to somewhere
+     *          1. It has not visited before
+     *          2. Away from friendly muckrackers
+     *          3. Towards enemy EC
      * */
     private boolean scoutMovement() throws GameActionException {
         if (!controller.isReady()) {
@@ -139,7 +152,32 @@ public class MuckrakerBot implements RunnableBot {
         }
 
         int moveRes = Pathfinding.move(scoutTarget);
-        Debug.printInformation("SCOUT MOVE RESULT", moveRes);
+        if (moveRes == 2 || scoutTarget.equals(Cache.CURRENT_LOCATION)) {
+            Cache.CURRENT_LOCATION = controller.getLocation();
+            //TODO: Adjust so muckracker chooses a side thats likely to be close
+            if (Cache.MAP_TOP == 0) {
+                scoutTarget = Cache.CURRENT_LOCATION.translate(0,64);
+            }
+            else if (Cache.MAP_RIGHT == 0) {
+                scoutTarget = Cache.CURRENT_LOCATION.translate(64,0);
+            }
+            else if (Cache.MAP_BOTTOM == 0) {
+                scoutTarget = Cache.CURRENT_LOCATION.translate(0,-64);
+            }
+            else if (Cache.MAP_LEFT == 0) {
+                scoutTarget = Cache.CURRENT_LOCATION.translate(-64,0);
+            }
+            else{
+                int[] directionScores = new int[8];
+                for (RobotInfo info : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+                    if (info.type == RobotType.MUCKRAKER) {
+                        Direction dir = Cache.CURRENT_LOCATION.directionTo(info.location);
+                    }
+                }
+                // Unfinished
+                scoutTarget = Pathfinding.randomLocation();
+            }
+        }
 
         return false;
     }

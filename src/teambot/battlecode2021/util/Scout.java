@@ -80,9 +80,11 @@ public class Scout {
                 CommunicationLocation.FLAG_LOCATION_TYPES locationTypeNew = getECType(info.team);
                 if (locationTypePrevious == null || locationTypePrevious != locationTypeNew) { //if null or if the type of EC has since changed
                     Cache.FOUND_ECS.put(info.location, locationTypeNew); //overwrite or add
-                    int flag = CommunicationECInfo.encodeECInfo(
-                        false, true, getCommunicatedUnitTeamForECInfo(info.team), info.influence);
-                    Debug.printInformation(locationTypeNew + " AT LOCATION " + info.location + " => ", flag);
+                    int flag = CommunicationLocation.encodeLOCATION(false, false, locationTypeNew, info.location);
+                    Comms.checkAndAddFlag(flag);
+                    flag = CommunicationECInfo.encodeECInfo(false, false, getCommunicatedUnitTeamForECInfo(info.team), info.conviction);
+                    Comms.checkAndAddFlag(flag);
+                    flag = CommunicationRobotID.encodeRobotID(false,true, CommunicationRobotID.COMMUNICATION_UNIT_TYPE.EC, getCommunicatedUnitTeamForRobotID(info.team), info.ID);
                     Comms.checkAndAddFlag(flag);
                 }
             }
