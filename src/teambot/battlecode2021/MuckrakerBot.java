@@ -204,6 +204,7 @@ public class MuckrakerBot implements RunnableBot {
 
                 if (locationTypePrevious == null || locationTypePrevious != locationTypeNew) { //if null or if the type of EC has since changed
                     foundECs.put(info.location, locationTypeNew); //overwrite or add
+                    Debug.printInformation( "setting EC Found Flags => ", info.location);
                     int flag = CommunicationLocation.encodeLOCATION(false, false, locationTypeNew, info.location);
                     Comms.checkAndAddFlag(flag);
                     flag = CommunicationECInfo.encodeECInfo(false, false, getCommunicatedUnitTeamForECInfo(info.team), info.conviction);
