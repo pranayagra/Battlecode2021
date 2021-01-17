@@ -65,6 +65,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     private static int[] enemyDirectionCounts; //8 values indicating how dangerous a side of the map is (used in spawning politicians/scouting)
     private static int[] wallDirectionDistance; // 8 values for how close the wall is from a certain direction (used in spawning slanderers in conjuction to enemyDirectionCounts)
+    private static final int CEIL_MAX_REWARD = 40;
 
     private static MapLocation[] SCOUT_LOCATIONS;
     private static int SCOUT_LOCATIONS_CURRENT;
@@ -219,6 +220,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         defaultTurn();
 
         Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
+        Debug.printInformation("WALL REWARDS: ", wallDirectionDistance);
+        Debug.printInformation("ENEMY DANGERS: ", enemyDirectionCounts);
 
         Debug.printByteCode("EC END TURN => ");
 
@@ -242,7 +245,33 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     //TODO (IMPORTANT): add values to wallDirectionDistance
     private void updateWallDistance() {
+        //for all 8 directions calculate distance
+        //for direction, compiute distance. for midway, compute average. use as heurstic!
 
+        if (Cache.MAP_TOP != 0) {
+            wallDirectionDistance[0] = CEIL_MAX_REWARD - (Cache.MAP_TOP - Cache.CURRENT_LOCATION.y);
+        }
+        if (Cache.MAP_RIGHT != 0) {
+            wallDirectionDistance[2] = CEIL_MAX_REWARD - (Cache.MAP_RIGHT - Cache.CURRENT_LOCATION.x);
+        }
+        if (Cache.MAP_BOTTOM != 0) {
+            wallDirectionDistance[4] = CEIL_MAX_REWARD - (Cache.CURRENT_LOCATION.y - Cache.MAP_BOTTOM);
+        }
+        if (Cache.MAP_LEFT != 0) {
+            wallDirectionDistance[6] = CEIL_MAX_REWARD - (Cache.CURRENT_LOCATION.x - Cache.MAP_LEFT);
+        }
+        if (Cache.MAP_TOP != 0 && Cache.MAP_RIGHT != 0) {
+            wallDirectionDistance[1] = (wallDirectionDistance[0] + wallDirectionDistance[2])/2;
+        }
+        if (Cache.MAP_RIGHT != 0 && Cache.MAP_BOTTOM != 0) {
+            wallDirectionDistance[3] = (wallDirectionDistance[2] + wallDirectionDistance[4])/2;
+        }
+        if (Cache.MAP_BOTTOM != 0 && Cache.MAP_LEFT != 0) {
+            wallDirectionDistance[5] = (wallDirectionDistance[4] + wallDirectionDistance[6])/2;
+        }
+        if (Cache.MAP_LEFT != 0 && Cache.MAP_TOP != 0) {
+            wallDirectionDistance[7] = (wallDirectionDistance[6] + wallDirectionDistance[8])/2;
+        }
     }
 
     private boolean parseCommsLocation(int encoding) throws GameActionException {
@@ -287,12 +316,13 @@ public class EnlightenmentCenterBot implements RunnableBot {
         CommunicationMovement.MY_UNIT_TYPE myUnitType = CommunicationMovement.decodeMyUnitType(encoding);
         CommunicationMovement.MOVEMENT_BOTS_DATA movementBotData = CommunicationMovement.decodeMyPreferredMovement(encoding);
         CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS communicationToOtherBots = CommunicationMovement.decodeCommunicationToOtherBots(encoding);
+        int amount = CommunicationMovement.decodeDangerDirections(encoding) + 1;
         int direction = CommunicationMovement.convert_MovementBotData_DirectionInt(movementBotData);
         if (communicationToOtherBots == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.SPOTTED_ENEMY_UNIT) {
             // WE SPOTTED AN ENEMY AT Direction movementBotData (EC => enemy location)
-            enemyDirectionCounts[direction] += 2;
-            enemyDirectionCounts[(direction + 7) % 8] += 1;
-            enemyDirectionCounts[(direction + 1) % 8] += 1;
+            enemyDirectionCounts[direction] += amount;
+            enemyDirectionCounts[(direction + 7) % 8] += amount/2;
+            enemyDirectionCounts[(direction + 1) % 8] += amount/2;
         } else if (communicationToOtherBots == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.SEND_DEFENDING_POLITICIANS) {
             //TODO: send politician to defend at direction location
         }

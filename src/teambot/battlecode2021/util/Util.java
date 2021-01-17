@@ -20,6 +20,8 @@ public class Util {
     public static void postLoop() throws GameActionException {
         // Scouting
         Scout.scoutMapEdges();
+        Scout.scoutECs();
+        Scout.scoutEnemies();
         Comms.loop();
     }
 

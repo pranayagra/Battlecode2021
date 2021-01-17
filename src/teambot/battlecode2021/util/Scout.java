@@ -2,6 +2,8 @@ package teambot.battlecode2021.util;
 import battlecode.common.*;
 import teambot.battlecode2021.util.*;
 
+import java.nio.file.Path;
+
 public class Scout {
 
     public static RobotController controller;
@@ -26,6 +28,22 @@ public class Scout {
             checkEdge(Direction.SOUTH,currentLocation, Cache.SENSOR_RADIUS);
         }  
         
+    }
+
+    public static void scoutEnemies() throws GameActionException {
+        MapLocation currentLocation = controller.getLocation();
+        int distance = Pathfinding.travelDistance(currentLocation, Cache.myECLocation);
+        int numEnemies = controller.senseNearbyRobots(-1, Cache.OPPONENT_TEAM).length;
+        int cost = (int)((1 + 15.0/distance) * numEnemies);
+        if (numEnemies > 0) {
+            int dangerDirection = Cache.myECLocation.directionTo(currentLocation).ordinal();
+            CommunicationMovement.encodeMovement(true, true,
+                    CommunicationMovement.MY_UNIT_TYPE.MU, CommunicationMovement.convert_DirectionInt_MovementBotsData(dangerDirection),
+                    CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.SPOTTED_ENEMY_UNIT, false, false, cost);
+        }
+
+
+
     }
 
     // Checks edge. If not on map, set cache and send flag
@@ -86,7 +104,7 @@ public class Scout {
     * */
 
     //TODO: Not sure if hashmap best data structure. Bytecode inefficient - change to array?
-    private void scoutECs() throws GameActionException {
+    public static void scoutECs() throws GameActionException {
         MapLocation currentLocation = controller.getLocation();
         RobotInfo[] nearbyRobots = controller.senseNearbyRobots();
         for (RobotInfo info : nearbyRobots) { 
@@ -109,7 +127,7 @@ public class Scout {
     }
     
     /* Converts the EC Team to a Location Flag Type for communication purposes */
-    private CommunicationLocation.FLAG_LOCATION_TYPES getECType(Team ECTeam) {
+    private static CommunicationLocation.FLAG_LOCATION_TYPES getECType(Team ECTeam) {
         if (ECTeam.equals(Cache.OUR_TEAM)) {
             return CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION;
         } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
@@ -119,7 +137,7 @@ public class Scout {
         }
     }
 
-    private CommunicationECInfo.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForECInfo(Team ECTeam) {
+    private static CommunicationECInfo.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForECInfo(Team ECTeam) {
         if (ECTeam.equals(Cache.OUR_TEAM)) {
             return CommunicationECInfo.COMMUNICATION_UNIT_TEAM.MY;
         } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
@@ -129,7 +147,7 @@ public class Scout {
         }
     }
 
-    private CommunicationRobotID.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForRobotID(Team ECTeam) {
+    private static CommunicationRobotID.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForRobotID(Team ECTeam) {
         if (ECTeam.equals(Cache.OUR_TEAM)) {
             return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.MY;
         } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
