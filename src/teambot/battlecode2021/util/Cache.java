@@ -64,11 +64,11 @@ public class Cache {
             for (RobotInfo robotInfo : controller.senseNearbyRobots(2, OUR_TEAM)) {
                 if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER && controller.canGetFlag(robotInfo.ID)) {
                     int encoding = controller.getFlag(robotInfo.ID);
+                    myECLocation = robotInfo.location;
+                    myECID = robotInfo.ID;
                     if (CommunicationECSpawnFlag.decodeIsSchemaType(encoding)) {
                         Direction directionFromEC = robotInfo.location.directionTo(START_LOCATION);
                         if (CommunicationECSpawnFlag.decodeDirection(encoding).equals(directionFromEC)) {
-                            myECLocation = robotInfo.location;
-                            myECID = robotInfo.ID;
                             processECSpawnInfo(encoding);
                             break;
                         }

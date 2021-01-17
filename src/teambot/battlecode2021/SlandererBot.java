@@ -74,9 +74,11 @@ public class SlandererBot implements RunnableBot {
     public void spawnInLattice() throws GameActionException {
         distanceFromMyEC = calculateLocationDistanceFromMyEC(Cache.CURRENT_LOCATION);
         boolean isMyCurrentSquareGood = checkIfGoodSquare(Cache.CURRENT_LOCATION);
+        Debug.printInformation("CL: " + Cache.CURRENT_LOCATION + " ECLoc: " + Cache.myECLocation + " dist: " + distanceFromMyEC, isMyCurrentSquareGood);
 
         // if in danger from muckraker, get out
         if (runFromMuckrakerMove() != 0) {
+            System.out.println("IN DANGER OR COOLDOWN");
             return;
         }
 
@@ -167,16 +169,17 @@ public class SlandererBot implements RunnableBot {
         }
     }
 
-
     /* Check and then execute behavior if the bot needs to run away from Muckrakers
     Algorithm:
         1) For all 9 action decisions (no action + move in 8 directions), calculate the location that is furthest from all enemy muckrakers. Call this moveRewards[] + rewardOfStaying
         2) Set flag to the best reward of the 9 action decisions regardless of feasibility
         3) Select one of 9 decisions among the valid ones via controller.canMove(direction) (including no action)
         4) Terminate algorithm UNLESS no muckrakers were found (meaning the rewards were useless)
+        5) Iterate through all friendly robots of type politicans and check if any have the danger flag. If so, set flag to danger and save bestDirectionBasedOnPoliticianDangerIdx.
         5) Iterate through all friendly robots of type slanderers and find the closest one with a movement flag with danger bit. Call this preferedMovementDirectionIdx
         6) Attempt to move in preferedMovementDirectionIdx direction. If cannot move, try the next-to directions
-        7) else: return 0
+        7) Attempt to move in bestDirectionBasedOnPoliticianDangerIdx direction. If cannot move, try the next-to directions
+        8) else: return 0
     Set: flag to default value indicating unit type or flag to danger if muckraker is within sensor range
 
     Return: 0 means we are not moving because there is no reason to move,
@@ -221,7 +224,7 @@ public class SlandererBot implements RunnableBot {
 //        Debug.printInformation("my location reward is ", rewardOfStaying);
 //        Debug.printInformation("location rewards surrounding me is ", Arrays.toString(moveRewards));
 //        Debug.printByteCode("runFromMuckrakerMove() => SCANNED ENEMY LOCATIONS ");
-        int flag = CommunicationMovement.encodeMovement(false, true, CommunicationMovement.MY_UNIT_TYPE.SL, CommunicationMovement.MOVEMENT_BOTS_DATA.NOT_MOVING, CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
+        int flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.SL, CommunicationMovement.MOVEMENT_BOTS_DATA.NOT_MOVING, CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
         int bestValidDirection = -1;
         double bestValidReward = rewardOfStaying;
 
@@ -236,7 +239,8 @@ public class SlandererBot implements RunnableBot {
                 }
             }
 
-            flag = CommunicationMovement.encodeMovement(false, true,CommunicationMovement.MY_UNIT_TYPE.SL, CommunicationMovement.convert_DirectionInt_MovementBotsData(bestDirection), CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_TOWARDS_ME, false, true, 0);
+            /* MOVE TOWARDS ME IS SET SO POLITICANS CAN MOVE TOWARDS THIS BOT (NOT SLANDERERS) -> BE CAREFUL IF/WHEN PARSING THIS SETTING */
+            flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.SL, CommunicationMovement.convert_DirectionInt_MovementBotsData(bestDirection), CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_TOWARDS_ME, false, true, 0);
 
             for (int i = 0; i < canMoveIndicesSize; ++i) {
                 if (moveRewards[canMoveIndices[i]] > bestValidReward) {
@@ -248,15 +252,36 @@ public class SlandererBot implements RunnableBot {
             }
         }
 
-        /* Set communication for other slanderers if there is a muckraker within my range */
+        //TODO: THINK -> if a politican has both a muckraker and slanderer in range, then
+        // 1) should this slanderer just RUN away towards the EC |OR|
+        // 2) should this slanderer SET its flag to danger (to announce to neighboring slanderers to run) and then RUN away towards EC? <-- I think this one
+        int bestDirectionBasedOnPoliticianDangerIdx = -1;
+        if (!foundEnemyMuckraker) {
+            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+                if (robotInfo.getType() == RobotType.POLITICIAN) {
+                    int encodedFlag = controller.getFlag(robotInfo.ID);
+                    if (CommunicationMovement.decodeIsSchemaType(encodedFlag) &&
+                            CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.PO &&
+                            CommunicationMovement.decodeIsDangerBit(encodedFlag)) {
+                        //A POLITICIAN WHO SAYS HE IS IN DANGER (muckraker nearby)
+                        CommunicationMovement.MOVEMENT_BOTS_DATA badArea = CommunicationMovement.decodeMyPreferredMovement(encodedFlag);
+                        int badIdx = CommunicationMovement.convert_MovementBotData_DirectionInt(badArea);
+                        Direction bestDirection = Constants.DIRECTIONS[badIdx].opposite();
+                        Debug.printInformation("BEST DIRECTION AWAY FROM POLI IS", bestDirection);
+                        bestDirectionBasedOnPoliticianDangerIdx = bestDirection.ordinal();
+                        flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.SL,
+                                CommunicationMovement.convert_DirectionInt_MovementBotsData(bestDirectionBasedOnPoliticianDangerIdx),
+                                CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_TOWARDS_ME, false, true, 0);
+                    }
+                }
+            }
+        }
 
-        if (controller.canSetFlag(flag)) {
+        /* Set communication for other slanderers if there is a muckraker within my range */
+        if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
             Comms.hasSetFlag = true;
             controller.setFlag(flag);
         }
-
-//        Debug.printInformation("flag is set for ", flag);
-//        Debug.printByteCode("runFromMuckrakerMove() => SET FLAG ");
 
         /* Below is based on movement */
         if (!controller.isReady()) return 1;
@@ -269,9 +294,8 @@ public class SlandererBot implements RunnableBot {
             return 1;
         }
 
-//        Debug.printByteCode("runFromMuckrakerMove() => DID NOT FIND ENEMY... ");
 
-        /* No muckrakers were found, so we need to check the flags of nearby slanderer units instead */
+        /* No muckrakers were found, so we need to check the flags of nearby slanderer units instead. */
         double closestLocation = 9998;
         int preferedMovementDirectionIdx = -1;
 
@@ -296,43 +320,29 @@ public class SlandererBot implements RunnableBot {
             }
         }
 
+
 //        Debug.printByteCode("runFromMuckrakerMove() => ITERATED THROUGH FRIENDLY ROBOTS ");
 
+
         if (preferedMovementDirectionIdx != -1) {
-            if (controller.canMove(Constants.DIRECTIONS[preferedMovementDirectionIdx])) {
-                controller.move(Constants.DIRECTIONS[preferedMovementDirectionIdx]);
-                return 2;
-            } else if (controller.canMove(Constants.DIRECTIONS[(preferedMovementDirectionIdx + 1) % 8])) {
-                controller.move(Constants.DIRECTIONS[(preferedMovementDirectionIdx + 1) % 8]);
-                return 2;
-            } else if (controller.canMove(Constants.DIRECTIONS[(preferedMovementDirectionIdx + 7) % 8])) {
-                controller.move(Constants.DIRECTIONS[(preferedMovementDirectionIdx + 7) % 8]);
+            Direction direction = Pathfinding.toMovePreferredDirection(Constants.DIRECTIONS[preferedMovementDirectionIdx], 1);
+            if (direction != null) {
+                controller.move(direction);
                 return 2;
             }
             return 1;
         }
+
+        if (bestDirectionBasedOnPoliticianDangerIdx != -1) {
+            Direction direction = Pathfinding.toMovePreferredDirection(Constants.DIRECTIONS[bestDirectionBasedOnPoliticianDangerIdx], 1);
+            if (direction != null) {
+                controller.move(direction);
+                return 2;
+            }
+            return 1;
+        }
+
         return 0; // no reason to move
     }
 
-
-
-    /* UNUSED =>
-     * If the unit is in danger, perform a move such that the distance to EC is minimized
-     * NOT COMPLETELY IMPLEMENTED -> just uses Pathfinding.move() currently, which is not expected behavior.
-     *  */
-    private void unitInDanger() throws GameActionException {
-        if (!controller.isReady()) return;
-
-        int minimizedDistance = distanceFromMyEC;
-        Direction minimizedDirection = null;
-
-        for (Direction direction : Constants.DIRECTIONS) {
-            if (controller.canMove(direction)) {
-                MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
-                int candidateDistance = calculateLocationDistanceFromMyEC(candidateLocation);
-            }
-        }
-
-        Pathfinding.move(Cache.myECLocation);
-    }
 }

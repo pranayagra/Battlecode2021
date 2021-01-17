@@ -157,14 +157,8 @@ public class MuckrakerBot implements RunnableBot {
             return false;
         }
 
-        Direction moveDirection = null;
         int moveRes = Pathfinding.move(scoutTarget);
         Debug.printInformation("SCOUT MOVE RESULT", moveRes);
-
-//        if (moveDirection != null) {
-//            controller.move(moveDirection);
-//            return true;
-//        }
 
         return false;
     }

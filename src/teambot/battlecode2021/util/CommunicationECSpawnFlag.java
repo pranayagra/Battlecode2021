@@ -17,6 +17,7 @@ public class CommunicationECSpawnFlag {
         DEFEND_LOCATION,
         ATTACK_LOCATION,
         SCOUT_LOCATION,
+        SLANDER_ROTATE,
     }
 
     /* 2 bits max */
