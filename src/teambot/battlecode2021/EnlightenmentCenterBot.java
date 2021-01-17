@@ -320,6 +320,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         int direction = CommunicationMovement.convert_MovementBotData_DirectionInt(movementBotData);
         if (communicationToOtherBots == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.SPOTTED_ENEMY_UNIT) {
             // WE SPOTTED AN ENEMY AT Direction movementBotData (EC => enemy location)
+            Debug.printInformation("ADDING DANGER" + direction, amount);
             enemyDirectionCounts[direction] += amount;
             enemyDirectionCounts[(direction + 7) % 8] += amount/2;
             enemyDirectionCounts[(direction + 1) % 8] += amount/2;
