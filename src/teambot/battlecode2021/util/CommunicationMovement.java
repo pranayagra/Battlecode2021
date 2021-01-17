@@ -34,6 +34,7 @@ public class CommunicationMovement extends Comms {
         NOOP,
         MOVE_TOWARDS_ME,
         MOVE_AWAY_FROM_ME,
+        SPOTTED_ENEMY_UNIT,
     }
 
     public static int convert_MovementBotData_DirectionInt(MOVEMENT_BOTS_DATA movementBotsData) {
