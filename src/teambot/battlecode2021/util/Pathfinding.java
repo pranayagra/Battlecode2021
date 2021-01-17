@@ -7,9 +7,11 @@ import java.util.*;
 public class Pathfinding {
 
     private static RobotController controller;
+    private static Random random;
 
     public static void init(RobotController controller) {
         Pathfinding.controller = controller;
+        random = new Random(controller.getID());
     }
 
     // Multiple navigation algorithm
@@ -196,26 +198,32 @@ public class Pathfinding {
     }
     // Naive movement | error checks
 
-    // BUG: should not naively return COMPASS[(i+4) % 8] since it may be invalid. Also is this the best idea?
-    public static Direction tryMove(Direction dir) {
-        if (controller.canMove(dir)) {
-            return dir;
+    /* Finds a random valid direction.
+    returns null if no valid direction */
+    public static Direction randomValidDirection() {
+        return toMovePreferredDirection(Constants.DIRECTIONS[random.nextInt(8)], 4);
+    }
+
+    /* Greedily returns the closest valid direction to preferredDirection within the directionFlexibilityDelta value (2 means allow for 2 clockwise 45 deg in both directions)
+    Returns null if no valid direction with specification
+    directionFlexibilityDelta: max value 4 */
+    public static Direction toMovePreferredDirection(Direction preferredDirection, int directionFlexibilityDelta) {
+
+        if (!controller.isReady()) return null;
+
+        if (controller.canMove(preferredDirection)) {
+            return preferredDirection;
         }
 
-        int i = 0;
-        while (COMPASS[i] != dir) {
-            i++;
+        Direction left = preferredDirection;
+        Direction right = preferredDirection;
+        for (int i = 1; i <= directionFlexibilityDelta; ++i) {
+            right = right.rotateRight();
+            left = left.rotateLeft();
+            if (controller.canMove(right)) return right;
+            if (controller.canMove(left)) return left;
         }
-
-        for (int j = 1; j < 4; j++) {
-            if (controller.canMove(COMPASS[(i + j) % 8])) {
-                return COMPASS[(i + j) % 8];
-            } else if (controller.canMove(COMPASS[(i - j + 8) % 8])) {
-                return COMPASS[(i - j + 8) % 8];
-            }
-        }
-
-        return COMPASS[(i + 4) % 8];
+        return null;
     }
 
     public static Boolean naiveMove(Direction dir) throws GameActionException {

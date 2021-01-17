@@ -122,10 +122,11 @@ public class PoliticanBot implements RunnableBot {
                 }
             }
         }
-        int flag = Communication.POLITICIAN_ATTACK_FLAG;
-        if (controller.canSetFlag(flag)) {
-            controller.setFlag(flag);
-        }
+        int flag = CommunicationMovement.encodeMovement(false, true,
+                CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.NOOP,
+                CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
+        Comms.checkAndAddFlag(flag);
+
         pathfinding.move(neutralEC);
         return true;
     }
@@ -142,15 +143,17 @@ public class PoliticanBot implements RunnableBot {
     public boolean chaseMuckrakerUntilExplode() throws GameActionException {
 
         int friendlySlanderersSize = 0;
-        System.out.println();
+//        System.out.println();
 
-        for (RobotInfo robotInfo : controller.senseNearbyRobots(-1, Cache.OUR_TEAM)) {
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
             if (robotInfo.type == RobotType.POLITICIAN) {
-                int encodedFlag = Communication.checkAndGetFlag(robotInfo.ID);
-                System.out.println("flag is " + encodedFlag + " with location " + robotInfo.location);
-                if (Communication.decodeIsFlagMovementBotType(encodedFlag) && Communication.decodeMovementBotType(encodedFlag) == Constants.MOVEMENT_BOTS_TYPES.SLANDERER_TYPE) {
-                    // This is a slanderer on our team...
-                    friendlySlanderers[friendlySlanderersSize++] = robotInfo.location;
+                if (controller.canGetFlag(robotInfo.ID)) {
+                    int encodedFlag = controller.getFlag(robotInfo.ID);
+                    if (Debug.debug) System.out.println("flag is " + encodedFlag + " with location " + robotInfo.location);
+                    if (CommunicationMovement.decodeIsSchemaType(encodedFlag) && CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.SL) {
+                        // This is a slanderer on our team...
+                        friendlySlanderers[friendlySlanderersSize++] = robotInfo.location;
+                    }
                 }
             }
         }
@@ -167,7 +170,7 @@ public class PoliticanBot implements RunnableBot {
                 //enemy muckraker
                 //TODO: make sure that no friendly unit is already tracking the muckraker -- maybe don't implement this, not high reward and risky..
                 //TODO: leave the muckraker alone if it goes far enough from our defense location
-                System.out.println("found enemy MUCKRAKER at " + robotInfo.location);
+                if (Debug.debug) System.out.println("found enemy MUCKRAKER at " + robotInfo.location);
                 //find minimum distance from slanderers to enemy
                 for (int i = 0; i < friendlySlanderersSize; ++i) {
                     minDistance = Math.min(minDistance, robotInfo.location.distanceSquaredTo(friendlySlanderers[i]));
@@ -203,12 +206,15 @@ public class PoliticanBot implements RunnableBot {
     //ASSUME POLITICIAN CAN PATHFIND TO EC LOCATION
 
     public boolean attackingPoliticianNearEnemyEC() throws GameActionException {
-        for (RobotInfo robot : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+        for (RobotInfo robot : Cache.ALL_NEARBY_ROBOTS) {
             if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
-                int flag = Communication.POLITICIAN_ATTACK_FLAG;
+                int flag = CommunicationMovement.encodeMovement(
+                        true,true,CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE,
+                        CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME, false,true,0);
                 if (controller.canSetFlag(flag)) {
-                    controller.setFlag(flag);
+                    controller.setFlag(flag); //CARE ABOUT SEED LATER? //NOTE THIS IS SETFLAG BECAUSE WE DO NOT WANT TO QUEUE IT BUT SKIP QUEUE AND SET FLAG
                     EnemyEC = robot.getLocation();
+                    Comms.hasSetFlag = true;
                     return true;
                 }
             }

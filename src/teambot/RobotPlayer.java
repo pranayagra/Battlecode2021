@@ -43,7 +43,7 @@ public strictfp class RobotPlayer {
         Cache.init(controller);
         Debug.init(controller);
         Scout.init(controller);
-        Communication.init(controller);
+        Comms.init(controller);
 
         RunnableBot bot;
         switch (controller.getType()) {
@@ -95,11 +95,21 @@ public strictfp class RobotPlayer {
     }
 
     private static void runAwayFromAttackFlag() throws GameActionException {
+
+        if (controller.getType() == RobotType.ENLIGHTENMENT_CENTER || !controller.isReady()) return;
+
         for (RobotInfo nearbyAlliedRobot : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
             if (controller.canGetFlag(nearbyAlliedRobot.ID)) {
-                if (controller.getFlag(nearbyAlliedRobot.ID) == Communication.POLITICIAN_ATTACK_FLAG) {
-                    moveAwayFromLocation(nearbyAlliedRobot.location);
-                    return;
+                int encodedFlag = controller.getFlag(nearbyAlliedRobot.ID);
+                if (CommunicationMovement.decodeIsSchemaType(encodedFlag)) {
+                    CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS otherBotIsTellingMeTo = CommunicationMovement.decodeCommunicationToOtherBots(encodedFlag);
+                    switch (otherBotIsTellingMeTo) {
+                        case MOVE_AWAY_FROM_ME:
+                            moveAwayFromLocation(nearbyAlliedRobot.location);
+                            break;
+                        case MOVE_TOWARDS_ME:
+                            break;
+                    }
                 }
             }
         }

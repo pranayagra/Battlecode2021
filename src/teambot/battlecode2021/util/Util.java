@@ -14,13 +14,13 @@ public class Util {
 
     public static void loop() throws GameActionException {
         Cache.loop();
-        Communication.hasSetFlag = false;
+        Comms.hasSetFlag = false;
     }
 
     public static void postLoop() throws GameActionException {
         // Scouting
         Scout.scoutMapEdges();
-        Communication.loop();
+        Comms.loop();
     }
 
     private int addedLocationDistance(MapLocation one, MapLocation two) {
