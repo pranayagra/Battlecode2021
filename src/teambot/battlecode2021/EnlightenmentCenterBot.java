@@ -87,8 +87,11 @@ public class EnlightenmentCenterBot implements RunnableBot {
     //TODO: need to think of building requests when we cannot build on a certain round or have too many requests.. we probably want some type of priority here
     private static int[] buildRequests; //want to store -> the necessary information (type, influence, direction, deltaDirectionAllowed) and how old the request is?
 
+
     private static int[][] processRobotFlags;
     private static int[] processRobotFlagsSZ1D; //the size of the cols for each row
+
+    private static int[] mapProcessRobotFlagsToIdx; //1 2 3 4 5=> 2 dies => 1 5 3 4 //list of free locations too?
     private static int processRobotFlagsSZ; //the size of the rows
 
     //Behavior: if does not exist, add to map. If exists, check type (neutral, friendly, enemy) and see if it has changed
