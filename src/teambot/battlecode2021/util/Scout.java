@@ -32,7 +32,7 @@ public class Scout {
     // Changed to one function instead of four
     private static void checkEdge(Direction dir, MapLocation center, int radius) throws GameActionException {
 
-        // added switch so we do not communicate the same message and backlog queue
+        // added switch so we do not communicate the same message and backlog queue.
         switch(dir) {
             case NORTH:
                 if (Cache.MAP_TOP != 0) return;
