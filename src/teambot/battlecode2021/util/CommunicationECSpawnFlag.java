@@ -14,6 +14,7 @@ public class CommunicationECSpawnFlag {
     public static enum ACTION {
         DEFEND_LOCATION,
         ATTACK_LOCATION,
+        SCOUT_LOCATION,
     }
 
     /* 2 bits max */

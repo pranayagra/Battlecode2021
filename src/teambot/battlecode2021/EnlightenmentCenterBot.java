@@ -434,6 +434,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
             controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
             SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ++] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
+            MapLocation scoutLocation = Pathfinding.randomLocation();
+            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.SCOUT_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, scoutLocation);
         }
 
     }
@@ -442,6 +444,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //TODO: should spawn muckrakers to build wall
         if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
             controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
+            MapLocation locationData = Pathfinding.randomLocation();
+            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, locationData);
         }
     }
 
@@ -459,6 +463,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //TODO: should defend slanderers outside the muckrakers wall
         if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
+            MapLocation locationData = Pathfinding.randomLocation();
+            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, locationData);
         }
     }
 
@@ -467,6 +473,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //Assumption: politician upon creation should read EC flag and know it's purpose in life. It can determine what to do then
         if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
+            MapLocation locationData = Pathfinding.randomLocation();
+            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, locationData);
         }
     }
 
