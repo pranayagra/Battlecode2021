@@ -49,10 +49,14 @@ public class PoliticanBot implements RunnableBot {
 
     @Override
     public void turn() throws GameActionException {
-//        if (moveAndDestoryNeutralEC()) {
-//            Debug.printInformation("Moving to destory netural EC", "");
-//            return;
-//        }
+        if (moveAndDestroyNeutralEC()) {
+            Debug.printInformation("Moving to destroy netural EC", "");
+            return;
+        }
+        if (moveAndDestroyEnemyEC()) {
+            Debug.printInformation("Moving to destroy enemy EC", "");
+            return;
+        }
         if (chaseMuckrakerUntilExplode()) {
             Debug.printInformation("CHASING MUCKRAKER ", "");
             return;
@@ -85,6 +89,45 @@ public class PoliticanBot implements RunnableBot {
         return false;
     }
 
+    private boolean moveAndDestroyEnemyEC() throws GameActionException {
+        if (EnemyEC == null) {
+            Debug.printInformation("EnemyEC not set", null);
+            return false;
+        }
+        if (!isTypeAttack) {
+            Debug.printInformation("isTypeAttack is false", null);
+            return false;
+        }
+
+        int actionRadius = Cache.ROBOT_TYPE.actionRadiusSquared;
+        RobotInfo[] nearbyRobots = controller.senseNearbyRobots(actionRadius);
+        for (RobotInfo robotInfo : nearbyRobots) {
+            if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER && robotInfo.team == controller.getTeam().opponent()) {
+                // explode if no other nearby allied muckrakers or slanderers
+                int squaredDistance = controller.getLocation().distanceSquaredTo(robotInfo.getLocation());
+                RobotInfo[] nearbyAlliedRobots = controller.senseNearbyRobots(squaredDistance, controller.getTeam());
+                boolean safeToEmpower = true;
+                for (RobotInfo nearbyAlliedRobot : nearbyAlliedRobots) {
+                    if (nearbyAlliedRobot.type == RobotType.MUCKRAKER || nearbyAlliedRobot.type == RobotType.SLANDERER) {
+                        safeToEmpower = false;
+                    }
+                }
+                if (safeToEmpower && controller.canEmpower(actionRadius)) {
+                    controller.empower(squaredDistance);
+                    return true;
+                } else if (!safeToEmpower) {
+                    int flag = Communication.POLITICIAN_ATTACK_FLAG;
+                    if (controller.canSetFlag(flag)) {
+                        controller.setFlag(flag);
+                    }
+                }
+            }
+        }
+
+        pathfinding.move(EnemyEC);
+        return true;
+
+    }
 
     //Assumptions: neutralEC is found by a scout and communicated to the EC
     //Bugs:
@@ -101,21 +144,22 @@ public class PoliticanBot implements RunnableBot {
     //      we only explode if it is a 1-shot (with some extra for health). If it is no longer a 1-shot, this politican is repurposed.
     //      check for enemy politicians?
     //      We may want a way to clear enemies that just surround the neutral EC with weak targets but do not capture
-    public boolean moveAndDestoryNeutralEC() throws GameActionException {
-
-        if (neutralEC == null && controller.getInfluence() % 2 != 0) {
-            if (Debug.debug) {
-                System.out.println("neutralEC not set");
-            }
+    public boolean moveAndDestroyNeutralEC() throws GameActionException {
+        if (neutralEC == null) {
+            Debug.printInformation("neutralEC not set", null);
+            return false;
+        }
+        if (!isTypeAttack) {
+            Debug.printInformation("isTypeAttack is false", null);
             return false;
         }
 
         int actionRadius = Cache.ROBOT_TYPE.actionRadiusSquared;
         RobotInfo[] nearbyRobots = controller.senseNearbyRobots(actionRadius);
         for (RobotInfo robotInfo : nearbyRobots) {
-            if (locatrobotInfo.type == RobotType.ENLIGHTENMENT_CENTER && robotInfo.team == Team.NEUTRAL) {
+            if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER && robotInfo.team == Team.NEUTRAL) {
                 // explode if no other nearby allied muckrakers or slanderers
-                int squaredDistance = Pathfinding.calculateSquaredDistance(controller.getLocation(), robotInfo.getLocation());
+                int squaredDistance = controller.getLocation().distanceSquaredTo(robotInfo.getLocation());
                 RobotInfo[] nearbyAlliedRobots = controller.senseNearbyRobots(squaredDistance, controller.getTeam());
                 boolean safeToEmpower = true;
                 for (RobotInfo nearbyAlliedRobot : nearbyAlliedRobots) {
