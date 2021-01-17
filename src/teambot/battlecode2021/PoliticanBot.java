@@ -101,8 +101,8 @@ public class PoliticanBot implements RunnableBot {
                 } else if (!safeToEmpower) {
                     int flag = CommunicationMovement.encodeMovement(false, true,
                             CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.NOOP,
-                            CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, true, 0);
-                    if (controller.canSetFlag(flag)) {
+                            CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
+                    if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
                         controller.setFlag(flag);
                         Comms.hasSetFlag = true;
                     }
@@ -160,7 +160,7 @@ public class PoliticanBot implements RunnableBot {
                     int flag = CommunicationMovement.encodeMovement(false, true,
                             CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.NOOP,
                             CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
-                    if (controller.canSetFlag(flag)) {
+                    if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
                         controller.setFlag(flag);
                         Comms.hasSetFlag = true;
                     }
@@ -205,8 +205,10 @@ public class PoliticanBot implements RunnableBot {
 
         MapLocation toTarget = null;
         int leastDistance = 9999;
+        boolean enemyMuckrakerInRange = false;
         for (RobotInfo robotInfo : controller.senseNearbyRobots(-1, Cache.OPPONENT_TEAM)) {
             if (robotInfo.type == RobotType.MUCKRAKER) {
+                enemyMuckrakerInRange = true;
                 int minDistance = 9998;
                 //enemy muckraker
                 //TODO: make sure that no friendly unit is already tracking the muckraker -- maybe don't implement this, not high reward and risky..
@@ -220,7 +222,28 @@ public class PoliticanBot implements RunnableBot {
                     leastDistance = minDistance;
                     toTarget = robotInfo.location;
                 }
+            }
+        }
 
+        int flag = CommunicationMovement.encodeMovement(true, true,
+                CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.NOOP,
+                CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
+
+        if (enemyMuckrakerInRange && friendlySlanderersSize > 0) { //If I have both a muckraker and slanderer in range of me, alert danger by inDanger to slanderers!
+
+            // I THINK SET MOVEMENT_BOTS_DATA to EC -> LOCATION value
+            Direction dangerDirection = Cache.myECLocation.directionTo(Cache.CURRENT_LOCATION);
+            flag = CommunicationMovement.encodeMovement(true, true,
+                    CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.convert_DirectionInt_MovementBotsData(dangerDirection.ordinal()),
+                    CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, true, 0);
+            if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
+                controller.setFlag(flag);
+                Comms.hasSetFlag = true;
+            }
+        } else {
+            if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
+                controller.setFlag(flag);
+                Comms.hasSetFlag = false; // NOTE: FALSE HERE IS BY FUNCTION (not a bug). We want to change the flag only to change its state from the previous one. If it is set to a different state/overridden, that is OKAY
             }
         }
 
@@ -230,10 +253,10 @@ public class PoliticanBot implements RunnableBot {
 
         if (toTarget != null && controller.isReady()) {
             //explode?
-            if (leastDistance <= RobotType.MUCKRAKER.actionRadiusSquared + 1) {
+            if (leastDistance <= RobotType.MUCKRAKER.actionRadiusSquared + 5) {
                 // our slanderer is in danger!!
-                if (controller.canEmpower(Cache.CURRENT_LOCATION.distanceSquaredTo(toTarget))) {
-                    controller.empower(Cache.CURRENT_LOCATION.distanceSquaredTo(toTarget));
+                if (controller.canEmpower(Cache.CURRENT_LOCATION.distanceSquaredTo(toTarget) + 1)) {
+                    controller.empower(Cache.CURRENT_LOCATION.distanceSquaredTo(toTarget) + 1);
                     return true;
                 }
             }
@@ -251,8 +274,8 @@ public class PoliticanBot implements RunnableBot {
             if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
                 int flag = CommunicationMovement.encodeMovement(
                         true,true,CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE,
-                        CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME, false,true,0);
-                if (controller.canSetFlag(flag)) {
+                        CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME, false,false,0);
+                if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
                     controller.setFlag(flag); //CARE ABOUT SEED LATER? //NOTE THIS IS SETFLAG BECAUSE WE DO NOT WANT TO QUEUE IT BUT SKIP QUEUE AND SET FLAG
                     EnemyEC = robot.getLocation();
                     Comms.hasSetFlag = true;

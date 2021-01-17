@@ -197,7 +197,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Debug.printInformation("SOUTH -> ", Cache.MAP_BOTTOM);
         Debug.printInformation("WEST -> ", Cache.MAP_LEFT);
         Debug.printInformation("HEIGHT -> ", Cache.MAP_HEIGHT);
-        Debug.printInformation("HEIGHT -> ", Cache.MAP_BOTTOM);
+        Debug.printInformation("HEIGHT -> ", Cache.MAP_WIDTH);
 
         Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
 
