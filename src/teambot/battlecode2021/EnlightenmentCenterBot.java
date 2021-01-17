@@ -80,6 +80,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int WALL_MUCKRAKER_SZ;
     private static int[] WALL_MUCKRAKER_IDs;
 
+    /* Do we have one guide broadcasting information to newly created units */
+    private static int GUIDE_ID = 0;
+
     /* Should always iterate on all of these -- highest priority (should be at most 100) */
     private static int SCOUT_MUCKRAKER_SZ;
     private static int[] SCOUT_MUCKRAKER_IDs;
@@ -190,6 +193,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
 //            brute_force_ids();
 //        }
 
+        naiveBid();
+
         defaultTurn();
 
         /*
@@ -225,21 +230,33 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Debug.printInformation("updateSlanderers() => ", " VALID ");
     }
 
-    private boolean parseCommsLocation(int encoding) {
+    private boolean parseCommsLocation(int encoding) throws GameActionException {
         CommunicationLocation.FLAG_LOCATION_TYPES locationType = CommunicationLocation.decodeLocationType(encoding);
         MapLocation locationData = CommunicationLocation.decodeLocationData(encoding);
 
         switch (locationType) {
             case NORTH_MAP_LOCATION:
+                if (Cache.MAP_TOP == 0) { 
+                    Comms.checkAndAddFlag(encoding);
+                }
                 Cache.MAP_TOP = locationData.y;
                 break;
             case SOUTH_MAP_LOCATION:
+                if (Cache.MAP_BOTTOM == 0) { 
+                    Comms.checkAndAddFlag(encoding);
+                }
                 Cache.MAP_BOTTOM = locationData.y;
                 break;
             case EAST_MAP_LOCATION:
+                if (Cache.MAP_RIGHT == 0) { 
+                    Comms.checkAndAddFlag(encoding);
+                }
                 Cache.MAP_RIGHT = locationData.x;
                 break;
             case WEST_MAP_LOCATION:
+                if (Cache.MAP_LEFT == 0) { 
+                    Comms.checkAndAddFlag(encoding);
+                }
                 Cache.MAP_LEFT = locationData.x;
                 break;
             case MY_EC_LOCATION: //ADD STUFF HERE
@@ -288,7 +305,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         return true;
     }
 
-    public void parseFlag(int encoding, MapLocation knownLocation) {
+    public void parseFlag(int encoding, MapLocation knownLocation) throws GameActionException {
         if (CommunicationLocation.decodeIsSchemaType(encoding)) {
             // LOCATION TYPE =>
             parseCommsLocation(encoding);
@@ -309,7 +326,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     }
 
-    public void processValidFlag(int encoding) {
+    public void processValidFlag(int encoding) throws GameActionException {
 
         if (Comms.decodeIsUrgent(encoding)) {
             urgentFlagRecieved(encoding);
@@ -393,21 +410,38 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 SCOUT_LOCATIONS_CURRENT = (++SCOUT_LOCATIONS_CURRENT) % SCOUT_LOCATIONS.length;
                 Debug.printInformation("Spawned Scout => ", targetLocation);
             }
-        } else if (SLANDERER_IDs.getSize() < 8) {
-                spawnLatticeSlanderer((int) (controller.getInfluence() * 0.1), randomValidDirection());
-                Debug.printInformation("Spawned Slanderer => ", "VALID");
-        } else if (ran <= 2) {
-                spawnDefendingPolitician(15, randomValidDirection(), null);
-                Debug.printInformation("spawnDefendingPolitician => ", "VALID");
-        } else if (ran <= 3) {
-                spawnLatticeSlanderer((int) (controller.getInfluence() * 0.1), randomValidDirection());
-                Debug.printInformation("spawnLatticeSlanderer => ", "VALID");
-        } else if (ran == 4) {
-                spawnWallMuckraker(2, randomValidDirection(), null);
-                Debug.printInformation("spawnWallMuckraker => ", "VALID");
+        } 
+        else if (!controller.canGetFlag(GUIDE_ID)) {
+            spawnGuideMuckraker(1,randomValidDirection());
+            Debug.printInformation("SpawnedGuideMuckraker => ", "VALID");
         }
+        else if (SLANDERER_IDs.getSize() < 8) {
+                spawnLatticeSlanderer((int) (controller.getInfluence() * 0.4), randomValidDirection());
+                Debug.printInformation("Spawned Slanderer => ", "VALID");
+        } 
+        else if (ran <= 2) {
+            spawnScoutMuckraker(1, randomValidDirection(), Pathfinding.randomLocation());
+            Debug.printInformation("Spawning more scouts => ", "VALID");
+        } 
+        else if (ran <= 3) {
+            spawnLatticeSlanderer((int) (controller.getInfluence() * 0.1), randomValidDirection());
+            Debug.printInformation("spawnLatticeSlanderer => ", "VALID");
+        }
+        else if (ran <= 4) {
+            spawnDefendingPolitician(15, randomValidDirection(), null);
+            Debug.printInformation("spawnDefendingPolitician => ", "VALID");
+    } 
 
         processAllECInformation();
+    }
+
+    /* Simple bidding strategy */ 
+
+    private void naiveBid() throws GameActionException {
+        int bid = Math.max(1,controller.getInfluence() / 100);
+        if (controller.canBid(bid)){
+            controller.bid(bid);
+        }
     }
 
     /* Greedily returns the closest valid direction to preferredDirection within the directionFlexibilityDelta value (2 means allow for 2 clockwise 45 deg in both directions)
@@ -479,6 +513,39 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
             controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
             setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
+        }
+    }
+
+    private void spawnGuideMuckraker(int influence, Direction direction) throws GameActionException {
+
+        if (direction != null && controller.canBuildRobot(RobotType.MUCKRAKER, direction, influence)) {
+            controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
+            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, Cache.CURRENT_LOCATION);
+            GUIDE_ID = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
+            if (Cache.MAP_TOP != 0) {
+                int flag = CommunicationLocation.encodeLOCATION(
+                    false, true, CommunicationLocation.FLAG_LOCATION_TYPES.NORTH_MAP_LOCATION, 
+                    new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_TOP));
+                Comms.checkAndAddFlag(flag);
+            }
+            if (Cache.MAP_RIGHT != 0) {
+                int flag = CommunicationLocation.encodeLOCATION(
+                    false, true, CommunicationLocation.FLAG_LOCATION_TYPES.EAST_MAP_LOCATION, 
+                    new MapLocation(Cache.MAP_RIGHT,Cache.CURRENT_LOCATION.y));
+                Comms.checkAndAddFlag(flag);
+            }
+            if (Cache.MAP_BOTTOM != 0) {
+                int flag = CommunicationLocation.encodeLOCATION(
+                    false, true, CommunicationLocation.FLAG_LOCATION_TYPES.SOUTH_MAP_LOCATION, 
+                    new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_BOTTOM));
+                Comms.checkAndAddFlag(flag);
+            }
+            if (Cache.MAP_LEFT != 0) {
+                int flag = CommunicationLocation.encodeLOCATION(
+                    false, true, CommunicationLocation.FLAG_LOCATION_TYPES.WEST_MAP_LOCATION, 
+                    new MapLocation(Cache.MAP_LEFT,Cache.CURRENT_LOCATION.y));
+                Comms.checkAndAddFlag(flag);
+            }
         }
     }
 
@@ -565,4 +632,5 @@ public class EnlightenmentCenterBot implements RunnableBot {
             }
         }
     } */
+
 }

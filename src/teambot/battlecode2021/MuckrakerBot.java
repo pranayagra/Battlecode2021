@@ -43,30 +43,77 @@ public class MuckrakerBot implements RunnableBot {
     @Override
     public void turn() throws GameActionException {
 
+        muckrakerComms();
+
         if (simpleAttack()) {
             return;
         }
 
         switch (Cache.EC_INFO_ACTION) {
+            // Attack a known slanderer group
             case ATTACK_LOCATION:
                 break;
             case DEFEND_LOCATION:
-                muckWall(Cache.myECID);
+                //muckWall strat
+
+                //muckWall(Cache.myECID);
                 //TODO: close wall if and only if we can sense an enemy (move a rank up or down, not sure which)
                 //TODO: create a structure around slanderers, not EC
                 //TODO: some type of communication between EC spawn location (or flag) and direction (or location) to fill wall, which is intitated by slanderers?
+
+                //guide strat
+                GuideRoutine();
                 break;
             case SCOUT_LOCATION:
                 scoutRoutine();
+                break;
+            default:
                 break;
         }
 
         Debug.printByteCode("turn() => END");
     }
 
-    public boolean scoutRoutine() throws GameActionException {
-        scoutMovement();
-        return true;
+    private void muckrakerComms() throws GameActionException {
+        // Check EC
+        if (controller.canGetFlag(Cache.myECID)) {
+            int encoding = controller.getFlag(Cache.myECID);
+            processValidFlag(encoding);
+        }
+        // Check other bots in sight
+        for (RobotInfo info : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+            int encoding = controller.getFlag(Cache.myECID);
+            processValidFlag(encoding);
+        }
+    }
+
+    private void processValidFlag(int encoding) throws GameActionException {
+        if (CommunicationLocation.decodeIsSchemaType(encoding)) {
+            CommunicationLocation.FLAG_LOCATION_TYPES locationType = CommunicationLocation.decodeLocationType(encoding);
+        MapLocation locationData = CommunicationLocation.decodeLocationData(encoding);
+            Debug.printInformation("Recieving location data", locationData);
+            switch (locationType) {
+                case NORTH_MAP_LOCATION:
+                    Cache.MAP_TOP = locationData.y;
+                    break;
+                case SOUTH_MAP_LOCATION:
+                    Cache.MAP_BOTTOM = locationData.y;
+                    break;
+                case EAST_MAP_LOCATION:
+                    Cache.MAP_RIGHT = locationData.x;
+                    break;
+                case WEST_MAP_LOCATION:
+                    Cache.MAP_LEFT = locationData.x;
+                    break;
+                case MY_EC_LOCATION: 
+                case ENEMY_EC_LOCATION: // TODO: Should probably change to attack muck, on this EC
+                case NEUTRAL_EC_LOCATION:
+                    break;
+                default:
+                    break;
+            }
+        }
+        // Other flags add here
     }
 
     // If you can still sense the nucleus, then move away from it greedily
@@ -75,17 +122,12 @@ public class MuckrakerBot implements RunnableBot {
     *       2) we want lattice structure with rectangle
     * */
     // Bug: tryMove() may return invalid direction
+    /*
     public void muckWall(int nucleus) throws GameActionException {
 
         // TODO: watch flags for nucleus!
 
         if (!controller.isReady()) return;
-        // TODO: Do pathfinding when not ready
-
-        if (simpleAttack()) {
-            return;
-        }
-
         boolean move = false;
         MapLocation center = null;
         for (RobotInfo info : Cache.ALL_NEARBY_ROBOTS) {
@@ -101,6 +143,7 @@ public class MuckrakerBot implements RunnableBot {
             if (moveDirection != null) controller.move(moveDirection);
         }
     }
+    */
 
     //assume robot always tries to surround/get as close as possible to a EC (only 1 distance, extras can roam around to edge map/bounce around)
 
@@ -137,7 +180,7 @@ public class MuckrakerBot implements RunnableBot {
     }
 
     /*
-     * Functionality:
+     * Scout:
      *      Perform a movement to optimize scouting of the map
      *      
      *      If discovered all edges of the map
@@ -146,13 +189,18 @@ public class MuckrakerBot implements RunnableBot {
      *          2. Away from friendly muckrackers
      *          3. Towards enemy EC
      * */
+    public boolean scoutRoutine() throws GameActionException {
+        scoutMovement();
+        return true;
+    }
+    
     private boolean scoutMovement() throws GameActionException {
         if (!controller.isReady()) {
             return false;
         }
-
+        Debug.printInformation("Scouting", scoutTarget);
         int moveRes = Pathfinding.move(scoutTarget);
-        if (moveRes == 2 || scoutTarget.equals(Cache.CURRENT_LOCATION)) {
+        if (moveRes >= 2 || moveRes == 0) {
             Cache.CURRENT_LOCATION = controller.getLocation();
             //TODO: Adjust so muckracker chooses a side thats likely to be close
             if (Cache.MAP_TOP == 0) {
@@ -168,6 +216,7 @@ public class MuckrakerBot implements RunnableBot {
                 scoutTarget = Cache.CURRENT_LOCATION.translate(-64,0);
             }
             else{
+                /*
                 int[] directionScores = new int[8];
                 for (RobotInfo info : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
                     if (info.type == RobotType.MUCKRAKER) {
@@ -175,6 +224,7 @@ public class MuckrakerBot implements RunnableBot {
                     }
                 }
                 // Unfinished
+                */
                 scoutTarget = Pathfinding.randomLocation();
             }
         }
@@ -188,11 +238,45 @@ public class MuckrakerBot implements RunnableBot {
     * And displays information
     */
 
+    // Because each newly spawned unit (exception slanderer) waits 10 turns
+    // They can use 4 turns to get all map locations
+    // TODO: Send out closest enemy EC location as well
 
-    /*
-    private void GuideRoutine() {
-        if (Pathfinding.distan)
+    private void GuideRoutine() throws GameActionException {
+        Debug.printInformation("I'm a guide with", controller.getFlag(controller.getID()));
+        // Move away from EC if too close to prevent impact to spawning
+        if (Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation) <= 2) {
+            Pathfinding.naiveMove(Pathfinding.toMovePreferredDirection(
+                Pathfinding.oppositeDirection(Cache.CURRENT_LOCATION.directionTo(Cache.myECLocation)),4));
+        }
+
+        // Rotate flag to send out map location
+        int round = controller.getRoundNum();
+        if (Cache.MAP_TOP != 0 && round % 4 == 0) {
+            int flag = CommunicationLocation.encodeLOCATION(
+                false, true, CommunicationLocation.FLAG_LOCATION_TYPES.NORTH_MAP_LOCATION, 
+                new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_TOP));
+            Comms.checkAndAddFlag(flag);
+        }
+        else if (Cache.MAP_RIGHT != 0 && round % 4 == 1) {
+            int flag = CommunicationLocation.encodeLOCATION(
+                false, true, CommunicationLocation.FLAG_LOCATION_TYPES.EAST_MAP_LOCATION, 
+                new MapLocation(Cache.MAP_RIGHT,Cache.CURRENT_LOCATION.y));
+            Comms.checkAndAddFlag(flag);
+        }
+        else if (Cache.MAP_BOTTOM != 0 && round % 4 == 2) {
+            int flag = CommunicationLocation.encodeLOCATION(
+                false, true, CommunicationLocation.FLAG_LOCATION_TYPES.SOUTH_MAP_LOCATION, 
+                new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_BOTTOM));
+            Comms.checkAndAddFlag(flag);
+        }
+        else if (Cache.MAP_LEFT != 0 && round % 4 == 3) {
+            int flag = CommunicationLocation.encodeLOCATION(
+                false, true, CommunicationLocation.FLAG_LOCATION_TYPES.WEST_MAP_LOCATION, 
+                new MapLocation(Cache.MAP_LEFT,Cache.CURRENT_LOCATION.y));
+            Comms.checkAndAddFlag(flag);
+        }
     }
-    */
+    
 
 }

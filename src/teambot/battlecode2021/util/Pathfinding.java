@@ -263,7 +263,7 @@ public class Pathfinding {
         return new int[] {to.x-from.x,to.y-from.y};
     }
 
-    public static double calculateGradient(MapLocation start, MapLocation end) {
+    private static double calculateGradient(MapLocation start, MapLocation end) {
         if (end.x-start.x == 0) {
             return -1;
         }
@@ -278,6 +278,34 @@ public class Pathfinding {
             res = new MapLocation((int)(Math.random()*64- 32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
         }
         return res;
+    }
+
+    public static Direction oppositeDirection(Direction dir) {
+        if (dir == Direction.NORTH) {
+            return Direction.SOUTH;
+        }
+        if (dir == Direction.NORTHEAST) {
+            return Direction.SOUTHWEST;
+        }
+        if (dir == Direction.EAST) {
+            return Direction.WEST;
+        }
+        if (dir == Direction.SOUTHEAST) {
+            return Direction.NORTHWEST;
+        }
+        if (dir == Direction.SOUTH) {
+            return Direction.NORTH;
+        }
+        if (dir == Direction.SOUTHWEST) {
+            return Direction.NORTHEAST;
+        }
+        if (dir == Direction.WEST) {
+            return Direction.EAST;
+        }
+        if (dir == Direction.NORTHWEST) {
+            return Direction.SOUTHEAST;
+        }
+        return Direction.CENTER;
     }
 
 }

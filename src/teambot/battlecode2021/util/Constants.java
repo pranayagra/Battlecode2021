@@ -3,7 +3,7 @@ import battlecode.common.*;
 
 public class Constants {
 
-    /* COMMUNCATION */
+    /* COMMUNICATION */
 
     public static final Direction[] DIRECTIONS = {
             Direction.NORTH,
