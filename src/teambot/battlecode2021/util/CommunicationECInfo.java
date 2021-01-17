@@ -8,7 +8,7 @@ public class CommunicationECInfo extends Comms {
 
     /* 2 bits max */
     public static enum COMMUNICATION_UNIT_TEAM {
-        NOOP,
+        ENEMY_BUTNOTEC, //useful for sending how strong the opponents units are to guide our spawn (BE CAREFUL USING/CHECKING THIS ELSEWHERE)
         MY,
         ENEMY,
         NEUTRAL

@@ -35,6 +35,7 @@ public class CommunicationMovement extends Comms {
         MOVE_TOWARDS_ME,
         MOVE_AWAY_FROM_ME,
         SPOTTED_ENEMY_UNIT,
+        SEND_DEFENDING_POLITICIANS,
     }
 
     public static int convert_MovementBotData_DirectionInt(MOVEMENT_BOTS_DATA movementBotsData) {

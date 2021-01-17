@@ -20,7 +20,14 @@ class EC_Information {
         this.location = location;
         this.health = Integer.MAX_VALUE >> 2;
         this.robotID = Integer.MAX_VALUE >> 2;
+    }
 
+    public EC_Information(MapLocation location, int health, int robotID, int currentRound, CommunicationLocation.FLAG_LOCATION_TYPES locationFlagType) {
+        this.location = location;
+        this.health = health;
+        this.robotID = robotID;
+        this.roundFound = currentRound;
+        setTeam(locationFlagType);
     }
 
     public void setTeam(CommunicationLocation.FLAG_LOCATION_TYPES locationFlagType) {
@@ -55,6 +62,9 @@ class EC_Information {
 
 public class EnlightenmentCenterBot implements RunnableBot {
     private RobotController controller;
+
+    private static int[] enemyDirectionCounts; //8 values indicating how dangerous a side of the map is (used in spawning politicians/scouting)
+    private static int[] wallDirectionDistance; // 8 values for how close the wall is from a certain direction (used in spawning slanderers in conjuction to enemyDirectionCounts)
 
     private static MapLocation[] SCOUT_LOCATIONS;
     private static int SCOUT_LOCATIONS_CURRENT;
@@ -91,11 +101,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int[] buildRequests; //want to store -> the necessary information (type, influence, direction, deltaDirectionAllowed) and how old the request is?
 
 
-    private static int[][] processRobotFlags;
-    private static int[] processRobotFlagsSZ1D; //the size of the cols for each row
-
-    private static int[] mapProcessRobotFlagsToIdx; //1 2 3 4 5=> 2 dies => 1 5 3 4 //list of free locations too?
-    private static int processRobotFlagsSZ; //the size of the rows
+    private static int[][] processRobotIDandFlags; // [#robots][#flags]. [i][0]=robotID, i[1,2,3]=flagType
+    private static int[] numFlagsSavedForARobot; //the size of the cols for each row
+    private static int numRobotsToProcessFlags; //the size of the rows
 
     //Behavior: if does not exist, add to map. If exists, check type (neutral, friendly, enemy) and see if it has changed
     private static Map <MapLocation, EC_Information> foundECs;
@@ -158,6 +166,16 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         /* NEW STUFF BELOW */
 
+        enemyDirectionCounts = new int[8];
+        wallDirectionDistance = new int[8];
+        for (int i = 0; i < 8; ++i) wallDirectionDistance[i] = 99999;
+
+        /* PROCESS FLAGS THROUGH MULTIPLE ROUNDS */
+        processRobotIDandFlags = new int[100][4]; //robotID ToQuery, flag1, flag2, flag3
+        numFlagsSavedForARobot = new int[100]; //total number of flags for a robot (on spawn=1 for robotID, then 2-4), reset if last flag
+        numRobotsToProcessFlags = 0; //total number of robots to query (add +1 on spawn)
+
+
         SCOUT_MUCKRAKER_IDs = new int[152];
 
         SLANDERER_IDs = new FastQueueSlanderers(152);
@@ -200,20 +218,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         defaultTurn();
 
-        /*
-        Debug.printInformation("NORTH -> ", Cache.MAP_TOP);
-        Debug.printInformation("EAST -> ", Cache.MAP_RIGHT);
-        Debug.printInformation("SOUTH -> ", Cache.MAP_BOTTOM);
-        Debug.printInformation("WEST -> ", Cache.MAP_LEFT);
-        Debug.printInformation("HEIGHT -> ", Cache.MAP_HEIGHT);
-        Debug.printInformation("HEIGHT -> ", Cache.MAP_WIDTH);
-
         Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
-        */
 
-//        Debug.printECInformation();
-
-        Debug.printByteCode("END TURN BYTECODE => ");
+        Debug.printByteCode("EC END TURN => ");
 
     }
 
@@ -233,6 +240,11 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Debug.printInformation("updateSlanderers() => ", " VALID ");
     }
 
+    //TODO (IMPORTANT): add values to wallDirectionDistance
+    private void updateWallDistance() {
+
+    }
+
     private boolean parseCommsLocation(int encoding) throws GameActionException {
         CommunicationLocation.FLAG_LOCATION_TYPES locationType = CommunicationLocation.decodeLocationType(encoding);
         MapLocation locationData = CommunicationLocation.decodeLocationData(encoding);
@@ -241,53 +253,60 @@ public class EnlightenmentCenterBot implements RunnableBot {
             case NORTH_MAP_LOCATION:
                 if (Cache.MAP_TOP == 0) { 
                     Comms.checkAndAddFlag(encoding);
+                    Cache.MAP_TOP = locationData.y;
+                    updateWallDistance();
                 }
-                Cache.MAP_TOP = locationData.y;
                 break;
             case SOUTH_MAP_LOCATION:
                 if (Cache.MAP_BOTTOM == 0) { 
                     Comms.checkAndAddFlag(encoding);
+                    Cache.MAP_BOTTOM = locationData.y;
+                    updateWallDistance();
                 }
-                Cache.MAP_BOTTOM = locationData.y;
                 break;
             case EAST_MAP_LOCATION:
                 if (Cache.MAP_RIGHT == 0) { 
                     Comms.checkAndAddFlag(encoding);
+                    Cache.MAP_RIGHT = locationData.x;
+                    updateWallDistance();
                 }
-                Cache.MAP_RIGHT = locationData.x;
                 break;
             case WEST_MAP_LOCATION:
                 if (Cache.MAP_LEFT == 0) { 
                     Comms.checkAndAddFlag(encoding);
+                    Cache.MAP_LEFT = locationData.x;
+                    updateWallDistance();
                 }
-                Cache.MAP_LEFT = locationData.x;
-                break;
-            case MY_EC_LOCATION: //ADD STUFF HERE
-            case ENEMY_EC_LOCATION:
-            case NEUTRAL_EC_LOCATION:
-                EC_Information EC_info = foundECs.get(locationData);
-                if (EC_info == null) EC_info = new EC_Information(locationData);
-                // update information
-                EC_info.setRoundFound(controller.getRoundNum());
-                EC_info.setTeam(locationType);
-                foundECs.put(locationData, EC_info);
                 break;
         }
+
         return true;
     }
 
-    private boolean parseCommsRobotID(int encoding, MapLocation knownLocation) {
+    private boolean parseCommsMovement(int encoding) {
+        CommunicationMovement.MY_UNIT_TYPE myUnitType = CommunicationMovement.decodeMyUnitType(encoding);
+        CommunicationMovement.MOVEMENT_BOTS_DATA movementBotData = CommunicationMovement.decodeMyPreferredMovement(encoding);
+        CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS communicationToOtherBots = CommunicationMovement.decodeCommunicationToOtherBots(encoding);
+        int direction = CommunicationMovement.convert_MovementBotData_DirectionInt(movementBotData);
+        if (communicationToOtherBots == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.SPOTTED_ENEMY_UNIT) {
+            // WE SPOTTED AN ENEMY AT Direction movementBotData (EC => enemy location)
+            enemyDirectionCounts[direction] += 2;
+            enemyDirectionCounts[(direction + 7) % 8] += 1;
+            enemyDirectionCounts[(direction + 1) % 8] += 1;
+        } else if (communicationToOtherBots == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.SEND_DEFENDING_POLITICIANS) {
+            //TODO: send politician to defend at direction location
+        }
+
+        return true;
+    }
+
+    /* We will never parse ECRobotID by itself -- this is purely to communicate moveable type bots. Not used currently anywhere */
+    private boolean parseCommsRobotID(int encoding) {
+        Debug.printInformation("USED UNIMPLEMENTED METHOD parseCommsRobotID() ", " ERROR");
         CommunicationRobotID.COMMUNICATION_UNIT_TYPE communicatedUnitType = CommunicationRobotID.decodeCommunicatedUnitType(encoding);
         CommunicationRobotID.COMMUNICATION_UNIT_TEAM communicatedUnitTeam = CommunicationRobotID.decodeCommunicatedUnitTeam(encoding);
         int robotID = CommunicationRobotID.decodeRobotID(encoding);
         switch (communicatedUnitType) {
-            case EC:
-                if (knownLocation == null) return false;
-                EC_Information EC_info = foundECs.get(knownLocation);
-                if (EC_info == null) return false;
-                EC_info.robotID = robotID;
-                foundECs.put(knownLocation, EC_info);
-                break;
             case SL:
                 break;
             case PO:
@@ -298,54 +317,56 @@ public class EnlightenmentCenterBot implements RunnableBot {
         return true;
     }
 
-    private boolean parseECInfo(int encoding, MapLocation knownLocation) {
-        if (knownLocation == null) return false;
-        int ECHealth = CommunicationECInfo.decodeRobotHealth(encoding);
-        CommunicationECInfo.COMMUNICATION_UNIT_TEAM ECTeam = CommunicationECInfo.decodeCommunicatedUnitTeam(encoding);
-        EC_Information EC_info = foundECs.get(knownLocation);
-        if (EC_info == null) return false;
-        EC_info.health = ECHealth;
-        return true;
-    }
-
-    public void parseFlag(int encoding, MapLocation knownLocation) throws GameActionException {
+    public void urgentFlagRecieved(int encoding) throws GameActionException {
         if (CommunicationLocation.decodeIsSchemaType(encoding)) {
-            // LOCATION TYPE =>
             parseCommsLocation(encoding);
-        } else if (CommunicationRobotID.decodeIsSchemaType(encoding)) {
-            parseCommsRobotID(encoding, knownLocation);
-        } else if (CommunicationECInfo.decodeIsSchemaType(encoding)) {
-            parseECInfo(encoding, knownLocation);
         } else if (CommunicationMovement.decodeIsSchemaType(encoding)) {
-
+            parseCommsMovement(encoding);
+        } else if (CommunicationRobotID.decodeIsSchemaType(encoding)) {
+            parseCommsRobotID(encoding);
+        } else if (CommunicationECInfo.decodeIsSchemaType(encoding)) {
+            Debug.printInformation("UNIMPLEMENTED PARSER ECINFO", " ERROR");
         }
-
-        Debug.printInformation("parseScoutFlag() => ", " VALID ");
     }
 
-    // I have first few
+    public void processRobotFlag(int robotIDX, int oneMoreThanMessageSize) throws GameActionException {
 
-    public void urgentFlagRecieved(int encoding) {
-
-    }
-
-    public void processValidFlag(int encoding) throws GameActionException {
-
-        if (Comms.decodeIsUrgent(encoding)) {
-            urgentFlagRecieved(encoding);
-            return;
+        if (oneMoreThanMessageSize == 2) {
+            // this is a single message => simple case
+            int flag1 = processRobotIDandFlags[robotIDX][1];
+            if (CommunicationLocation.decodeIsSchemaType(flag1)) {
+                parseCommsLocation(flag1);
+            } else if (CommunicationMovement.decodeIsSchemaType(flag1)) {
+                parseCommsMovement(flag1);
+            } else if (CommunicationRobotID.decodeIsSchemaType(flag1)) {
+                parseCommsRobotID(flag1);
+            } else if (CommunicationECInfo.decodeIsSchemaType(flag1)) {
+                Debug.printInformation("UNIMPLEMENTED PARSER ECINFO", " ERROR");
+            }
+        } else if (oneMoreThanMessageSize == 3) {
+            // this is two messages => has no use case right now (should never happen)
+            Debug.printInformation("UNIMPLEMENTED PARSER 2 MESSAGES", " ERROR");
+        } else if (oneMoreThanMessageSize == 4) {
+            // this is three messages => most likely Location + ECInfo + RobotID
+            int flag1 = processRobotIDandFlags[robotIDX][1];
+            int flag2 = processRobotIDandFlags[robotIDX][2];
+            int flag3 = processRobotIDandFlags[robotIDX][3];
+            if (CommunicationLocation.decodeIsSchemaType(flag1) &&
+                    CommunicationECInfo.decodeIsSchemaType(flag2) &&
+                    CommunicationRobotID.decodeIsSchemaType(flag3)) {
+                MapLocation ECLocation = CommunicationLocation.decodeLocationData(flag1);
+                CommunicationLocation.FLAG_LOCATION_TYPES ECTeam = CommunicationLocation.decodeLocationType(flag1);
+                int ECHealth = CommunicationECInfo.decodeRobotHealth(flag2);
+                int ECRobotID = CommunicationRobotID.decodeRobotID(flag3);
+                EC_Information ecInfo = new EC_Information(ECLocation, ECHealth, ECRobotID, controller.getRoundNum(), ECTeam);
+                foundECs.put(ECLocation, ecInfo);
+                Debug.printInformation("EC Received ECScoutInformation ", ecInfo.toString());
+            }
+            //NOTE -> REMEMBER THAT IF WE HAVE OTHER TYPES OF MULTI-ROUND FLAGS, WE WILL NEED TO ADD CONDITIONS HERE... CURRENTLY "HARDCODED"
         }
 
-        if (Comms.decodeIsLastFlag(encoding)) {
-
-            parseFlag(encoding, null);
-            //execute all flags received here based (might be multiple)!
-
-
-        } else {
-
-            //ADD flag to the IDs set of flags
-        }
+        // The robot is still of value (do not remove from system), but we must reset the size of the current message (1 because first index is robotID)
+        numFlagsSavedForARobot[robotIDX] = 1;
 
     }
 
@@ -353,6 +374,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     *
     *
     *  */
+    /*
     public void readFriendlyScoutFlags() throws GameActionException {
         Debug.printInformation("readFriendlyScoutFlags() => ", " START ");
         for (int i = 0; i < SCOUT_MUCKRAKER_SZ; ++i) {
@@ -378,6 +400,49 @@ public class EnlightenmentCenterBot implements RunnableBot {
             }
         }
         Debug.printInformation("readFriendlyScoutFlags() => ", " END ");
+    }*/
+
+
+    public void iterateAllUnitIDs() throws GameActionException {
+
+        for (int i = 0; i < numRobotsToProcessFlags; ++i) { //iterate through all flags
+            int robotID = processRobotIDandFlags[i][0]; //the robotID of the corresponding idx
+            if (controller.canGetFlag(robotID)) { //this robot is still alive
+                //query flag information, check isUrgent, isLastFlag bit, or add to list of flags)
+                int encodedFlag = controller.getFlag(robotID);
+                if (Comms.decodeIsUrgent(encodedFlag)) { //skip queue (this flag is urgent and interrupting the queued message)
+                    urgentFlagRecieved(encodedFlag);
+                } else if (Comms.decodeIsLastFlag(encodedFlag)) { //if the flag is the last flag in sequence, let's add it and then process all the flags
+                    processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
+                    processRobotFlag(i, numFlagsSavedForARobot[i]);
+                } else { //let us add to the list at index i and size of message so far. increment size of message
+                    processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
+                }
+            } else { //the robot has died.
+                //swap with last existing robot & then perform data update
+                while (--numRobotsToProcessFlags >= i + 1) {
+                    int robotIDNew = processRobotIDandFlags[numRobotsToProcessFlags][0];
+                    if (controller.canGetFlag(robotIDNew)) { //found swapping element
+                        //swap the data (robotID + flags) and set the size?
+                        for (int swapData = 0; swapData < numFlagsSavedForARobot[numRobotsToProcessFlags]; ++swapData) {
+                            processRobotIDandFlags[i][swapData] = processRobotIDandFlags[numRobotsToProcessFlags][swapData];
+                        }
+                        robotID = processRobotIDandFlags[i][0];
+                        numFlagsSavedForARobot[i] = numFlagsSavedForARobot[numRobotsToProcessFlags];
+                        int encodedFlag = controller.getFlag(robotID);
+                        if (Comms.decodeIsUrgent(encodedFlag)) { //skip queue (this flag is urgent and interrupting the queued message)
+                            urgentFlagRecieved(encodedFlag);
+                        } else if (Comms.decodeIsLastFlag(encodedFlag)) { //if the flag is the last flag in sequence, let's add it and then process all the flags
+                            processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
+                            processRobotFlag(i, numFlagsSavedForARobot[i]);
+                        } else { //let us add to the list at index i and size of message so far. increment size of message
+                            processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
+                        }
+                    }
+                }
+            }
+        }
+
     }
 
     private void processAllECInformation() {
@@ -402,7 +467,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     public void defaultTurn() throws GameActionException {
         slanderersToPoliticians();
-        readFriendlyScoutFlags();
+        iterateAllUnitIDs();
 
         int ran = random.nextInt(5);
 
@@ -502,6 +567,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
             if (setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.SCOUT_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location)) {
                 controller.buildRobot(RobotType.MUCKRAKER, direction, influence);
                 SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ++] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
+                processRobotIDandFlags[numRobotsToProcessFlags][0] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
+                numFlagsSavedForARobot[numRobotsToProcessFlags] = 1;
+                numRobotsToProcessFlags++;
                 return true;
             }
         }
@@ -549,6 +617,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
                     new MapLocation(Cache.MAP_LEFT,Cache.CURRENT_LOCATION.y));
                 Comms.checkAndAddFlag(flag);
             }
+            processRobotIDandFlags[numRobotsToProcessFlags][0] = GUIDE_ID;
+            numFlagsSavedForARobot[numRobotsToProcessFlags] = 1;
+            numRobotsToProcessFlags++;
         }
     }
 
@@ -567,6 +638,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (location == null) location = spawnLocationNull();
         if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
+            processRobotIDandFlags[numRobotsToProcessFlags][0] = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
+            numFlagsSavedForARobot[numRobotsToProcessFlags] = 1;
+            numRobotsToProcessFlags++;
             setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
         }
     }
