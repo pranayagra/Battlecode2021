@@ -80,8 +80,10 @@ public class MuckrakerBot implements RunnableBot {
         }
         // Check other bots in sight
         for (RobotInfo info : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-            int encoding = controller.getFlag(Cache.myECID);
-            processValidFlag(encoding);
+            if (controller.canGetFlag(info.ID)) {
+                int encoding = controller.getFlag(info.ID);
+                processValidFlag(encoding);
+            }
         }
     }
 

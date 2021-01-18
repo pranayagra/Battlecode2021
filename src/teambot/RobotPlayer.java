@@ -105,19 +105,26 @@ public strictfp class RobotPlayer {
         for (RobotInfo nearbyAlliedRobot : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
             if (controller.canGetFlag(nearbyAlliedRobot.ID)) {
                 int encodedFlag = controller.getFlag(nearbyAlliedRobot.ID);
-                if (CommunicationMovement.decodeIsSchemaType(encodedFlag)) {
-                    CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS otherBotIsTellingMeTo = CommunicationMovement.decodeCommunicationToOtherBots(encodedFlag);
-                    switch (otherBotIsTellingMeTo) {
-                        case MOVE_AWAY_FROM_ME:
-                            moveAwayFromLocation(nearbyAlliedRobot.location);
-                            break;
-                        case MOVE_TOWARDS_ME:
-                            break;
-                    }
+                boolean moveAway = false;
+                if (CommunicationECDataSmall.decodeIsSchemaType(encodedFlag)) {
+                    moveAway = CommunicationECDataSmall.decodeIsMoveAwayFromMe(encodedFlag);
                 }
+                if (CommunicationMovement.decodeIsSchemaType(encodedFlag) && CommunicationMovement.decodeCommunicationToOtherBots(encodedFlag) == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME) {
+                    moveAway = true;
+                }
+//                    CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS otherBotIsTellingMeTo = CommunicationMovement.decodeCommunicationToOtherBots(encodedFlag);
+                if (moveAway) moveAwayFromLocation(nearbyAlliedRobot.location);
+//                    switch (moveAway) {
+//                        case MOVE_AWAY_FROM_ME:
+//                            moveAwayFromLocation(nearbyAlliedRobot.location);
+//                            break;
+//                        case MOVE_TOWARDS_ME:
+//                            break;
+//
             }
         }
     }
+
 
     private static int addedLocationDistance(MapLocation one, MapLocation two) {
         return Math.abs(one.x - two.x) + Math.abs(one.y - two.y);

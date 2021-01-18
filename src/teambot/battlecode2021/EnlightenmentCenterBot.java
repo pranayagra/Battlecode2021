@@ -386,6 +386,20 @@ public class EnlightenmentCenterBot implements RunnableBot {
         return true;
     }
 
+    private boolean parseCommsECDataSmall(int encoding) {
+        int health = CommunicationECDataSmall.decodeHealth(encoding);
+        MapLocation location = CommunicationECDataSmall.decodeLocationData(encoding);
+        //JUST DONE QUICKLY
+        boolean isMyTeam = CommunicationECDataSmall.decodeIsMyTeam(encoding);
+        if (isMyTeam) {
+            foundECs.put(location, new EC_Information(location, health, -1, controller.getRoundNum(), CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION));
+        } else {
+            foundECs.put(location, new EC_Information(location, health, -1, controller.getRoundNum(), CommunicationLocation.FLAG_LOCATION_TYPES.NEUTRAL_EC_LOCATION));
+        }
+
+        return true;
+    }
+
     public void urgentFlagRecieved(int encoding) throws GameActionException {
         if (CommunicationLocation.decodeIsSchemaType(encoding)) {
             parseCommsLocation(encoding);
@@ -395,6 +409,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
             parseCommsRobotID(encoding);
         } else if (CommunicationECInfo.decodeIsSchemaType(encoding)) {
             Debug.printInformation("UNIMPLEMENTED PARSER ECINFO", " ERROR");
+        }  else if (CommunicationECDataSmall.decodeIsSchemaType(encoding)) {
+            parseCommsECDataSmall(encoding);
         }
     }
 
@@ -411,6 +427,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 parseCommsRobotID(flag1);
             } else if (CommunicationECInfo.decodeIsSchemaType(flag1)) {
                 Debug.printInformation("UNIMPLEMENTED PARSER ECINFO", " ERROR");
+            } else if (CommunicationECDataSmall.decodeIsSchemaType(flag1)) {
+                parseCommsECDataSmall(flag1);
             }
         } else if (oneMoreThanMessageSize == 3) {
             // this is two messages => has no use case right now (should never happen)
@@ -453,7 +471,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 int encodedFlag = controller.getFlag(robotID);
                 if (encodedFlag == 0) continue;
 //                System.out.println("robotID -> " + robotID + " " + encodedFlag);
-                if (Comms.decodeIsUrgent(encodedFlag)) { //skip queue (this flag is urgent and interrupting the queued message)
+                if (Comms.decodeIsUrgent(encodedFlag) || CommunicationECDataSmall.decodeIsSchemaType(encodedFlag)) { //skip queue (this flag is urgent and interrupting the queued message)
                     urgentFlagRecieved(encodedFlag);
                 } else if (Comms.decodeIsLastFlag(encodedFlag)) { //if the flag is the last flag in sequence, let's add it and then process all the flags
                     processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
@@ -475,7 +493,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                         numFlagsSavedForARobot[i] = numFlagsSavedForARobot[numRobotsToProcessFlags];
                         int encodedFlag = controller.getFlag(robotID);
                         if (encodedFlag == 0) break;
-                        if (Comms.decodeIsUrgent(encodedFlag)) { //skip queue (this flag is urgent and interrupting the queued message)
+                        if (Comms.decodeIsUrgent(encodedFlag) || CommunicationECDataSmall.decodeIsSchemaType(encodedFlag)) { //skip queue (this flag is urgent and interrupting the queued message)
                             urgentFlagRecieved(encodedFlag);
                         } else if (Comms.decodeIsLastFlag(encodedFlag)) { //if the flag is the last flag in sequence, let's add it and then process all the flags
                             processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
@@ -607,35 +625,34 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         //ATTACK NEUTRAL EC
 
-        if (attackNeutralLocationHealth != 9999999 && attackNeutralLocationHealth >= controller.getInfluence()) {
-            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 3 + 15, attackNeutralLocation, Team.NEUTRAL);
-            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 3 + 15, attackNeutralLocation, Team.NEUTRAL);
-            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 3 + 15, attackNeutralLocation, Team.NEUTRAL);
-            foundECs.remove(attackNeutralLocation);
+        if (attackNeutralLocationHealth != 9999999 && attackNeutralLocationHealth / 2 <= controller.getInfluence() * controller.getEmpowerFactor(Cache.OUR_TEAM, 5)) {
+            // I want to do half health dmg
+            int influence = (int) (((attackNeutralLocationHealth / 2) + 11) / controller.getEmpowerFactor(Cache.OUR_TEAM, 5));
+            spawnAttackingPolitician(influence, toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Team.NEUTRAL);
         }
 
-        //ATTACK ENEMY EC
-        if (attackEnemyLocationHealth != 9999999 && attackEnemyLocationHealth >= controller.getInfluence() && controller.getRoundNum() - attackEnemyLocationAge <= 25) {
-            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
-            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
-            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
-            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
-            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
-            foundECs.remove(attackEnemyLocation);
-        }
+        //ATTACK ENEMY EC (treated as neutral right now)
+//        if (attackEnemyLocationHealth != 9999999 && attackEnemyLocationHealth >= controller.getInfluence() && controller.getRoundNum() - attackEnemyLocationAge <= 25) {
+//            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
+//            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
+//            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
+//            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
+//            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
+//            foundECs.remove(attackEnemyLocation);
+//        }
 
-        if (buildRequestsSZ > 0) {
-            BotRequest botRequest = buildRequests[0];
-            if (botRequest.team.equals(Team.NEUTRAL)) {
-                if (botRequest.influence + 15 > controller.getInfluence()) {
-                    spawnAttackingPolitician(botRequest.influence, toBuildDirection(Cache.START_LOCATION.directionTo(botRequest.location), 4), botRequest.location, Team.NEUTRAL);
-                }
-            } else {
-                if (botRequest.influence + 15 > controller.getInfluence()) {
-                    spawnAttackingPolitician(botRequest.influence, toBuildDirection(Cache.START_LOCATION.directionTo(botRequest.location), 4), botRequest.location, Cache.OPPONENT_TEAM);
-                }
-            }
-        }
+//        if (buildRequestsSZ > 0) {
+//            BotRequest botRequest = buildRequests[0];
+//            if (botRequest.team.equals(Team.NEUTRAL)) {
+//                if (botRequest.influence + 15 > controller.getInfluence()) {
+//                    spawnAttackingPolitician(botRequest.influence, toBuildDirection(Cache.START_LOCATION.directionTo(botRequest.location), 4), botRequest.location, Team.NEUTRAL);
+//                }
+//            } else {
+//                if (botRequest.influence + 15 > controller.getInfluence()) {
+//                    spawnAttackingPolitician(botRequest.influence, toBuildDirection(Cache.START_LOCATION.directionTo(botRequest.location), 4), botRequest.location, Cache.OPPONENT_TEAM);
+//                }
+//            }
+//        }
 
         //ROUND 1 STRAT
         if (controller.getRoundNum() == 1) {
@@ -660,7 +677,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12) { //80% of time spawn slanderer in safe direction
             spawnLatticeSlanderer((int) (controller.getInfluence() * 0.6), safeDirection);
         } else if (dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6) { //20% of time spawn politician in safe direction
-            int influenceSpend = Math.min(Math.max(21, (int)(controller.getInfluence() * 0.2)), 35);
+            int influenceSpend = 15;
             spawnDefendingPolitician(influenceSpend, dangerDirection,null);
         }
 
@@ -679,8 +696,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         } else if (randomInt == 10 && POLITICIAN_DEFENDING_SLANDERER_SZ <= 10) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
-            int influenceSpend = Math.min(Math.max(21, (int)(controller.getInfluence() * 0.2)), 35);
-            spawnDefendingPolitician(influenceSpend, toBuildDirection(dir,2),null);
+            int influenceSpend = 15;
+            spawnDefendingPolitician(influenceSpend, toBuildDirection(dir,3),null);
         }
 
         randomInt = random.nextInt(10) + 1;
@@ -690,8 +707,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         } else if (randomInt <= 7 && SLANDERER_IDs.getSize() >= 3) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
-            int influenceSpend = Math.min(Math.max(21, (int)(controller.getInfluence() * 0.2)), 35);
-            spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 2), null);
+            int influenceSpend = 15;
+            spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 3), null);
         } else {
             spawnLatticeSlanderer((int) (controller.getInfluence() * 0.65), safeDirection);
         }
@@ -849,22 +866,22 @@ public class EnlightenmentCenterBot implements RunnableBot {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
             setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
             Debug.printInformation("SPAWNING ATTACKING POLI FOR LOCATION " + location + " FOR " + team,"VALID");
-            if (team.equals(Cache.OPPONENT_TEAM)) {
-                deployedPoliticianToAttackEnemy = true;
-                foundECs.remove(location); //TODO: temporary solution for now
-                --buildRequestsSZ;
-                for (int i = 0; i < buildRequestsSZ; ++i) {
-                    buildRequests[i] = buildRequests[i + 1];
-                }
-            }
-            else if (team.equals(Team.NEUTRAL)) {
-                deployedPoliticianToAttackNeutral = true;
-                foundECs.remove(location);
-                --buildRequestsSZ;
-                for (int i = 0; i < buildRequestsSZ; ++i) {
-                    buildRequests[i] = buildRequests[i + 1];
-                }
-            }
+//            if (team.equals(Cache.OPPONENT_TEAM)) {
+//                deployedPoliticianToAttackEnemy = true;
+//                foundECs.remove(location); //TODO: temporary solution for now
+//                --buildRequestsSZ;
+//                for (int i = 0; i < buildRequestsSZ; ++i) {
+//                    buildRequests[i] = buildRequests[i + 1];
+//                }
+//            }
+//            else if (team.equals(Team.NEUTRAL)) {
+//                deployedPoliticianToAttackNeutral = true;
+//                foundECs.remove(location);
+//                --buildRequestsSZ;
+//                for (int i = 0; i < buildRequestsSZ; ++i) {
+//                    buildRequests[i] = buildRequests[i + 1];
+//                }
+//            }
 
         }
     }

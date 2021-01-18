@@ -3,6 +3,8 @@ package teambot.battlecode2021;
 import battlecode.common.*;
 import teambot.RunnableBot;
 import teambot.battlecode2021.util.*;
+
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -19,6 +21,8 @@ public class PoliticanBot implements RunnableBot {
     private int[] muckrakerDistances;
 
     private int friendlySlanderersSize;
+
+    private int triedCloserCnt;
 //    private int[] friendlySlandererRobotIDs;
 
     //TODO: Politican bot upgrade movement (currently bugged and random movement) + fix explosion bug/optimize explosion radius
@@ -44,25 +48,37 @@ public class PoliticanBot implements RunnableBot {
 
     @Override
     public void turn() throws GameActionException {
-        if (Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION) {
-            Debug.printInformation("Moving to destroy netural or enemy EC", "");
-            int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
-            if (distance <= RobotType.MUCKRAKER.sensorRadiusSquared) {
-                attackingPoliticianNearEC();
-                Debug.printInformation("SET ATTACKING FLAG", " MOVE ");
+        controller.setFlag(0);
+
+        if (Cache.myECLocation == null) {
+            if (controller.isReady()) {
+                controller.empower(RobotType.POLITICIAN.actionRadiusSquared);
             }
-            if (moveAndDestroyEC()) return;
+        }
+
+        if (controller.getConviction() <= 15) {
+            // attack muck type
+            if (chaseMuckraker()) return;
+            if (leaveLatticeToDefend()) return;
         } else {
-            boolean hasSlanderersNearby = explodeOnMuckraker();
-//            if (explodeOnMuckraker()) return;
-            if (!hasSlanderersNearby) {
-//                Cache.
-                //Do something here besides defend
-                Cache.EC_INFO_ACTION = CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION;
-                Cache.EC_INFO_LOCATION = Cache.myECLocation;
+            // attack poli/EC type
+            if (Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) == null) {
+                moveAndDestroyEC();
+            } else if (Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) != CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
+                moveAndDestroyEC();
             } else {
-                if (chaseMuckraker()) return;
-                if (leaveLatticeToDefend()) return;
+                //read EC flag attack to change attack location
+                if (controller.canGetFlag(Cache.myECID)) {
+                    int flag = controller.getFlag(Cache.myECID);
+                    if (CommunicationECSpawnFlag.decodeIsSchemaType(flag)) {
+                        CommunicationECSpawnFlag.ACTION action = CommunicationECSpawnFlag.decodeAction(flag);
+                        if (action == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION) {
+                            Cache.EC_INFO_LOCATION = CommunicationECSpawnFlag.decodeLocationData(flag);
+                        }
+                    }
+                }
+                Direction random = Pathfinding.randomValidDirection();
+                if (random != null && controller.canMove(random)) controller.move(random);
             }
         }
 
@@ -93,7 +109,7 @@ public class PoliticanBot implements RunnableBot {
 
         //for each politican in range, go through list and prune locations that are further away
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-            if (robotInfo.type == RobotType.POLITICIAN) {
+            if (robotInfo.type == RobotType.POLITICIAN && robotInfo.conviction <= 15) {
                 int flag = controller.getFlag(robotInfo.ID);
                 if (CommunicationMovement.decodeIsSchemaType(flag) &&
                         CommunicationMovement.decodeMyUnitType(flag) == CommunicationMovement.MY_UNIT_TYPE.SL) continue;
@@ -154,17 +170,43 @@ public class PoliticanBot implements RunnableBot {
         if (bestLocation == null) return false;
 
         Direction toMove = Cache.CURRENT_LOCATION.directionTo(bestLocation);
-        Direction validDir = Pathfinding.toMovePreferredDirection(toMove, 1);
-        if (Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]) <= 3) {
-            if (controller.canEmpower(Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]))) {
-                controller.empower(Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]));
+        Direction validDir = Pathfinding.toMovePreferredDirection(toMove, 2);
+
+        if (controller.isReady()) {
+            int minExplosionRadius = Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]);
+            int friendlySize = controller.senseNearbyRobots(minExplosionRadius, Cache.OUR_TEAM).length;
+            Debug.printInformation("FRIENDLY SIZE IS " + friendlySize + " IN RANGE " + minExplosionRadius, " VALID?");
+            if (friendlySize >= 2 || !controller.canEmpower(minExplosionRadius)) {
+                int flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE, CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME, false, false, 0);
+                Comms.checkAndAddFlag(flag);
+                Debug.printInformation("MOVE " + validDir, " VALID?");
+                if (validDir != null) controller.move(validDir);
+                else Pathfinding.move(bestLocation);
+                return true;
+            } else {
+                for (int i = RobotType.POLITICIAN.actionRadiusSquared; i >= minExplosionRadius; --i) {
+                    if (controller.senseNearbyRobots(i, Cache.OUR_TEAM).length <= 3) {
+                        Debug.printInformation("EXPLODING ", i);
+                        controller.empower(i);
+                    }
+                }
+                return true;
             }
         }
 
-        if (validDir != null && toMove != Direction.CENTER) {
-            if (controller.canMove(validDir)) {
-                controller.move(validDir);
-            }
+
+//        Direction toMove = Cache.CURRENT_LOCATION.directionTo(bestLocation);
+//        Direction validDir = Pathfinding.toMovePreferredDirection(toMove, 1);
+//        if (Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]) <= 3) {
+//            if (controller.canEmpower()) {
+//                controller.empower(Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]));
+//            }
+//        }
+//
+//        if (validDir != null && toMove != Direction.CENTER) {
+//            if (controller.canMove(validDir)) {
+//                controller.move(validDir);
+//            }
 //            int miniDistance = 999;
 //            MapLocation expectedLocation = Cache.CURRENT_LOCATION.add(validDir);
 //
@@ -182,7 +224,7 @@ public class PoliticanBot implements RunnableBot {
 //                controller.move(validDir);
 //                Debug.printInformation("MOVING FOR MUCKRAKER ", validDir);
 //            }
-        }
+//        }
 
         return false;
     }
@@ -256,13 +298,18 @@ public class PoliticanBot implements RunnableBot {
         int actionRadius = Cache.ROBOT_TYPE.actionRadiusSquared;
         boolean ECExists = false;
         int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
-        if (distance > actionRadius - 4) {
+        if (distance > actionRadius - 2) {
             pathfinding.move(Cache.EC_INFO_LOCATION);
             return true;
         }
 
-        int currSize = controller.senseNearbyRobots(distance, Cache.OPPONENT_TEAM).length;
+        RobotInfo ECInfo = controller.senseRobotAtLocation(Cache.EC_INFO_LOCATION);
+        if (ECInfo.team.equals(Cache.OUR_TEAM)) {
+            return false;
+        }
 
+        // GET CLOSERT TO OPPONENT
+        int currSize = controller.senseNearbyRobots(distance, Cache.OPPONENT_TEAM).length;
         int bestSize = currSize;
         MapLocation getCloser = null;
         for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
@@ -276,22 +323,20 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        if (getCloser != null) {
+        if (getCloser != null && triedCloserCnt <= 10) {
+            triedCloserCnt++;
             pathfinding.move(getCloser);
             return true;
         }
 
-        RobotInfo[] nearbyRobots = controller.senseNearbyRobots(distance);
-        if (nearbyRobots.length == 1 && nearbyRobots[0].type == RobotType.ENLIGHTENMENT_CENTER) {
-            ECExists = true;
-            if (controller.canEmpower(distance)) {
-                controller.empower(distance);
-                return true;
-            }
-        }
+        // WAIT FOR OUR TEAM TO MOVE AWAY
+        int ourTeamSize = controller.senseNearbyRobots(distance, Cache.OUR_TEAM).length;
+        if (ourTeamSize > 0) return false;
 
-        if (!ECExists) {
-//            Cache.EC_INFO_ACTION = CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION;
+        ECExists = true;
+        if (controller.canEmpower(distance)) {
+            controller.empower(distance);
+            return true;
         }
 
         return true;
@@ -402,14 +447,14 @@ public class PoliticanBot implements RunnableBot {
     //ASSUME POLITICIAN CAN PATHFIND TO EC LOCATION
 
     public boolean attackingPoliticianNearEC() throws GameActionException {
-        int flag = CommunicationMovement.encodeMovement(
-                true,true, CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE,
-                CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME, false,false,0);
-        if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
-            controller.setFlag(flag); //CARE ABOUT SEED LATER? //NOTE THIS IS SETFLAG BECAUSE WE DO NOT WANT TO QUEUE IT BUT SKIP QUEUE AND SET FLAG
-            Comms.hasSetFlag = true;
-            return true;
-        }
+//        int flag = CommunicationECDataSmall.encodeECHealthLocation(
+//                true,true, CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE,
+//                CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME, false,false,0);
+//        if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
+//            controller.setFlag(flag); //CARE ABOUT SEED LATER? //NOTE THIS IS SETFLAG BECAUSE WE DO NOT WANT TO QUEUE IT BUT SKIP QUEUE AND SET FLAG
+//            Comms.hasSetFlag = true;
+//            return true;
+//        }
         return false;
     }
 

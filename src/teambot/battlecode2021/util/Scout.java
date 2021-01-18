@@ -122,20 +122,29 @@ public class Scout {
         for (RobotInfo info : nearbyRobots) { 
             if (info.type == RobotType.ENLIGHTENMENT_CENTER) {
                 Debug.printInformation( "checking EC location " + info.location + " => ", "");
-                CommunicationLocation.FLAG_LOCATION_TYPES locationTypePrevious = Cache.FOUND_ECS.get(info.location);
-                CommunicationLocation.FLAG_LOCATION_TYPES locationTypeNew = getECType(info.team);
+//                CommunicationLocation.FLAG_LOCATION_TYPES locationTypePrevious = Cache.FOUND_ECS.get(info.location);
+//                CommunicationLocation.FLAG_LOCATION_TYPES locationTypeNew = getECType(info.team);
+                boolean isMyTeam = false;
+                if (Cache.OUR_TEAM.equals(info.team)) isMyTeam = true;
+                boolean moveAwayFromMe = false;
+                if (Cache.ROBOT_TYPE.equals(RobotType.POLITICIAN)) {
+                    if (Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION && Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION) <= RobotType.POLITICIAN.actionRadiusSquared + 5) moveAwayFromMe = true;
+                }
                 //TODO: add some age factor so we still report every so often even if the team has not changed
 //                System.out.println("HERE IS " + locationTypePrevious + " and " + locationTypeNew + " at " + info.location);
-                if (locationTypePrevious == null || locationTypePrevious != locationTypeNew || controller.getRoundNum() - Cache.FOUND_ECS_AGE.get(info.location) >= 15) { //if null or if the type of EC has since changed
-                    Cache.FOUND_ECS.put(info.location, locationTypeNew); //overwrite or add
-                    Cache.FOUND_ECS_AGE.put(info.location, controller.getRoundNum());
-                    int flag = CommunicationLocation.encodeLOCATION(false, false, locationTypeNew, info.location);
-                    Comms.checkAndAddFlag(flag);
-                    flag = CommunicationECInfo.encodeECInfo(false, false, getCommunicatedUnitTeamForECInfo(info.team), info.conviction);
-                    Comms.checkAndAddFlag(flag);
-                    flag = CommunicationRobotID.encodeRobotID(false,true, CommunicationRobotID.COMMUNICATION_UNIT_TYPE.EC, getCommunicatedUnitTeamForRobotID(info.team), info.ID);
-                    Comms.checkAndAddFlag(flag);
-                }
+                int flag = CommunicationECDataSmall.encodeECHealthLocation(moveAwayFromMe, isMyTeam, info.conviction, info.location);
+                Cache.FOUND_ECS.put(info.location, getECType(info.team));
+                Comms.checkAndAddFlag(flag);
+//                if (locationTypePrevious == null || locationTypePrevious != locationTypeNew || controller.getRoundNum() - Cache.FOUND_ECS_AGE.get(info.location) >= 15) { //if null or if the type of EC has since changed
+//                    Cache.FOUND_ECS.put(info.location, locationTypeNew); //overwrite or add
+//                    Cache.FOUND_ECS_AGE.put(info.location, controller.getRoundNum());
+//                    int flag = CommunicationLocation.encodeLOCATION(false, false, locationTypeNew, info.location);
+//                    Comms.checkAndAddFlag(flag);
+//                    flag = CommunicationECInfo.encodeECInfo(false, false, getCommunicatedUnitTeamForECInfo(info.team), info.conviction);
+//                    Comms.checkAndAddFlag(flag);
+//                    flag = CommunicationRobotID.encodeRobotID(false,true, CommunicationRobotID.COMMUNICATION_UNIT_TYPE.EC, getCommunicatedUnitTeamForRobotID(info.team), info.ID);
+//                    Comms.checkAndAddFlag(flag);
+//                }
             }
         }
     }
