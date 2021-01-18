@@ -1,7 +1,6 @@
 package teambot.battlecode2021;
 
 import battlecode.common.*;
-import mushroombot.battlecode2021.util.Communication;
 import teambot.*;
 import teambot.battlecode2021.util.*;
 
@@ -15,12 +14,6 @@ class EC_Information {
     Team team;
     int roundFound;
     CommunicationLocation.FLAG_LOCATION_TYPES locationFlagType;
-
-    public EC_Information(MapLocation location) {
-        this.location = location;
-        this.health = Integer.MAX_VALUE >> 2;
-        this.robotID = Integer.MAX_VALUE >> 2;
-    }
 
     public EC_Information(MapLocation location, int health, int robotID, int currentRound, CommunicationLocation.FLAG_LOCATION_TYPES locationFlagType) {
         this.location = location;
@@ -127,6 +120,19 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     private final int MAX_ECS_PER_TEAM = 3;
     */
+
+    private static MapLocation attackNeutralLocation;
+    private static int attackNeutralLocationHealth;
+    private static int attackNeutralLocationAge;
+    private static boolean deployedPoliticianToAttackNeutral;
+
+    private static MapLocation attackEnemyLocation;
+    private static int attackEnemyLocationHealth;
+    private static int attackEnemyLocationAge;
+    private static boolean deployedPoliticianToAttackEnemy;
+
+    private static MapLocation deployScoutToECLocation;
+
 
     private static Random random;
 
@@ -407,35 +413,6 @@ public class EnlightenmentCenterBot implements RunnableBot {
     *
     *
     *  */
-    /*
-    public void readFriendlyScoutFlags() throws GameActionException {
-        Debug.printInformation("readFriendlyScoutFlags() => ", " START ");
-        for (int i = 0; i < SCOUT_MUCKRAKER_SZ; ++i) {
-
-            if (controller.canGetFlag(SCOUT_MUCKRAKER_IDs[i])) {
-                // read flag information
-                int encoding = Comms.getFlag(SCOUT_MUCKRAKER_IDs[i]);
-                processValidFlag(encoding);
-            } else {
-                // ID no longer exists at index i, (remove)
-                //find first index at max size and go from there
-                while (--SCOUT_MUCKRAKER_SZ >= i + 1) {
-                    Debug.printInformation("readFriendlyScoutFlags() => " + SCOUT_MUCKRAKER_SZ, " trying to swap");
-                    if (controller.canGetFlag(SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ])) {
-                        Debug.printInformation("readFriendlyScoutFlags() => ", " START PARSE ");
-                        SCOUT_MUCKRAKER_IDs[i] = SCOUT_MUCKRAKER_IDs[SCOUT_MUCKRAKER_SZ];
-                        int encoding = Comms.getFlag(SCOUT_MUCKRAKER_IDs[i]);
-                        processValidFlag(encoding);
-                        Debug.printInformation("readFriendlyScoutFlags() => ", " FINISHED PARSE ");
-                        break;
-                    }
-                }
-            }
-        }
-        Debug.printInformation("readFriendlyScoutFlags() => ", " END ");
-    }*/
-
-
     public void iterateAllUnitIDs() throws GameActionException {
 
         for (int i = 0; i < numRobotsToProcessFlags; ++i) { //iterate through all flags
@@ -445,14 +422,14 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 //query flag information, check isUrgent, isLastFlag bit, or add to list of flags)
                 int encodedFlag = controller.getFlag(robotID);
                 if (encodedFlag == 0) continue;
-                System.out.println("robotID -> " + robotID + " " + encodedFlag);
+//                System.out.println("robotID -> " + robotID + " " + encodedFlag);
                 if (Comms.decodeIsUrgent(encodedFlag)) { //skip queue (this flag is urgent and interrupting the queued message)
                     urgentFlagRecieved(encodedFlag);
                 } else if (Comms.decodeIsLastFlag(encodedFlag)) { //if the flag is the last flag in sequence, let's add it and then process all the flags
                     processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
                     processRobotFlag(i, numFlagsSavedForARobot[i]);
                 } else { //let us add to the list at index i and size of message so far. increment size of message
-                    System.out.println("WTF ->" + numFlagsSavedForARobot[i]);
+//                    System.out.println("WTF ->" + numFlagsSavedForARobot[i]);
                     processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
                 }
             } else { //the robot has died.
@@ -485,18 +462,79 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     private void processAllECInformation() {
 
+        MapLocation neutralLocation = null;
+        int minNeutralECHealth = 999999;
+
+        MapLocation enemyLocation = null;
+        int minEnemyECHealth = 9999999;
+
         for (Map.Entry<MapLocation, EC_Information> entry : foundECs.entrySet()) {
 
             MapLocation location = entry.getKey();
-            EC_Information EC_info = entry.getValue();
-            if (controller.getRoundNum() - 20 > EC_info.roundFound) {
+            EC_Information ECInfo = entry.getValue();
+            if (controller.getRoundNum() - 20 > ECInfo.roundFound) {
                 //its been 20 rounds since I found this...
                 //send scout in direction to see what happened?
+                deployScoutToECLocation = location;
+            }
+
+            if (ECInfo.health < minNeutralECHealth && ECInfo.team.equals(Team.NEUTRAL)) {
+                minEnemyECHealth = ECInfo.health;
+                neutralLocation = location;
+            }
+
+            if (ECInfo.health < minEnemyECHealth && ECInfo.team.equals(Cache.OPPONENT_TEAM)) {
+                minEnemyECHealth = ECInfo.health;
+                enemyLocation = location;
             }
         }
 
+        attackEnemyLocation = enemyLocation; attackEnemyLocationHealth = minEnemyECHealth; attackEnemyLocationAge = controller.getRoundNum();
+        attackNeutralLocation = neutralLocation; attackNeutralLocationHealth = minNeutralECHealth; attackNeutralLocationAge = controller.getRoundNum();
+
+        Debug.printInformation("BEST NEUTRAL INFO: " + neutralLocation, minNeutralECHealth);
+        Debug.printInformation("BEST ENEMY INFO: " + enemyLocation, minEnemyECHealth);
+
     }
 
+
+    private Direction checkSpawnSlanderers() {
+        int bestWallDir = -1;
+        int bestReward = -999999;
+
+        for (int i = 0; i < 8; ++i) {
+            int totalReward = wallDirectionReward[i] - enemyDirectionCounts[i];
+            if (wallDirectionReward[i] >= 5 && bestReward < totalReward) {
+                bestReward = totalReward;
+                bestWallDir = i;
+            }
+        }
+
+        if (bestWallDir != -1) {
+            return Direction.values()[bestWallDir];
+        }
+
+        return null;
+    }
+
+    private Direction checkSpawnDefenders() {
+        int bestDangerDir = -1;
+        int bestDanger = 0;
+
+        for (int i = 0; i < 8; ++i) {
+            if (enemyDirectionCounts[i] > bestDanger) {
+                bestDanger = enemyDirectionCounts[i];
+                bestDangerDir = i;
+            }
+        }
+
+        if (bestDangerDir != -1) {
+            return Direction.values()[bestDangerDir];
+        }
+
+        return null;
+
+    }
 
     /*
     *
@@ -506,39 +544,70 @@ public class EnlightenmentCenterBot implements RunnableBot {
     public void defaultTurn() throws GameActionException {
         slanderersToPoliticians();
         iterateAllUnitIDs();
+        processAllECInformation();
 
         int ran = random.nextInt(5);
 
-        if (SCOUT_MUCKRAKER_SZ < 8) {
+        // IF NO INFLUENCE, SPAWN MUCKRAKER
+        if (controller.getInfluence() <= 15) {
+            spawnScoutMuckraker(1, randomValidDirection(), null);
+            return;
+        }
+
+        //ATTACK NEUTRAL EC
+        if (controller.getInfluence() >= 2 * attackNeutralLocationHealth) {
+            spawnAttackingPolitician((int) (attackNeutralLocationHealth * 1.5 + 10), toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Team.NEUTRAL);
+        }
+
+        //ATTACK ENEMY EC
+        if (controller.getInfluence() >= 3 * attackNeutralLocationHealth && controller.getRoundNum() - attackEnemyLocationAge <= 25) {
+            spawnAttackingPolitician((int) (controller.getInfluence() * 2 + 10), toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Cache.OPPONENT_TEAM);
+        }
+
+        //ROUND 1 STRAT
+        if (controller.getRoundNum() == 1) {
+            if (Cache.ALL_NEARBY_ENEMY_ROBOTS.length > 0) {
+                //rush strat here?
+                spawnScoutMuckraker(1, randomValidDirection(), null);
+            } else {
+                //econ strat start
+                spawnLatticeSlanderer(130, randomValidDirection());
+            }
+            return;
+        }
+
+        // FIND SAFEST AND DANGEREST DIRECTIONS
+        Direction safeDirection = checkSpawnSlanderers();
+        Direction dangerDirection = checkSpawnDefenders();
+
+        Debug.printInformation("SAFE DIRECTION " + safeDirection + " and DANGER DIRECTION " + dangerDirection, " INFO");
+
+        int slandererSpawn = random.nextInt(10) + 1; //1-10
+        //NOTE: on spawn both safeDirection and dangerDirection will be null, so we  will inheritately spawn scouts first
+        if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12) { //80% of time spawn slanderer in safe direction
+            spawnLatticeSlanderer((int) (controller.getInfluence() * 0.3), toBuildDirection(safeDirection, 1));
+        } else if (dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6) { //20% of time spawn politician in safe direction
+            spawnDefendingPolitician(15, dangerDirection,null);
+        }
+
+        if (!controller.canGetFlag(GUIDE_ID)) {
+            spawnGuideMuckraker(1, randomValidDirection());
+        }
+
+        int randomInt = random.nextInt(10) + 1;
+        if (randomInt <= 8 && SCOUT_MUCKRAKER_SZ < 8) {
             MapLocation targetLocation = Cache.START_LOCATION.translate(SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].x, SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].y);
             Direction preferredDirection = Cache.START_LOCATION.directionTo(targetLocation);
             if (spawnScoutMuckraker(1, toBuildDirection(preferredDirection,4), targetLocation)) {
                 SCOUT_LOCATIONS_CURRENT = (++SCOUT_LOCATIONS_CURRENT) % SCOUT_LOCATIONS.length;
                 Debug.printInformation("Spawned Scout => ", targetLocation);
             }
-        } 
-        else if (!controller.canGetFlag(GUIDE_ID)) {
-            spawnGuideMuckraker(1,randomValidDirection());
-            Debug.printInformation("SpawnedGuideMuckraker => ", "VALID");
+        } else if (randomInt == 9) {
+            spawnDefendingPolitician(Math.max(21, (int)(controller.getInfluence() * 0.3)), randomValidDirection(),null);
+        } else if (randomInt == 10 && safeDirection != null) {
+            spawnLatticeSlanderer((int) (controller.getInfluence() * 0.3), safeDirection);
         }
-        else if (SLANDERER_IDs.getSize() < 8) {
-                spawnLatticeSlanderer((int) (controller.getInfluence() * 0.4), randomValidDirection());
-                Debug.printInformation("Spawned Slanderer => ", "VALID");
-        } 
-        else if (ran <= 2) {
-            spawnScoutMuckraker(1, randomValidDirection(), Pathfinding.randomLocation());
-            Debug.printInformation("Spawning more scouts => ", "VALID");
-        } 
-        else if (ran <= 3) {
-            spawnLatticeSlanderer((int) (controller.getInfluence() * 0.1), randomValidDirection());
-            Debug.printInformation("spawnLatticeSlanderer => ", "VALID");
-        }
-        else if (ran <= 4) {
-            spawnDefendingPolitician(15, randomValidDirection(), null);
-            Debug.printInformation("spawnDefendingPolitician => ", "VALID");
-    } 
 
-        processAllECInformation();
     }
 
     /* Simple bidding strategy */ 
@@ -683,13 +752,17 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
     }
 
-    private void spawnAttackingPolitician(int influence, Direction direction, MapLocation location) throws GameActionException {
+    private void spawnAttackingPolitician(int influence, Direction direction, MapLocation location, Team team) throws GameActionException {
         //TODO: should only be called if the politician is meant to attack some base -> need to create politician with enough influence, set my EC flag to the location + attacking poli
         //Assumption: politician upon creation should read EC flag and know it's purpose in life. It can determine what to do then
         if (location == null) location = spawnLocationNull();
         if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
             setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
+            Debug.printInformation("SPAWNING ATTACKING POLI FOR LOCATION " + location + " FOR " + team,"VALID");
+            if (team.equals(Cache.OPPONENT_TEAM)) deployedPoliticianToAttackEnemy = true;
+            else if (team.equals(Team.NEUTRAL)) deployedPoliticianToAttackNeutral = true;
+
         }
     }
 
