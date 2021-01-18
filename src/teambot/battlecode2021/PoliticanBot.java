@@ -17,6 +17,8 @@ public class PoliticanBot implements RunnableBot {
 
     private MapLocation[] muckrakerLocations;
     private int[] muckrakerDistances;
+
+    private int friendlySlanderersSize;
 //    private int[] friendlySlandererRobotIDs;
 
     //TODO: Politican bot upgrade movement (currently bugged and random movement) + fix explosion bug/optimize explosion radius
@@ -51,9 +53,17 @@ public class PoliticanBot implements RunnableBot {
             }
             if (moveAndDestroyEC()) return;
         } else {
-            if (explodeOnMuckraker()) return;
-            if (chaseMuckraker()) return;
-            if (leaveLatticeToDefend()) return;
+            boolean hasSlanderersNearby = explodeOnMuckraker();
+//            if (explodeOnMuckraker()) return;
+            if (!hasSlanderersNearby) {
+//                Cache.
+                //Do something here besides defend
+                Cache.EC_INFO_ACTION = CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION;
+                Cache.EC_INFO_LOCATION = Cache.myECLocation;
+            } else {
+                if (chaseMuckraker()) return;
+                if (leaveLatticeToDefend()) return;
+            }
         }
 
         Debug.printByteCode("END TURN POLI => ");
@@ -145,7 +155,7 @@ public class PoliticanBot implements RunnableBot {
 
         Direction toMove = Cache.CURRENT_LOCATION.directionTo(bestLocation);
         Direction validDir = Pathfinding.toMovePreferredDirection(toMove, 1);
-        if (toMove == Direction.CENTER && Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]) <= 3) {
+        if (Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]) <= 3) {
             if (controller.canEmpower(Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]))) {
                 controller.empower(Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]));
             }
@@ -272,7 +282,7 @@ public class PoliticanBot implements RunnableBot {
         }
 
         RobotInfo[] nearbyRobots = controller.senseNearbyRobots(distance);
-        if (nearbyRobots.length == 1 && nearbyRobots[0].type == RobotType.ENLIGHTENMENT_CENTER && (nearbyRobots[0].team == Team.NEUTRAL || nearbyRobots[0].team == Cache.OPPONENT_TEAM)) {
+        if (nearbyRobots.length == 1 && nearbyRobots[0].type == RobotType.ENLIGHTENMENT_CENTER) {
             ECExists = true;
             if (controller.canEmpower(distance)) {
                 controller.empower(distance);
@@ -298,7 +308,24 @@ public class PoliticanBot implements RunnableBot {
     //
     public boolean explodeOnMuckraker() throws GameActionException {
 
-        int friendlySlanderersSize = 0;
+        friendlySlanderersSize = 0;
+
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+            if (robotInfo.type == RobotType.POLITICIAN) {
+                if (controller.canGetFlag(robotInfo.ID)) {
+                    int encodedFlag = controller.getFlag(robotInfo.ID);
+                    if (CommunicationMovement.decodeIsSchemaType(encodedFlag) && CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.SL) {
+                        // This is a slanderer on our team...
+                        friendlySlanderersSize++;
+                    }
+                }
+            }
+        }
+
+        //NOTE : REMOVE LATER THIS RETURN BELOW
+        if (friendlySlanderersSize == 0) return false;
+        else return true;
+        /*
 
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
             if (robotInfo.type == RobotType.POLITICIAN) {
@@ -368,6 +395,8 @@ public class PoliticanBot implements RunnableBot {
             }
         }
         return false;
+
+         */
     }
 
     //ASSUME POLITICIAN CAN PATHFIND TO EC LOCATION

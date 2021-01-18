@@ -75,7 +75,10 @@ public strictfp class RobotPlayer {
 
 //                    Debug.resignGame(500);
                     // if (controller.getRoundNum() == 500) controller.resign();
-
+                    if (!Cache.ROBOT_TYPE.equals(controller.getType())) {
+                        bot = new PoliticanBot(controller);
+                        Cache.ROBOT_TYPE = controller.getType();
+                    }
                     Util.loop();
                     runAwayFromAttackFlag();
                     bot.turn();

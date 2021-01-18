@@ -560,7 +560,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
 
         if (bestWallDir != -1) {
-            Direction toBuild = toBuildDirection(Direction.values()[bestWallDir], 1);
+            Direction toBuild = toBuildDirection(Direction.values()[bestWallDir], 3);
             return toBuild;
         }
 
@@ -687,7 +687,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         if (randomInt <= 5) {
             spawnScoutMuckraker(1, randomValidDirection(), null);
-        } else if (randomInt <= 7) {
+        } else if (randomInt <= 7 && SLANDERER_IDs.getSize() >= 3) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
             int influenceSpend = Math.min(Math.max(21, (int)(controller.getInfluence() * 0.2)), 35);

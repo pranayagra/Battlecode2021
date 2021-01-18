@@ -12,6 +12,7 @@ public class SlandererBot implements RunnableBot {
     private MapLocation[] moveLocs;
     private double[] moveRewards;
     private int distanceFromMyEC;
+    PoliticanBot politicanBot;
 
     //TODO: CHECK AND SET FLAG IF WALL IS MISSING AROUND US? and probably set flag based on it
 
