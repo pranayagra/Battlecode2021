@@ -129,6 +129,7 @@ public class PoliticanBot implements RunnableBot {
 
         if (!controller.isReady()) return false;
 
+        /* Move towards the muckraker such that the adjacent square is as close as possible to the EC */
         MapLocation bestLocation = null;
         int bestDistance = 99999999;
         for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
@@ -144,23 +145,33 @@ public class PoliticanBot implements RunnableBot {
 
         Direction toMove = Cache.CURRENT_LOCATION.directionTo(bestLocation);
         Direction validDir = Pathfinding.toMovePreferredDirection(toMove, 1);
+        if (toMove == Direction.CENTER && Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]) <= 3) {
+            if (controller.canEmpower(Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]))) {
+                controller.empower(Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]));
+            }
+        }
+
         if (validDir != null && toMove != Direction.CENTER) {
-            int miniDistance = 999;
-            MapLocation expectedLocation = Cache.CURRENT_LOCATION.add(validDir);
-            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-                int encodedFlag = controller.getFlag(robotInfo.ID);
-                if (CommunicationMovement.decodeIsSchemaType(encodedFlag)) {
-                    CommunicationMovement.MY_UNIT_TYPE myUnitType = CommunicationMovement.decodeMyUnitType(encodedFlag);
-                    if (myUnitType == CommunicationMovement.MY_UNIT_TYPE.SL) {
-                        int distance = Pathfinding.travelDistance(expectedLocation, robotInfo.location);
-                        miniDistance = Math.min(miniDistance, distance);
-                    }
-                }
-            }
-            if (miniDistance <= 4) {
+            if (controller.canMove(validDir)) {
                 controller.move(validDir);
-                Debug.printInformation("MOVING FOR MUCKRAKER ", validDir);
             }
+//            int miniDistance = 999;
+//            MapLocation expectedLocation = Cache.CURRENT_LOCATION.add(validDir);
+//
+//            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+//                int encodedFlag = controller.getFlag(robotInfo.ID);
+//                if (CommunicationMovement.decodeIsSchemaType(encodedFlag)) {
+//                    CommunicationMovement.MY_UNIT_TYPE myUnitType = CommunicationMovement.decodeMyUnitType(encodedFlag);
+//                    if (myUnitType == CommunicationMovement.MY_UNIT_TYPE.SL) {
+//                        int distance = Pathfinding.travelDistance(expectedLocation, robotInfo.location);
+//                        miniDistance = Math.min(miniDistance, distance);
+//                    }
+//                }
+//            }
+//            if (miniDistance <= 4) {
+//                controller.move(validDir);
+//                Debug.printInformation("MOVING FOR MUCKRAKER ", validDir);
+//            }
         }
 
         return false;
@@ -194,8 +205,16 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        // TOO FAR FROM CLOSEST SLANDERER, GO CLOSER
-        if (miniDistance >= 3) {
+        boolean hasMuckraker = false;
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+            if (robotInfo.type == RobotType.MUCKRAKER) {
+                hasMuckraker = true;
+                break;
+            }
+        }
+
+        // TOO FAR FROM CLOSEST SLANDERER, GO CLOSER ONLY IF NO MUCKRAKER
+        if (miniDistance >= 3 && !hasMuckraker) {
             Direction preferredDirection = Cache.CURRENT_LOCATION.directionTo(Cache.myECLocation);
             Direction validDirection = Pathfinding.toMovePreferredDirection(preferredDirection, 2);
             if (validDirection != null) {
