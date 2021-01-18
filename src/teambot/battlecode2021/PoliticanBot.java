@@ -1,13 +1,9 @@
 package teambot.battlecode2021;
 
 import battlecode.common.*;
-import mushroombot.battlecode2021.util.Communication;
 import teambot.RunnableBot;
 import teambot.battlecode2021.util.*;
-
-import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Random;
 
 public class PoliticanBot implements RunnableBot {
@@ -121,12 +117,13 @@ public class PoliticanBot implements RunnableBot {
 
         if (muckrakerSize == 0) return false;
 
-        int target = 0;
+        int target = 0; //target closest one to me
         for (int i = 1; i < muckrakerSize; ++i) {
             if (muckrakerDistances[target] > muckrakerDistances[i]) {
                 target = i;
             }
         }
+
         MapLocation targetLocation = muckrakerLocations[target];
         Debug.printInformation("target is " + target + " with location " + targetLocation + " and distance " + muckrakerDistances[target], " TARGET MUCKRAKER");
 
@@ -230,36 +227,37 @@ public class PoliticanBot implements RunnableBot {
         int actionRadius = Cache.ROBOT_TYPE.actionRadiusSquared;
         boolean ECExists = false;
         int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
-        if (distance > actionRadius) {
+        if (distance > actionRadius - 4) {
             pathfinding.move(Cache.EC_INFO_LOCATION);
             return true;
         }
 
-        RobotInfo[] nearbyRobots = controller.senseNearbyRobots(actionRadius);
-        for (RobotInfo robotInfo : nearbyRobots) {
-            if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER && (robotInfo.team == Team.NEUTRAL || robotInfo.team == Cache.OPPONENT_TEAM)) {
-                // explode if no other nearby allied muckrakers or slanderers
-                ECExists = true;
-                int squaredDistance = controller.getLocation().distanceSquaredTo(robotInfo.getLocation());
-                RobotInfo[] nearbyAlliedRobots = controller.senseNearbyRobots(squaredDistance, controller.getTeam());
-                boolean safeToEmpower = true;
-                for (RobotInfo nearbyAlliedRobot : nearbyAlliedRobots) {
-                    if (nearbyAlliedRobot.type == RobotType.MUCKRAKER || nearbyAlliedRobot.type == RobotType.SLANDERER) {
-                        safeToEmpower = false;
-                    }
+        int currSize = controller.senseNearbyRobots(distance, Cache.OPPONENT_TEAM).length;
+
+        int bestSize = currSize;
+        MapLocation getCloser = null;
+        for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
+            MapLocation candidateLocation = Cache.EC_INFO_LOCATION.add(direction);
+            if (controller.canSenseLocation(candidateLocation)) {
+                int trySize = controller.senseNearbyRobots(candidateLocation, 1, Cache.OPPONENT_TEAM).length;
+                if (trySize < bestSize) {
+                    bestSize = trySize;
+                    getCloser = candidateLocation;
                 }
-                if (safeToEmpower && controller.canEmpower(actionRadius)) {
-                    controller.empower(squaredDistance);
-                    return true;
-                } else if (!safeToEmpower) {
-                    int flag = CommunicationMovement.encodeMovement(true, true,
-                            CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.NOOP,
-                            CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
-                    if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
-                        controller.setFlag(flag);
-                        Comms.hasSetFlag = true;
-                    }
-                }
+            }
+        }
+
+        if (getCloser != null) {
+            pathfinding.move(getCloser);
+            return true;
+        }
+
+        RobotInfo[] nearbyRobots = controller.senseNearbyRobots(distance);
+        if (nearbyRobots.length == 1 && nearbyRobots[0].type == RobotType.ENLIGHTENMENT_CENTER && (nearbyRobots[0].team == Team.NEUTRAL || nearbyRobots[0].team == Cache.OPPONENT_TEAM)) {
+            ECExists = true;
+            if (controller.canEmpower(distance)) {
+                controller.empower(distance);
+                return true;
             }
         }
 

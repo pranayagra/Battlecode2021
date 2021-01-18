@@ -55,6 +55,28 @@ class EC_Information {
     }
 }
 
+enum robotSpawnType {
+    ATTACKING_PO,
+    DEFENDING_PO,
+    SCOUT_MUCK,
+    SLANDERER,
+}
+
+class BotRequest {
+    robotSpawnType type;
+    int influence;
+    MapLocation location;
+    Team team;
+
+    public BotRequest (robotSpawnType type, int influence, MapLocation location, Team team) {
+        this.type = type;
+        this.influence = influence;
+        this.location = location;
+        this.team = team;
+    }
+
+}
+
 
 public class EnlightenmentCenterBot implements RunnableBot {
     private RobotController controller;
@@ -97,8 +119,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int[] SCOUT_MUCKRAKER_IDs;
 
     //TODO: need to think of building requests when we cannot build on a certain round or have too many requests.. we probably want some type of priority here
-    private static int[] buildRequests; //want to store -> the necessary information (type, influence, direction, deltaDirectionAllowed) and how old the request is?
-
+    private static BotRequest[] buildRequests; //want to store -> the necessary information (type, influence, direction, deltaDirectionAllowed) and how old the request is?
+    private static int buildRequestsSZ;
 
     private static int[][] processRobotIDandFlags; // [#robots][#flags]. [i][0]=robotID, i[1,2,3]=flagType
     private static int[] numFlagsSavedForARobot; //the size of the cols for each row
@@ -181,6 +203,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         enemyDirectionCounts = new int[8];
         wallDirectionReward = new int[8];
         numSlanderersWallDirectionSpawned = new int[8];
+
+        buildRequests = new BotRequest[50];
 
         /* PROCESS FLAGS THROUGH MULTIPLE ROUNDS */
         processRobotIDandFlags = new int[100][4]; //robotID ToQuery, flag1, flag2, flag3
@@ -470,7 +494,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private void processAllECInformation() {
 
         MapLocation neutralLocation = null;
-        int minNeutralECHealth = 999999;
+        int minNeutralECHealth = 9999999;
 
         MapLocation enemyLocation = null;
         int minEnemyECHealth = 9999999;
@@ -582,13 +606,35 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
 
         //ATTACK NEUTRAL EC
-        if (controller.getInfluence() >= attackNeutralLocationHealth + 45) {
-            spawnAttackingPolitician((int) (attackNeutralLocationHealth + 11), toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Team.NEUTRAL);
+
+        if (attackNeutralLocationHealth != 9999999 && attackNeutralLocationHealth >= controller.getInfluence()) {
+            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 3 + 15, attackNeutralLocation, Team.NEUTRAL);
+            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 3 + 15, attackNeutralLocation, Team.NEUTRAL);
+            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 3 + 15, attackNeutralLocation, Team.NEUTRAL);
+            foundECs.remove(attackNeutralLocation);
         }
 
         //ATTACK ENEMY EC
-        if (controller.getInfluence() >= attackNeutralLocationHealth + 45 && controller.getRoundNum() - attackEnemyLocationAge <= 25) {
-            spawnAttackingPolitician((int) (controller.getInfluence() + 10), toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Cache.OPPONENT_TEAM);
+        if (attackEnemyLocationHealth != 9999999 && attackEnemyLocationHealth >= controller.getInfluence() && controller.getRoundNum() - attackEnemyLocationAge <= 25) {
+            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
+            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
+            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
+            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
+            buildRequests[buildRequestsSZ++] = new BotRequest(robotSpawnType.ATTACKING_PO, attackNeutralLocationHealth / 5 + 25, attackNeutralLocation, Cache.OPPONENT_TEAM);
+            foundECs.remove(attackEnemyLocation);
+        }
+
+        if (buildRequestsSZ > 0) {
+            BotRequest botRequest = buildRequests[0];
+            if (botRequest.team.equals(Team.NEUTRAL)) {
+                if (botRequest.influence + 15 > controller.getInfluence()) {
+                    spawnAttackingPolitician(botRequest.influence, toBuildDirection(Cache.START_LOCATION.directionTo(botRequest.location), 4), botRequest.location, Team.NEUTRAL);
+                }
+            } else {
+                if (botRequest.influence + 15 > controller.getInfluence()) {
+                    spawnAttackingPolitician(botRequest.influence, toBuildDirection(Cache.START_LOCATION.directionTo(botRequest.location), 4), botRequest.location, Cache.OPPONENT_TEAM);
+                }
+            }
         }
 
         //ROUND 1 STRAT
@@ -623,19 +669,30 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
 
         int randomInt = random.nextInt(10) + 1;
-        if (randomInt <= 8 && SCOUT_MUCKRAKER_SZ < 8) {
+        if (randomInt <= 9 && SCOUT_MUCKRAKER_SZ < 8) {
             MapLocation targetLocation = Cache.START_LOCATION.translate(SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].x, SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].y);
             Direction preferredDirection = Cache.START_LOCATION.directionTo(targetLocation);
             if (spawnScoutMuckraker(1, toBuildDirection(preferredDirection,4), targetLocation)) {
                 SCOUT_LOCATIONS_CURRENT = (++SCOUT_LOCATIONS_CURRENT) % SCOUT_LOCATIONS.length;
                 Debug.printInformation("Spawned Scout => ", targetLocation);
             }
-        } else if (randomInt == 9) {
+        } else if (randomInt == 10 && POLITICIAN_DEFENDING_SLANDERER_SZ <= 10) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
             int influenceSpend = Math.min(Math.max(21, (int)(controller.getInfluence() * 0.2)), 35);
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dir,2),null);
-        } else if (randomInt == 10 && safeDirection != null) {
+        }
+
+        randomInt = random.nextInt(10) + 1;
+
+        if (randomInt <= 5) {
+            spawnScoutMuckraker(1, randomValidDirection(), null);
+        } else if (randomInt <= 7) {
+            Direction dir = randomValidDirection();
+            if (dangerDirection != null) dir = dangerDirection;
+            int influenceSpend = Math.min(Math.max(21, (int)(controller.getInfluence() * 0.2)), 35);
+            spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 2), null);
+        } else {
             spawnLatticeSlanderer((int) (controller.getInfluence() * 0.65), safeDirection);
         }
 
@@ -795,10 +852,18 @@ public class EnlightenmentCenterBot implements RunnableBot {
             if (team.equals(Cache.OPPONENT_TEAM)) {
                 deployedPoliticianToAttackEnemy = true;
                 foundECs.remove(location); //TODO: temporary solution for now
+                --buildRequestsSZ;
+                for (int i = 0; i < buildRequestsSZ; ++i) {
+                    buildRequests[i] = buildRequests[i + 1];
+                }
             }
             else if (team.equals(Team.NEUTRAL)) {
                 deployedPoliticianToAttackNeutral = true;
                 foundECs.remove(location);
+                --buildRequestsSZ;
+                for (int i = 0; i < buildRequestsSZ; ++i) {
+                    buildRequests[i] = buildRequests[i + 1];
+                }
             }
 
         }
