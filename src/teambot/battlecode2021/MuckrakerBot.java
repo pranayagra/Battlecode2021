@@ -91,7 +91,7 @@ public class MuckrakerBot implements RunnableBot {
         if (CommunicationLocation.decodeIsSchemaType(encoding)) {
             CommunicationLocation.FLAG_LOCATION_TYPES locationType = CommunicationLocation.decodeLocationType(encoding);
         MapLocation locationData = CommunicationLocation.decodeLocationData(encoding);
-            Debug.printInformation("Recieving location data", locationData);
+            //Debug.printInformation("Recieving location data", locationData);
             switch (locationType) {
                 case NORTH_MAP_LOCATION:
                     Cache.MAP_TOP = locationData.y;
@@ -198,7 +198,7 @@ public class MuckrakerBot implements RunnableBot {
         if (!controller.isReady()) {
             return false;
         }
-        Debug.printInformation("Scouting", scoutTarget);
+        //Debug.printInformation("Scouting", scoutTarget);
         int moveRes = Pathfinding.move(scoutTarget);
         if (moveRes >= 2 || moveRes == 0) {
             Cache.CURRENT_LOCATION = controller.getLocation();
@@ -243,7 +243,7 @@ public class MuckrakerBot implements RunnableBot {
     // TODO: Send out closest enemy EC location as well
 
     private void GuideRoutine() throws GameActionException {
-        Debug.printInformation("I'm a guide with", controller.getFlag(controller.getID()));
+        //Debug.printInformation("I'm a guide with", controller.getFlag(controller.getID()));
         // Move away from EC if too close to prevent impact to spawning
         if (Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation) <= 2) {
             Pathfinding.naiveMove(Pathfinding.toMovePreferredDirection(Cache.CURRENT_LOCATION.directionTo(Cache.myECLocation).opposite(), 4));

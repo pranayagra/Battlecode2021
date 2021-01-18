@@ -96,7 +96,7 @@ public class Pathfinding {
                     } else {
                         stuckTurns += 1;
                         if (Debug.debug) {
-                            System.out.println("I am stuck.");
+                          // System.out.println("I am stuck.");
                         }
                         return 0;
                     }

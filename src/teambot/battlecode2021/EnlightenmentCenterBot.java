@@ -207,8 +207,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         buildRequests = new BotRequest[50];
 
         /* PROCESS FLAGS THROUGH MULTIPLE ROUNDS */
-        processRobotIDandFlags = new int[100][4]; //robotID ToQuery, flag1, flag2, flag3
-        numFlagsSavedForARobot = new int[100]; //total number of flags for a robot (on spawn=1 for robotID, then 2-4), reset if last flag
+        processRobotIDandFlags = new int[70][4]; //robotID ToQuery, flag1, flag2, flag3
+        numFlagsSavedForARobot = new int[70]; //total number of flags for a robot (on spawn=1 for robotID, then 2-4), reset if last flag
         numRobotsToProcessFlags = 0; //total number of robots to query (add +1 on spawn)
 
 
@@ -255,10 +255,10 @@ public class EnlightenmentCenterBot implements RunnableBot {
         numRobotsToProcessFlags %= processRobotIDandFlags.length;
         defaultTurn();
 
-        Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
-        Debug.printInformation("WALL REWARDS: ", Arrays.toString(wallDirectionReward));
-        Debug.printInformation("NUM SLANDERERS: ", Arrays.toString(numSlanderersWallDirectionSpawned));
-        Debug.printInformation("ENEMY DANGERS: ", Arrays.toString(enemyDirectionCounts));
+        ////Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
+        //Debug.printInformation("WALL REWARDS: ", Arrays.toString(wallDirectionReward));
+        //Debug.printInformation("NUM SLANDERERS: ", Arrays.toString(numSlanderersWallDirectionSpawned));
+        //Debug.printInformation("ENEMY DANGERS: ", Arrays.toString(enemyDirectionCounts));
 
         Debug.printByteCode("EC END TURN => ");
 
@@ -277,7 +277,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 }
             }
         }
-        Debug.printInformation("updateSlanderers() => ", " VALID ");
+        //Debug.printInformation("updateSlanderers() => ", " VALID ");
     }
 
     //TODO (IMPORTANT): add values to wallDirectionDistance
@@ -357,7 +357,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         int direction = CommunicationMovement.convert_MovementBotData_DirectionInt(movementBotData);
         if (communicationToOtherBots == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.SPOTTED_ENEMY_UNIT) {
             // WE SPOTTED AN ENEMY AT Direction movementBotData (EC => enemy location)
-            Debug.printInformation("ADDING DANGER" + direction, amount);
+            //Debug.printInformation("ADDING DANGER" + direction, amount);
             enemyDirectionCounts[direction] += amount;
             enemyDirectionCounts[(direction + 7) % 8] += amount/2;
             enemyDirectionCounts[(direction + 1) % 8] += amount/2;
@@ -371,7 +371,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     /* We will never parse ECRobotID by itself -- this is purely to communicate moveable type bots. Not used currently anywhere */
     private boolean parseCommsRobotID(int encoding) {
-        Debug.printInformation("USED UNIMPLEMENTED METHOD parseCommsRobotID() ", " ERROR");
+        //Debug.printInformation("USED UNIMPLEMENTED METHOD parseCommsRobotID() ", " ERROR");
         CommunicationRobotID.COMMUNICATION_UNIT_TYPE communicatedUnitType = CommunicationRobotID.decodeCommunicatedUnitType(encoding);
         CommunicationRobotID.COMMUNICATION_UNIT_TEAM communicatedUnitTeam = CommunicationRobotID.decodeCommunicatedUnitTeam(encoding);
         int robotID = CommunicationRobotID.decodeRobotID(encoding);
@@ -408,7 +408,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         } else if (CommunicationRobotID.decodeIsSchemaType(encoding)) {
             parseCommsRobotID(encoding);
         } else if (CommunicationECInfo.decodeIsSchemaType(encoding)) {
-            Debug.printInformation("UNIMPLEMENTED PARSER ECINFO", " ERROR");
+            //Debug.printInformation("UNIMPLEMENTED PARSER ECINFO", " ERROR");
         }  else if (CommunicationECDataSmall.decodeIsSchemaType(encoding)) {
             parseCommsECDataSmall(encoding);
         }
@@ -426,13 +426,13 @@ public class EnlightenmentCenterBot implements RunnableBot {
             } else if (CommunicationRobotID.decodeIsSchemaType(flag1)) {
                 parseCommsRobotID(flag1);
             } else if (CommunicationECInfo.decodeIsSchemaType(flag1)) {
-                Debug.printInformation("UNIMPLEMENTED PARSER ECINFO", " ERROR");
+                //Debug.printInformation("UNIMPLEMENTED PARSER ECINFO", " ERROR");
             } else if (CommunicationECDataSmall.decodeIsSchemaType(flag1)) {
                 parseCommsECDataSmall(flag1);
             }
         } else if (oneMoreThanMessageSize == 3) {
             // this is two messages => has no use case right now (should never happen)
-            Debug.printInformation("UNIMPLEMENTED PARSER 2 MESSAGES", " ERROR");
+            //Debug.printInformation("UNIMPLEMENTED PARSER 2 MESSAGES", " ERROR");
         } else if (oneMoreThanMessageSize == 4) {
             // this is three messages => most likely Location + ECInfo + RobotID
             int flag1 = processRobotIDandFlags[robotIDX][1];
@@ -447,7 +447,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 int ECRobotID = CommunicationRobotID.decodeRobotID(flag3);
                 EC_Information ecInfo = new EC_Information(ECLocation, ECHealth, ECRobotID, controller.getRoundNum(), ECTeam);
                 foundECs.put(ECLocation, ecInfo);
-                Debug.printInformation("EC Received ECScoutInformation ", ecInfo.toString());
+                //Debug.printInformation("EC Received ECScoutInformation ", ecInfo.toString());
             }
             //NOTE -> REMEMBER THAT IF WE HAVE OTHER TYPES OF MULTI-ROUND FLAGS, WE WILL NEED TO ADD CONDITIONS HERE... CURRENTLY "HARDCODED"
         }
@@ -465,19 +465,19 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         for (int i = 0; i < numRobotsToProcessFlags; ++i) { //iterate through all flags
             int robotID = processRobotIDandFlags[i][0]; //the robotID of the corresponding idx
-//            System.out.println("");
+//          // System.out.println("");
             if (controller.canGetFlag(robotID)) { //this robot is still alive
                 //query flag information, check isUrgent, isLastFlag bit, or add to list of flags)
                 int encodedFlag = controller.getFlag(robotID);
                 if (encodedFlag == 0) continue;
-//                System.out.println("robotID -> " + robotID + " " + encodedFlag);
+//              // System.out.println("robotID -> " + robotID + " " + encodedFlag);
                 if (Comms.decodeIsUrgent(encodedFlag) || CommunicationECDataSmall.decodeIsSchemaType(encodedFlag)) { //skip queue (this flag is urgent and interrupting the queued message)
                     urgentFlagRecieved(encodedFlag);
                 } else if (Comms.decodeIsLastFlag(encodedFlag)) { //if the flag is the last flag in sequence, let's add it and then process all the flags
                     processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
                     processRobotFlag(i, numFlagsSavedForARobot[i]);
                 } else { //let us add to the list at index i and size of message so far. increment size of message
-//                    System.out.println("WTF ->" + numFlagsSavedForARobot[i]);
+//                  // System.out.println("WTF ->" + numFlagsSavedForARobot[i]);
                     processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
                 }
             } else { //the robot has died.
@@ -541,8 +541,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         attackEnemyLocation = enemyLocation; attackEnemyLocationHealth = minEnemyECHealth; attackEnemyLocationAge = controller.getRoundNum();
         attackNeutralLocation = neutralLocation; attackNeutralLocationHealth = minNeutralECHealth; attackNeutralLocationAge = controller.getRoundNum();
 
-        Debug.printInformation("BEST NEUTRAL INFO: " + neutralLocation, minNeutralECHealth);
-        Debug.printInformation("BEST ENEMY INFO: " + enemyLocation, minEnemyECHealth);
+        //Debug.printInformation("BEST NEUTRAL INFO: " + neutralLocation, minNeutralECHealth);
+        //Debug.printInformation("BEST ENEMY INFO: " + enemyLocation, minEnemyECHealth);
 
     }
 
@@ -575,6 +575,10 @@ public class EnlightenmentCenterBot implements RunnableBot {
                     bestWallDir = i;
                 }
             }
+        }
+
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+            if (robotInfo.type == RobotType.MUCKRAKER) return null;
         }
 
         if (bestWallDir != -1) {
@@ -670,7 +674,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Direction safeDirection = checkSpawnSlanderers();
         Direction dangerDirection = checkSpawnDefenders();
 
-        Debug.printInformation("SAFE DIRECTION " + safeDirection + " and DANGER DIRECTION " + dangerDirection, " INFO");
+        //Debug.printInformation("SAFE DIRECTION " + safeDirection + " and DANGER DIRECTION " + dangerDirection, " INFO");
 
         int slandererSpawn = random.nextInt(10) + 1; //1-10
         //NOTE: on spawn both safeDirection and dangerDirection will be null, so we  will inheritately spawn scouts first
@@ -691,7 +695,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             Direction preferredDirection = Cache.START_LOCATION.directionTo(targetLocation);
             if (spawnScoutMuckraker(1, toBuildDirection(preferredDirection,4), targetLocation)) {
                 SCOUT_LOCATIONS_CURRENT = (++SCOUT_LOCATIONS_CURRENT) % SCOUT_LOCATIONS.length;
-                Debug.printInformation("Spawned Scout => ", targetLocation);
+                //Debug.printInformation("Spawned Scout => ", targetLocation);
             }
         } else if (randomInt == 10 && POLITICIAN_DEFENDING_SLANDERER_SZ <= 10) {
             Direction dir = randomValidDirection();
@@ -755,7 +759,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private boolean setFlagForSpawnedUnit(Direction direction, CommunicationECSpawnFlag.ACTION actionType, CommunicationECSpawnFlag.SAFE_QUADRANT safeQuadrant, MapLocation locationData) throws GameActionException {
         int flag = CommunicationECSpawnFlag.encodeSpawnInfo(direction, actionType, safeQuadrant, locationData);
         if (!Comms.canScheduleFlag(controller.getRoundNum()+1)) {
-            Debug.printInformation("Warning - Potential Schedule Conflict at turn", controller.getRoundNum()+1);
+            //Debug.printInformation("Warning - Potential Schedule Conflict at turn", controller.getRoundNum()+1);
             return false;
         }
         if (Comms.scheduleFlag(controller.getRoundNum()+1, flag)) {
@@ -839,10 +843,10 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //TODO: should spawn slanderer, which default behavior is to build lattice
         if (direction != null && controller.canBuildRobot(RobotType.SLANDERER, direction, influence)) {
             controller.buildRobot(RobotType.SLANDERER, direction, influence);
-            Debug.printInformation("PUSHING TO SLANDERER ", " BEFORE");
+            //Debug.printInformation("PUSHING TO SLANDERER ", " BEFORE");
             numSlanderersWallDirectionSpawned[direction.ordinal()]++;
             SLANDERER_IDs.push(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID, controller.getRoundNum());
-            Debug.printInformation("PUSHING TO SLANDERER ", " AFTER");
+            //Debug.printInformation("PUSHING TO SLANDERER ", " AFTER");
         }
     }
 
@@ -865,7 +869,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
             setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
-            Debug.printInformation("SPAWNING ATTACKING POLI FOR LOCATION " + location + " FOR " + team,"VALID");
+            //Debug.printInformation("SPAWNING ATTACKING POLI FOR LOCATION " + location + " FOR " + team,"VALID");
 //            if (team.equals(Cache.OPPONENT_TEAM)) {
 //                deployedPoliticianToAttackEnemy = true;
 //                foundECs.remove(location); //TODO: temporary solution for now
@@ -890,7 +894,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private void setLocationFlag() throws GameActionException {
         int encodedFlag = Communication.encode_ExtraANDLocationType_and_ExtraANDLocationData(
                 Constants.FLAG_EXTRA_TYPES.VERIFICATION_ENSURANCE, Constants.FLAG_LOCATION_TYPES.MY_EC_LOCATION, 0, Cache.CURRENT_LOCATION);
-        Debug.printInformation("setLocationFlag()", encodedFlag);
+        //Debug.printInformation("setLocationFlag()", encodedFlag);
         Communication.checkAndSetFlag(encodedFlag);
     }
 

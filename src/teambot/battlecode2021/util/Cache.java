@@ -86,7 +86,7 @@ public class Cache {
                 }
             }
         }
-        System.out.println(Cache.myECLocation);
+      // System.out.println(Cache.myECLocation);
         FOUND_ECS.put(myECLocation, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION);
         FOUND_ECS_AGE.put(myECLocation, controller.getRoundNum());
 
@@ -101,7 +101,7 @@ public class Cache {
         CommunicationECSpawnFlag.SAFE_QUADRANT safeQuadrant = CommunicationECSpawnFlag.decodeSafeQuadrant(encoding);
         EC_INFO_LOCATION = CommunicationECSpawnFlag.decodeLocationData(encoding);
         EC_INFO_DIRECTION = CommunicationECSpawnFlag.decodeDirection(encoding);
-        Debug.printInformation("INFORMATION FROM EC IS " + EC_INFO_ACTION + " AND " + EC_INFO_LOCATION, "");
+        //Debug.printInformation("INFORMATION FROM EC IS " + EC_INFO_ACTION + " AND " + EC_INFO_LOCATION, "");
 
         // DO SOMETHING HERE
     }

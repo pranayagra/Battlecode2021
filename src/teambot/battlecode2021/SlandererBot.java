@@ -64,11 +64,11 @@ public class SlandererBot implements RunnableBot {
     public void spawnInLattice() throws GameActionException {
         distanceFromMyEC = calculateLocationDistanceFromMyEC(Cache.CURRENT_LOCATION);
         boolean isMyCurrentSquareGood = checkIfGoodSquare(Cache.CURRENT_LOCATION);
-        Debug.printInformation("CL: " + Cache.CURRENT_LOCATION + " ECLoc: " + Cache.myECLocation + " dist: " + distanceFromMyEC, isMyCurrentSquareGood);
+        //Debug.printInformation("CL: " + Cache.CURRENT_LOCATION + " ECLoc: " + Cache.myECLocation + " dist: " + distanceFromMyEC, isMyCurrentSquareGood);
 
         // if in danger from muckraker, get out
         if (runFromMuckrakerMove() != 0) {
-//            System.out.println("IN DANGER OR COOLDOWN");
+//          // System.out.println("IN DANGER OR COOLDOWN");
             return;
         }
 
@@ -208,8 +208,8 @@ public class SlandererBot implements RunnableBot {
         }
 
 
-//        Debug.printInformation("my location reward is ", rewardOfStaying);
-//        Debug.printInformation("location rewards surrounding me is ", Arrays.toString(moveRewards));
+//        //Debug.printInformation("my location reward is ", rewardOfStaying);
+//        //Debug.printInformation("location rewards surrounding me is ", Arrays.toString(moveRewards));
 
         int flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.SL, CommunicationMovement.MOVEMENT_BOTS_DATA.NOT_MOVING, CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
         int bestValidDirection = -1;
@@ -253,7 +253,7 @@ public class SlandererBot implements RunnableBot {
 //                        CommunicationMovement.MOVEMENT_BOTS_DATA badArea = CommunicationMovement.decodeMyPreferredMovement(encodedFlag);
 //                        int badIdx = CommunicationMovement.convert_MovementBotData_DirectionInt(badArea);
 //                        Direction bestDirection = Constants.DIRECTIONS[badIdx].opposite();
-////                        Debug.printInformation("BEST DIRECTION AWAY FROM POLI IS", bestDirection);
+////                        //Debug.printInformation("BEST DIRECTION AWAY FROM POLI IS", bestDirection);
 //                        bestDirectionBasedOnPoliticianDangerIdx = bestDirection.ordinal();
 ////                        flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.SL,
 ////                                CommunicationMovement.convert_DirectionInt_MovementBotsData(bestDirectionBasedOnPoliticianDangerIdx),

@@ -46,7 +46,7 @@ public class Scout {
         int distance = Pathfinding.travelDistance(currentLocation, Cache.myECLocation);
         int numEnemies = controller.senseNearbyRobots(-1, Cache.OPPONENT_TEAM).length;
         int cost = (int)((1 + 15.0/distance) * numEnemies);
-        Debug.printInformation("Trying to scout enemies " + numEnemies, cost);
+        //Debug.printInformation("Trying to scout enemies " + numEnemies, cost);
         if (numEnemies > 0) {
             int dangerDirection = Cache.myECLocation.directionTo(currentLocation).ordinal();
             flag = CommunicationMovement.encodeMovement(true, true,
@@ -101,7 +101,7 @@ public class Scout {
                     Cache.MAP_LEFT=scanLocation.x;
                     flag = CommunicationLocation.encodeLOCATION(false, true, CommunicationLocation.FLAG_LOCATION_TYPES.WEST_MAP_LOCATION, scanLocation);
                 }
-                Debug.printInformation("Found edge", dir);
+                //Debug.printInformation("Found edge", dir);
                 Comms.checkAndAddFlag(flag);
                 return;
             }
@@ -121,7 +121,7 @@ public class Scout {
         RobotInfo[] nearbyRobots = controller.senseNearbyRobots();
         for (RobotInfo info : nearbyRobots) { 
             if (info.type == RobotType.ENLIGHTENMENT_CENTER) {
-                Debug.printInformation( "checking EC location " + info.location + " => ", "");
+                //Debug.printInformation( "checking EC location " + info.location + " => ", "");
 //                CommunicationLocation.FLAG_LOCATION_TYPES locationTypePrevious = Cache.FOUND_ECS.get(info.location);
 //                CommunicationLocation.FLAG_LOCATION_TYPES locationTypeNew = getECType(info.team);
                 boolean isMyTeam = false;
@@ -131,7 +131,7 @@ public class Scout {
                     if (Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION && Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION) <= RobotType.POLITICIAN.actionRadiusSquared + 5) moveAwayFromMe = true;
                 }
                 //TODO: add some age factor so we still report every so often even if the team has not changed
-//                System.out.println("HERE IS " + locationTypePrevious + " and " + locationTypeNew + " at " + info.location);
+//              // System.out.println("HERE IS " + locationTypePrevious + " and " + locationTypeNew + " at " + info.location);
                 int flag = CommunicationECDataSmall.encodeECHealthLocation(moveAwayFromMe, isMyTeam, info.conviction, info.location);
                 Cache.FOUND_ECS.put(info.location, getECType(info.team));
                 Comms.checkAndAddFlag(flag);

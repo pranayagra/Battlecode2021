@@ -1,7 +1,7 @@
 public Boolean move(MapLocation targetLoc) throws GameActionException {
 
 
-    System.out.println(Clock.getBytecodeNum());
+  // System.out.println(Clock.getBytecodeNum());
     MapLocation currentLoc = controller.getLocation();
     // Is it ready
     if (!controller.isReady()) {
@@ -42,7 +42,7 @@ public Boolean move(MapLocation targetLoc) throws GameActionException {
         }
     }
 
-    System.out.println(Clock.getBytecodeNum());
+  // System.out.println(Clock.getBytecodeNum());
     HashMap<MapLocation,Double> visited = new HashMap<MapLocation,Double>();
     PriorityQueue<MapLocationWrapper> pq = new PriorityQueue<MapLocationWrapper>();
     HashMap<MapLocation,MapLocation> pred = new HashMap<MapLocation,MapLocation>();
@@ -51,16 +51,16 @@ public Boolean move(MapLocation targetLoc) throws GameActionException {
 
     // Dijkstra
     while (!pq.isEmpty()) {
-        System.out.println("Search");
-        System.out.println(Clock.getBytecodeNum());
+      // System.out.println("Search");
+      // System.out.println(Clock.getBytecodeNum());
         MapLocationWrapper processLocWrapper = pq.poll();
         MapLocation processLoc = processLocWrapper.loc;
-        System.out.println(Clock.getBytecodeNum());
+      // System.out.println(Clock.getBytecodeNum());
         if (visited.containsKey(processLoc)) continue;
         visited.put(processLoc,processLocWrapper.cost);
         pred.put(processLoc,processLocWrapper.pred);
         if (processLoc.equals(targetLoc)) break;
-        System.out.println(Clock.getBytecodeNum());
+      // System.out.println(Clock.getBytecodeNum());
         for (Direction dir : RobotPlayer.directions) {
             MapLocation adjacentLoc = processLoc.add(dir);
             if (visited.containsKey(adjacentLoc.add(dir))) continue;
@@ -68,7 +68,7 @@ public Boolean move(MapLocation targetLoc) throws GameActionException {
             pq.add(new MapLocationWrapper(adjacentLoc, processLoc, processLocWrapper.cost + 
             (double) 1.0/controller.sensePassability(processLoc)));
         }
-        System.out.println(Clock.getBytecodeNum());
+      // System.out.println(Clock.getBytecodeNum());
         if (controller.canSenseRadiusSquared(((int)Math.pow(Math.abs(processLoc.x-currentLoc.x)+1.0,2) + 
         (int)Math.pow(Math.abs(processLoc.y-currentLoc.y)+1,2)))) {
             pq.add(new MapLocationWrapper(targetLoc, processLoc, 
@@ -77,7 +77,7 @@ public Boolean move(MapLocation targetLoc) throws GameActionException {
             travelDistance(processLoc, targetLoc) * (double) 1.0/averagePassibility
             ));
         }
-        System.out.println(Clock.getBytecodeNum());
+      // System.out.println(Clock.getBytecodeNum());
     }
     // Backtrack
     MapLocation tracker = targetLoc;

@@ -15,7 +15,7 @@ public class PoliticanBot implements RunnableBot {
 
     private static int ECFlagForAttackBot;
 
-    private MapLocation[] friendlySlanderers;
+//    private MapLocation[] friendlySlanderers;
 
     private MapLocation[] muckrakerLocations;
     private int[] muckrakerDistances;
@@ -39,9 +39,9 @@ public class PoliticanBot implements RunnableBot {
 
         random = new Random(controller.getID());
 
-        friendlySlanderers = new MapLocation[80];
-        muckrakerLocations = new MapLocation[60];
-        muckrakerDistances = new int[60];
+//        friendlySlanderers = new MapLocation[80];
+        muckrakerLocations = new MapLocation[30];
+        muckrakerDistances = new int[30];
 //        friendlySlandererRobotIDs = new int[999];
 
     }
@@ -114,8 +114,8 @@ public class PoliticanBot implements RunnableBot {
                 if (CommunicationMovement.decodeIsSchemaType(flag) &&
                         CommunicationMovement.decodeMyUnitType(flag) == CommunicationMovement.MY_UNIT_TYPE.SL) continue;
 
-                Debug.printInformation("MUCKRAKER LOCATIONS BEF " + muckrakerSize, Arrays.toString(muckrakerLocations));
-                Debug.printInformation("MUCKRAKER DISTANCES BEF " + muckrakerSize, Arrays.toString(muckrakerDistances));
+                //Debug.printInformation("MUCKRAKER LOCATIONS BEF " + muckrakerSize, Arrays.toString(muckrakerLocations));
+                //Debug.printInformation("MUCKRAKER DISTANCES BEF " + muckrakerSize, Arrays.toString(muckrakerDistances));
 
                 for (int i = 0; i < muckrakerSize; ++i) {
                     int distance = Pathfinding.travelDistance(robotInfo.location, muckrakerLocations[i]);
@@ -132,14 +132,14 @@ public class PoliticanBot implements RunnableBot {
                     }
                 }
 
-                Debug.printInformation("MUCKRAKER LOCATIONS AFT " + muckrakerSize, Arrays.toString(muckrakerLocations));
-                Debug.printInformation("MUCKRAKER DISTANCES AFT " + muckrakerSize, Arrays.toString(muckrakerDistances));
+                //Debug.printInformation("MUCKRAKER LOCATIONS AFT " + muckrakerSize, Arrays.toString(muckrakerLocations));
+                //Debug.printInformation("MUCKRAKER DISTANCES AFT " + muckrakerSize, Arrays.toString(muckrakerDistances));
 
             }
         }
 
-        Debug.printInformation("MUCKRAKER LOCATIONS DONE " + muckrakerSize, Arrays.toString(muckrakerLocations));
-        Debug.printInformation("MUCKRAKER DISTANCES DONE " + muckrakerSize, Arrays.toString(muckrakerDistances));
+        //Debug.printInformation("MUCKRAKER LOCATIONS DONE " + muckrakerSize, Arrays.toString(muckrakerLocations));
+        //Debug.printInformation("MUCKRAKER DISTANCES DONE " + muckrakerSize, Arrays.toString(muckrakerDistances));
 
         if (muckrakerSize == 0) return false;
 
@@ -151,7 +151,7 @@ public class PoliticanBot implements RunnableBot {
         }
 
         MapLocation targetLocation = muckrakerLocations[target];
-        Debug.printInformation("target is " + target + " with location " + targetLocation + " and distance " + muckrakerDistances[target], " TARGET MUCKRAKER");
+        //Debug.printInformation("target is " + target + " with location " + targetLocation + " and distance " + muckrakerDistances[target], " TARGET MUCKRAKER");
 
         if (!controller.isReady()) return false;
 
@@ -175,22 +175,24 @@ public class PoliticanBot implements RunnableBot {
         if (controller.isReady()) {
             int minExplosionRadius = Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]);
             int friendlySize = controller.senseNearbyRobots(minExplosionRadius, Cache.OUR_TEAM).length;
-            Debug.printInformation("FRIENDLY SIZE IS " + friendlySize + " IN RANGE " + minExplosionRadius, " VALID?");
+            //Debug.printInformation("FRIENDLY SIZE IS " + friendlySize + " IN RANGE " + minExplosionRadius, " VALID?");
             if (friendlySize >= 2 || !controller.canEmpower(minExplosionRadius)) {
                 int flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE, CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME, false, false, 0);
                 Comms.checkAndAddFlag(flag);
-                Debug.printInformation("MOVE " + validDir, " VALID?");
+                //Debug.printInformation("MOVE " + validDir, " VALID?");
                 if (validDir != null) controller.move(validDir);
                 else Pathfinding.move(bestLocation);
                 return true;
             } else {
-                for (int i = RobotType.POLITICIAN.actionRadiusSquared; i >= minExplosionRadius; --i) {
+                for (int i = RobotType.POLITICIAN.actionRadiusSquared; i >= minExplosionRadius; i -= 2) {
                     if (controller.senseNearbyRobots(i, Cache.OUR_TEAM).length <= 3) {
-                        Debug.printInformation("EXPLODING ", i);
+                        //Debug.printInformation("EXPLODING ", i);
                         controller.empower(i);
+                        return true;
                     }
                 }
-                return true;
+                controller.empower(minExplosionRadius);
+                return false;
             }
         }
 
@@ -222,7 +224,7 @@ public class PoliticanBot implements RunnableBot {
 //            }
 //            if (miniDistance <= 4) {
 //                controller.move(validDir);
-//                Debug.printInformation("MOVING FOR MUCKRAKER ", validDir);
+//                //Debug.printInformation("MOVING FOR MUCKRAKER ", validDir);
 //            }
 //        }
 
@@ -385,8 +387,8 @@ public class PoliticanBot implements RunnableBot {
         }
 
 
-        Debug.printInformation("friendlySlanderers Size ", friendlySlanderersSize);
-        Debug.printInformation("friendlySlanderers ", Arrays.toString(friendlySlanderers));
+        //Debug.printInformation("friendlySlanderers Size ", friendlySlanderersSize);
+        //Debug.printInformation("friendlySlanderers ", Arrays.toString(friendlySlanderers));
 
         MapLocation toTarget = null;
         int leastDistance = 9999;
@@ -430,8 +432,8 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        Debug.printInformation("Minimum distance enemy muckraker is to slanderer is ", leastDistance);
-        Debug.printInformation("and targeting location ", toTarget);
+        //Debug.printInformation("Minimum distance enemy muckraker is to slanderer is ", leastDistance);
+        //Debug.printInformation("and targeting location ", toTarget);
 
         if (controller.isReady() && leastDistance <= RobotType.MUCKRAKER.actionRadiusSquared + 5) {
             if (controller.canEmpower(Cache.CURRENT_LOCATION.distanceSquaredTo(toTarget))) {
