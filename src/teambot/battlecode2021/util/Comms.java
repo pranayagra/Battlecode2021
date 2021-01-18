@@ -51,6 +51,10 @@ public abstract class Comms {
         }
     }
 
+    public static int getCommsSize() {
+        return communicationQueue.size();
+    }
+
     public static int getFlag(int robotID) throws GameActionException {
         return controller.getFlag(robotID) /*^ SEED*/;
     }
@@ -61,7 +65,7 @@ public abstract class Comms {
     /* Set all flags here */
 
     public static void loop() throws GameActionException {
-
+//        if (Debug.debug2) System.out.println(controller.getLocation() + " has queue " + communicationQueue.size());
         int flag = schedule[controller.getRoundNum()];
         if (flag != 0) {
             if (controller.canSetFlag(flag)) {

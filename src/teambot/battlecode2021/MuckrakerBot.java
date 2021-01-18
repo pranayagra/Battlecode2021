@@ -30,8 +30,6 @@ public class MuckrakerBot implements RunnableBot {
 
         random = new Random(controller.getID());
 
-        Cache.FOUND_ECS.put(Cache.myECLocation, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION);
-
         // check if scout
         listenToECInstruction = true;
         
@@ -246,8 +244,7 @@ public class MuckrakerBot implements RunnableBot {
         Debug.printInformation("I'm a guide with", controller.getFlag(controller.getID()));
         // Move away from EC if too close to prevent impact to spawning
         if (Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation) <= 2) {
-            Pathfinding.naiveMove(Pathfinding.toMovePreferredDirection(
-                Pathfinding.oppositeDirection(Cache.CURRENT_LOCATION.directionTo(Cache.myECLocation)),4));
+            Pathfinding.naiveMove(Pathfinding.toMovePreferredDirection(Cache.CURRENT_LOCATION.directionTo(Cache.myECLocation).opposite(), 4));
         }
 
         // Rotate flag to send out map location

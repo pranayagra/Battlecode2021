@@ -7,6 +7,8 @@ import java.nio.file.Path;
 public class Scout {
 
     public static RobotController controller;
+    private static int hasScoutedEnemyNums;
+    private static int scoutCooldown;
 
     public static void init(RobotController controller) {
         Scout.controller = controller;
@@ -31,19 +33,29 @@ public class Scout {
     }
 
     public static void scoutEnemies() throws GameActionException {
+        int flag = 0;
+        if (!Comms.hasSetFlag && Comms.getCommsSize() == 0 && controller.getFlag(controller.getID()) != 0) {
+            controller.setFlag(flag);
+        }
+        if (hasScoutedEnemyNums >= 3) return;
+        if (scoutCooldown > 0) {
+            --scoutCooldown;
+            return;
+        }
         MapLocation currentLocation = controller.getLocation();
         int distance = Pathfinding.travelDistance(currentLocation, Cache.myECLocation);
         int numEnemies = controller.senseNearbyRobots(-1, Cache.OPPONENT_TEAM).length;
         int cost = (int)((1 + 15.0/distance) * numEnemies);
+        Debug.printInformation("Trying to scout enemies " + numEnemies, cost);
         if (numEnemies > 0) {
             int dangerDirection = Cache.myECLocation.directionTo(currentLocation).ordinal();
-            CommunicationMovement.encodeMovement(true, true,
+            flag = CommunicationMovement.encodeMovement(true, true,
                     CommunicationMovement.MY_UNIT_TYPE.MU, CommunicationMovement.convert_DirectionInt_MovementBotsData(dangerDirection),
                     CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.SPOTTED_ENEMY_UNIT, false, false, cost);
+            Comms.checkAndAddFlag(flag);
+            hasScoutedEnemyNums++;
+            scoutCooldown = 10;
         }
-
-
-
     }
 
     // Checks edge. If not on map, set cache and send flag
@@ -113,6 +125,7 @@ public class Scout {
                 CommunicationLocation.FLAG_LOCATION_TYPES locationTypePrevious = Cache.FOUND_ECS.get(info.location);
                 CommunicationLocation.FLAG_LOCATION_TYPES locationTypeNew = getECType(info.team);
                 //TODO: add some age factor so we still report every so often even if the team has not changed
+//                System.out.println("HERE IS " + locationTypePrevious + " and " + locationTypeNew + " at " + info.location);
                 if (locationTypePrevious == null || locationTypePrevious != locationTypeNew) { //if null or if the type of EC has since changed
                     Cache.FOUND_ECS.put(info.location, locationTypeNew); //overwrite or add
                     int flag = CommunicationLocation.encodeLOCATION(false, false, locationTypeNew, info.location);

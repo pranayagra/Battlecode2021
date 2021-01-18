@@ -78,7 +78,7 @@ public class SlandererBot implements RunnableBot {
 
         // if in danger from muckraker, get out
         if (runFromMuckrakerMove() != 0) {
-            System.out.println("IN DANGER OR COOLDOWN");
+//            System.out.println("IN DANGER OR COOLDOWN");
             return;
         }
 

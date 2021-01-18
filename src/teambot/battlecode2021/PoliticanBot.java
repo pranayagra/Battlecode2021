@@ -298,7 +298,6 @@ public class PoliticanBot implements RunnableBot {
                     ++NUM_SCOUTS;
                 }
             }
-            System.out.println("NUM OF SCOUTS IN DISTANCE " + NUM_SCOUTS);
             if (NUM_SCOUTS > 0) {
                 //TODO: MOVE CLOSER
                 return false;

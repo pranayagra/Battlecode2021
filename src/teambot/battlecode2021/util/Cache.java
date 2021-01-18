@@ -83,6 +83,8 @@ public class Cache {
                 }
             }
         }
+        System.out.println(Cache.myECLocation);
+        Cache.FOUND_ECS.put(Cache.myECLocation, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION);
 
         //TODO: Not sure if I like using hashmap to store EC locations (is it bytecode expensive? Is there a different solution / can we create our own structure to hold ECs)?
         //TODO: Not sure how to determine / unadd if EC is captured/lost. I guess it's more reactive as we loop through...

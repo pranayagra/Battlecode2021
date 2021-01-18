@@ -35,10 +35,13 @@ class EC_Information {
         switch (locationFlagType) {
             case MY_EC_LOCATION:
                 this.team = Cache.OUR_TEAM;
+                break;
             case ENEMY_EC_LOCATION:
                 this.team = Cache.OPPONENT_TEAM;
+                break;
             default:
                 this.team = Team.NEUTRAL;
+                break;
         }
     }
 
@@ -64,7 +67,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private RobotController controller;
 
     private static int[] enemyDirectionCounts; //8 values indicating how dangerous a side of the map is (used in spawning politicians/scouting)
-    private static int[] wallDirectionDistance; // 8 values for how close the wall is from a certain direction (used in spawning slanderers in conjuction to enemyDirectionCounts)
+    private static int[] wallDirectionReward; // 8 values for how close the wall is from a certain direction (used in spawning slanderers in conjuction to enemyDirectionCounts)
     private static final int CEIL_MAX_REWARD = 40;
 
     private static MapLocation[] SCOUT_LOCATIONS;
@@ -168,8 +171,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         /* NEW STUFF BELOW */
 
         enemyDirectionCounts = new int[8];
-        wallDirectionDistance = new int[8];
-        for (int i = 0; i < 8; ++i) wallDirectionDistance[i] = 99999;
+        wallDirectionReward = new int[8];
 
         /* PROCESS FLAGS THROUGH MULTIPLE ROUNDS */
         processRobotIDandFlags = new int[100][4]; //robotID ToQuery, flag1, flag2, flag3
@@ -220,8 +222,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         defaultTurn();
 
         Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
-        Debug.printInformation("WALL REWARDS: ", wallDirectionDistance);
-        Debug.printInformation("ENEMY DANGERS: ", enemyDirectionCounts);
+        Debug.printInformation("WALL REWARDS: ", Arrays.toString(wallDirectionReward));
+        Debug.printInformation("ENEMY DANGERS: ", Arrays.toString(enemyDirectionCounts));
 
         Debug.printByteCode("EC END TURN => ");
 
@@ -249,28 +251,28 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //for direction, compiute distance. for midway, compute average. use as heurstic!
 
         if (Cache.MAP_TOP != 0) {
-            wallDirectionDistance[0] = CEIL_MAX_REWARD - (Cache.MAP_TOP - Cache.CURRENT_LOCATION.y);
+            wallDirectionReward[0] = CEIL_MAX_REWARD - (Cache.MAP_TOP - Cache.CURRENT_LOCATION.y);
         }
         if (Cache.MAP_RIGHT != 0) {
-            wallDirectionDistance[2] = CEIL_MAX_REWARD - (Cache.MAP_RIGHT - Cache.CURRENT_LOCATION.x);
+            wallDirectionReward[2] = CEIL_MAX_REWARD - (Cache.MAP_RIGHT - Cache.CURRENT_LOCATION.x);
         }
         if (Cache.MAP_BOTTOM != 0) {
-            wallDirectionDistance[4] = CEIL_MAX_REWARD - (Cache.CURRENT_LOCATION.y - Cache.MAP_BOTTOM);
+            wallDirectionReward[4] = CEIL_MAX_REWARD - (Cache.CURRENT_LOCATION.y - Cache.MAP_BOTTOM);
         }
         if (Cache.MAP_LEFT != 0) {
-            wallDirectionDistance[6] = CEIL_MAX_REWARD - (Cache.CURRENT_LOCATION.x - Cache.MAP_LEFT);
+            wallDirectionReward[6] = CEIL_MAX_REWARD - (Cache.CURRENT_LOCATION.x - Cache.MAP_LEFT);
         }
         if (Cache.MAP_TOP != 0 && Cache.MAP_RIGHT != 0) {
-            wallDirectionDistance[1] = (wallDirectionDistance[0] + wallDirectionDistance[2])/2;
+            wallDirectionReward[1] = (wallDirectionReward[0] + wallDirectionReward[2])/2;
         }
         if (Cache.MAP_RIGHT != 0 && Cache.MAP_BOTTOM != 0) {
-            wallDirectionDistance[3] = (wallDirectionDistance[2] + wallDirectionDistance[4])/2;
+            wallDirectionReward[3] = (wallDirectionReward[2] + wallDirectionReward[4])/2;
         }
         if (Cache.MAP_BOTTOM != 0 && Cache.MAP_LEFT != 0) {
-            wallDirectionDistance[5] = (wallDirectionDistance[4] + wallDirectionDistance[6])/2;
+            wallDirectionReward[5] = (wallDirectionReward[4] + wallDirectionReward[6])/2;
         }
         if (Cache.MAP_LEFT != 0 && Cache.MAP_TOP != 0) {
-            wallDirectionDistance[7] = (wallDirectionDistance[6] + wallDirectionDistance[8])/2;
+            wallDirectionReward[7] = (wallDirectionReward[6] + wallDirectionReward[0])/2;
         }
     }
 
@@ -438,15 +440,19 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         for (int i = 0; i < numRobotsToProcessFlags; ++i) { //iterate through all flags
             int robotID = processRobotIDandFlags[i][0]; //the robotID of the corresponding idx
+//            System.out.println("");
             if (controller.canGetFlag(robotID)) { //this robot is still alive
                 //query flag information, check isUrgent, isLastFlag bit, or add to list of flags)
                 int encodedFlag = controller.getFlag(robotID);
+                if (encodedFlag == 0) continue;
+                System.out.println("robotID -> " + robotID + " " + encodedFlag);
                 if (Comms.decodeIsUrgent(encodedFlag)) { //skip queue (this flag is urgent and interrupting the queued message)
                     urgentFlagRecieved(encodedFlag);
                 } else if (Comms.decodeIsLastFlag(encodedFlag)) { //if the flag is the last flag in sequence, let's add it and then process all the flags
                     processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
                     processRobotFlag(i, numFlagsSavedForARobot[i]);
                 } else { //let us add to the list at index i and size of message so far. increment size of message
+                    System.out.println("WTF ->" + numFlagsSavedForARobot[i]);
                     processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
                 }
             } else { //the robot has died.
@@ -461,6 +467,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                         robotID = processRobotIDandFlags[i][0];
                         numFlagsSavedForARobot[i] = numFlagsSavedForARobot[numRobotsToProcessFlags];
                         int encodedFlag = controller.getFlag(robotID);
+                        if (encodedFlag == 0) continue;
                         if (Comms.decodeIsUrgent(encodedFlag)) { //skip queue (this flag is urgent and interrupting the queued message)
                             urgentFlagRecieved(encodedFlag);
                         } else if (Comms.decodeIsLastFlag(encodedFlag)) { //if the flag is the last flag in sequence, let's add it and then process all the flags

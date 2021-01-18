@@ -24,17 +24,6 @@ public class Pathfinding {
     static double gradient;
     static int stuckTurns;
 
-    public static Direction[] COMPASS = {
-        Direction.NORTH,
-        Direction.NORTHEAST,
-        Direction.EAST,
-        Direction.SOUTHEAST,
-        Direction.SOUTH,
-        Direction.SOUTHWEST,
-        Direction.WEST,
-        Direction.NORTHWEST
-    };
-
     public static int move(MapLocation targetLoc) throws GameActionException {
         //Debugging
         if (Debug.debug) {
@@ -142,6 +131,8 @@ public class Pathfinding {
     // Geedily from 3 naive options
     public static int greedyMove(MapLocation targetLoc) throws GameActionException {
 
+        if (targetLoc == null) return 0;
+
         // TODO: Some type of basic BFS which is within bytecode limit
         // Potential choices
         MapLocation a = Cache.CURRENT_LOCATION.add(Cache.CURRENT_LOCATION.directionTo(targetLoc));
@@ -209,7 +200,7 @@ public class Pathfinding {
     directionFlexibilityDelta: max value 4 */
     public static Direction toMovePreferredDirection(Direction preferredDirection, int directionFlexibilityDelta) {
 
-        if (!controller.isReady()) return null;
+        if (!controller.isReady() || preferredDirection == null) return null;
 
         if (controller.canMove(preferredDirection)) {
             return preferredDirection;
@@ -227,7 +218,7 @@ public class Pathfinding {
     }
 
     public static Boolean naiveMove(Direction dir) throws GameActionException {
-        if (controller.canMove(dir)) {
+        if (dir != null && controller.canMove(dir)) {
             controller.move(dir);
             return true;
         }
@@ -235,15 +226,18 @@ public class Pathfinding {
     }
 
     public static Boolean naiveMove(MapLocation loc) throws GameActionException {
+        if (loc == null) return false;
         return naiveMove(controller.getLocation().directionTo(loc));
     }
 
     // Util
     public static Integer travelDistance(MapLocation a, MapLocation b) {
+        if (a == null || b == null) return 99999;
         return Math.max(Math.abs(a.x-b.x), Math.abs(a.y-b.y));
     }
 
     public static boolean inMap(MapLocation a) {
+        if (a == null) return false;
         if (Cache.MAP_BOTTOM != 0 && Cache.MAP_BOTTOM > a.y) {
             return false;
         }
@@ -264,6 +258,7 @@ public class Pathfinding {
     }
 
     private static double calculateGradient(MapLocation start, MapLocation end) {
+        if (start == null || end == null) return -2;
         if (end.x-start.x == 0) {
             return -1;
         }
@@ -279,33 +274,4 @@ public class Pathfinding {
         }
         return res;
     }
-
-    public static Direction oppositeDirection(Direction dir) {
-        if (dir == Direction.NORTH) {
-            return Direction.SOUTH;
-        }
-        if (dir == Direction.NORTHEAST) {
-            return Direction.SOUTHWEST;
-        }
-        if (dir == Direction.EAST) {
-            return Direction.WEST;
-        }
-        if (dir == Direction.SOUTHEAST) {
-            return Direction.NORTHWEST;
-        }
-        if (dir == Direction.SOUTH) {
-            return Direction.NORTH;
-        }
-        if (dir == Direction.SOUTHWEST) {
-            return Direction.NORTHEAST;
-        }
-        if (dir == Direction.WEST) {
-            return Direction.EAST;
-        }
-        if (dir == Direction.NORTHWEST) {
-            return Direction.SOUTHEAST;
-        }
-        return Direction.CENTER;
-    }
-
 }
