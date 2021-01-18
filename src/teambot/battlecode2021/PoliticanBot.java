@@ -177,18 +177,20 @@ public class PoliticanBot implements RunnableBot {
         if (!controller.isReady()) return false;
 
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-            int encodedFlag = controller.getFlag(robotInfo.ID);
-            if (CommunicationMovement.decodeIsSchemaType(encodedFlag)) {
-                CommunicationMovement.MY_UNIT_TYPE myUnitType = CommunicationMovement.decodeMyUnitType(encodedFlag);
-                int distance = Pathfinding.travelDistance(Cache.CURRENT_LOCATION, robotInfo.location);
-                if (myUnitType == CommunicationMovement.MY_UNIT_TYPE.SL) {
-                    miniDistance = Math.min(miniDistance, distance);
-                    if (distance <= 2) {
-                        Direction preferredDirection = Cache.myECLocation.directionTo(Cache.CURRENT_LOCATION);
-                        Direction validDirection = Pathfinding.toMovePreferredDirection(preferredDirection,2);
-                        if (validDirection != null) {
-                            controller.move(validDirection);
-                            return true;
+            if (controller.canGetFlag(robotInfo.ID)) {
+                int encodedFlag = controller.getFlag(robotInfo.ID);
+                if (CommunicationMovement.decodeIsSchemaType(encodedFlag)) {
+                    CommunicationMovement.MY_UNIT_TYPE myUnitType = CommunicationMovement.decodeMyUnitType(encodedFlag);
+                    int distance = Pathfinding.travelDistance(Cache.CURRENT_LOCATION, robotInfo.location);
+                    if (myUnitType == CommunicationMovement.MY_UNIT_TYPE.SL) {
+                        miniDistance = Math.min(miniDistance, distance);
+                        if (distance <= 2) {
+                            Direction preferredDirection = Cache.myECLocation.directionTo(Cache.CURRENT_LOCATION);
+                            Direction validDirection = Pathfinding.toMovePreferredDirection(preferredDirection, 2);
+                            if (validDirection != null) {
+                                controller.move(validDirection);
+                                return true;
+                            }
                         }
                     }
                 }
@@ -222,6 +224,7 @@ public class PoliticanBot implements RunnableBot {
     //      we only explode if it is a 1-shot (with some extra for health). If it is no longer a 1-shot, this politican is repurposed.
     //      check for enemy politicians?
     //      We may want a way to clear enemies that just surround the neutral EC with weak targets but do not capture
+    //TODO: still try to optimize the location spawned (get as close as possible and then explode)
     public boolean moveAndDestroyEC() throws GameActionException {
 
         int actionRadius = Cache.ROBOT_TYPE.actionRadiusSquared;

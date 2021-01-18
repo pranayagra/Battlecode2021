@@ -63,6 +63,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int[] wallDirectionReward; // 8 values for how close the wall is from a certain direction (used in spawning slanderers in conjuction to enemyDirectionCounts)
     private static int[] numSlanderersWallDirectionSpawned;
     private static final int CEIL_MAX_REWARD = 40;
+    private static boolean hasFoundEnemies;
 
     private static MapLocation[] SCOUT_LOCATIONS;
     private static int SCOUT_LOCATIONS_CURRENT;
@@ -227,6 +228,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         naiveBid();
 
+        numRobotsToProcessFlags %= processRobotIDandFlags.length;
         defaultTurn();
 
         Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
@@ -335,6 +337,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             enemyDirectionCounts[direction] += amount;
             enemyDirectionCounts[(direction + 7) % 8] += amount/2;
             enemyDirectionCounts[(direction + 1) % 8] += amount/2;
+            hasFoundEnemies = true;
         } else if (communicationToOtherBots == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.SEND_DEFENDING_POLITICIANS) {
             //TODO: send politician to defend at direction location
         }
@@ -505,23 +508,34 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private Direction checkSpawnSlanderers() {
         int bestWallDir = -1;
         int bestReward = -999999;
-        boolean hasFoundEnemy = false;
 
-        for (int i = 0; i < 8; ++i) {
-            int totalReward = wallDirectionReward[i] - numSlanderersWallDirectionSpawned[i];
-            //if != 0, then be greater than 5
-            //if == 0, then w/e
-            boolean wallIsValid = false;
-            if (enemyDirectionCounts[i] > 0) hasFoundEnemy = true;
+        //logic -> if no walls have been found and an enemy is found in dir, we can spawn.
+        //      if wall has been found we spawn in direction
+        //      if both found we perform some combination of both
 
-            if (wallDirectionReward[i] == 0 || wallDirectionReward[i] >= 5) wallIsValid = true;
-            if (bestReward < totalReward && (wallIsValid && enemyDirectionCounts[i] <= 1 * controller.getRoundNum()/2)) {
-                bestReward = totalReward;
-                bestWallDir = i;
+        boolean noWallsFound = false;
+        if (Cache.MAP_TOP == 0 && Cache.MAP_RIGHT == 0 && Cache.MAP_BOTTOM == 0 && Cache.MAP_LEFT == 0) noWallsFound = true;
+
+        if (noWallsFound && hasFoundEnemies) {
+            //spawn away from enemies
+            for (int i = 0; i < 8; ++i) {
+                int totalReward = -enemyDirectionCounts[i];
+                if (bestReward < totalReward && enemyDirectionCounts[i] <= 1 * controller.getRoundNum()/2) {
+                    bestReward = totalReward;
+                    bestWallDir = i;
+                }
+            }
+        } else if (!noWallsFound) { //found walls
+            for (int i = 0; i < 8; ++i) {
+                int totalReward = wallDirectionReward[i] - numSlanderersWallDirectionSpawned[i] - enemyDirectionCounts[i];
+                if (bestReward < totalReward && wallDirectionReward[i] >= 5 && enemyDirectionCounts[i] <= 1 * controller.getRoundNum()/2) {
+                    bestReward = totalReward;
+                    bestWallDir = i;
+                }
             }
         }
 
-        if (bestWallDir != -1 && hasFoundEnemy) {
+        if (bestWallDir != -1) {
             Direction toBuild = toBuildDirection(Direction.values()[bestWallDir], 1);
             return toBuild;
         }
@@ -600,7 +614,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12) { //80% of time spawn slanderer in safe direction
             spawnLatticeSlanderer((int) (controller.getInfluence() * 0.6), safeDirection);
         } else if (dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6) { //20% of time spawn politician in safe direction
-            spawnDefendingPolitician(15, dangerDirection,null);
+            int influenceSpend = Math.min(Math.max(21, (int)(controller.getInfluence() * 0.2)), 35);
+            spawnDefendingPolitician(influenceSpend, dangerDirection,null);
         }
 
         if (!controller.canGetFlag(GUIDE_ID)) {
