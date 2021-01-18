@@ -61,6 +61,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     private static int[] enemyDirectionCounts; //8 values indicating how dangerous a side of the map is (used in spawning politicians/scouting)
     private static int[] wallDirectionReward; // 8 values for how close the wall is from a certain direction (used in spawning slanderers in conjuction to enemyDirectionCounts)
+    private static int[] numSlanderersWallDirectionSpawned;
     private static final int CEIL_MAX_REWARD = 40;
 
     private static MapLocation[] SCOUT_LOCATIONS;
@@ -178,6 +179,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         enemyDirectionCounts = new int[8];
         wallDirectionReward = new int[8];
+        numSlanderersWallDirectionSpawned = new int[8];
 
         /* PROCESS FLAGS THROUGH MULTIPLE ROUNDS */
         processRobotIDandFlags = new int[100][4]; //robotID ToQuery, flag1, flag2, flag3
@@ -229,6 +231,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
         Debug.printInformation("WALL REWARDS: ", Arrays.toString(wallDirectionReward));
+        Debug.printInformation("NUM SLANDERERS: ", Arrays.toString(numSlanderersWallDirectionSpawned));
         Debug.printInformation("ENEMY DANGERS: ", Arrays.toString(enemyDirectionCounts));
 
         Debug.printByteCode("EC END TURN => ");
@@ -444,7 +447,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                         robotID = processRobotIDandFlags[i][0];
                         numFlagsSavedForARobot[i] = numFlagsSavedForARobot[numRobotsToProcessFlags];
                         int encodedFlag = controller.getFlag(robotID);
-                        if (encodedFlag == 0) continue;
+                        if (encodedFlag == 0) break;
                         if (Comms.decodeIsUrgent(encodedFlag)) { //skip queue (this flag is urgent and interrupting the queued message)
                             urgentFlagRecieved(encodedFlag);
                         } else if (Comms.decodeIsLastFlag(encodedFlag)) { //if the flag is the last flag in sequence, let's add it and then process all the flags
@@ -453,6 +456,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                         } else { //let us add to the list at index i and size of message so far. increment size of message
                             processRobotIDandFlags[i][numFlagsSavedForARobot[i]++] = encodedFlag;
                         }
+                        break;
                     }
                 }
             }
@@ -501,17 +505,25 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private Direction checkSpawnSlanderers() {
         int bestWallDir = -1;
         int bestReward = -999999;
+        boolean hasFoundEnemy = false;
 
         for (int i = 0; i < 8; ++i) {
-            int totalReward = wallDirectionReward[i] - enemyDirectionCounts[i];
-            if (wallDirectionReward[i] >= 5 && bestReward < totalReward) {
+            int totalReward = wallDirectionReward[i] - numSlanderersWallDirectionSpawned[i];
+            //if != 0, then be greater than 5
+            //if == 0, then w/e
+            boolean wallIsValid = false;
+            if (enemyDirectionCounts[i] > 0) hasFoundEnemy = true;
+
+            if (wallDirectionReward[i] == 0 || wallDirectionReward[i] >= 5) wallIsValid = true;
+            if (bestReward < totalReward && (wallIsValid && enemyDirectionCounts[i] <= 1 * controller.getRoundNum()/2)) {
                 bestReward = totalReward;
                 bestWallDir = i;
             }
         }
 
-        if (bestWallDir != -1) {
-            return Direction.values()[bestWallDir];
+        if (bestWallDir != -1 && hasFoundEnemy) {
+            Direction toBuild = toBuildDirection(Direction.values()[bestWallDir], 1);
+            return toBuild;
         }
 
         return null;
@@ -556,13 +568,13 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
 
         //ATTACK NEUTRAL EC
-        if (controller.getInfluence() >= 2 * attackNeutralLocationHealth) {
-            spawnAttackingPolitician((int) (attackNeutralLocationHealth * 1.5 + 10), toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Team.NEUTRAL);
+        if (controller.getInfluence() >= attackNeutralLocationHealth + 45) {
+            spawnAttackingPolitician((int) (attackNeutralLocationHealth + 11), toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Team.NEUTRAL);
         }
 
         //ATTACK ENEMY EC
-        if (controller.getInfluence() >= 3 * attackNeutralLocationHealth && controller.getRoundNum() - attackEnemyLocationAge <= 25) {
-            spawnAttackingPolitician((int) (controller.getInfluence() * 2 + 10), toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Cache.OPPONENT_TEAM);
+        if (controller.getInfluence() >= attackNeutralLocationHealth + 45 && controller.getRoundNum() - attackEnemyLocationAge <= 25) {
+            spawnAttackingPolitician((int) (controller.getInfluence() + 10), toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Cache.OPPONENT_TEAM);
         }
 
         //ROUND 1 STRAT
@@ -586,7 +598,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         int slandererSpawn = random.nextInt(10) + 1; //1-10
         //NOTE: on spawn both safeDirection and dangerDirection will be null, so we  will inheritately spawn scouts first
         if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12) { //80% of time spawn slanderer in safe direction
-            spawnLatticeSlanderer((int) (controller.getInfluence() * 0.3), toBuildDirection(safeDirection, 1));
+            spawnLatticeSlanderer((int) (controller.getInfluence() * 0.6), safeDirection);
         } else if (dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6) { //20% of time spawn politician in safe direction
             spawnDefendingPolitician(15, dangerDirection,null);
         }
@@ -606,9 +618,10 @@ public class EnlightenmentCenterBot implements RunnableBot {
         } else if (randomInt == 9) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
-            spawnDefendingPolitician(Math.max(21, (int)(controller.getInfluence() * 0.3)), toBuildDirection(dir,2),null);
+            int influenceSpend = Math.min(Math.max(21, (int)(controller.getInfluence() * 0.2)), 35);
+            spawnDefendingPolitician(influenceSpend, toBuildDirection(dir,2),null);
         } else if (randomInt == 10 && safeDirection != null) {
-            spawnLatticeSlanderer((int) (controller.getInfluence() * 0.3), safeDirection);
+            spawnLatticeSlanderer((int) (controller.getInfluence() * 0.65), safeDirection);
         }
 
     }
@@ -738,6 +751,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (direction != null && controller.canBuildRobot(RobotType.SLANDERER, direction, influence)) {
             controller.buildRobot(RobotType.SLANDERER, direction, influence);
             Debug.printInformation("PUSHING TO SLANDERER ", " BEFORE");
+            numSlanderersWallDirectionSpawned[direction.ordinal()]++;
             SLANDERER_IDs.push(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID, controller.getRoundNum());
             Debug.printInformation("PUSHING TO SLANDERER ", " AFTER");
         }
@@ -763,8 +777,14 @@ public class EnlightenmentCenterBot implements RunnableBot {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
             setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
             Debug.printInformation("SPAWNING ATTACKING POLI FOR LOCATION " + location + " FOR " + team,"VALID");
-            if (team.equals(Cache.OPPONENT_TEAM)) deployedPoliticianToAttackEnemy = true;
-            else if (team.equals(Team.NEUTRAL)) deployedPoliticianToAttackNeutral = true;
+            if (team.equals(Cache.OPPONENT_TEAM)) {
+                deployedPoliticianToAttackEnemy = true;
+                foundECs.remove(location); //TODO: temporary solution for now
+            }
+            else if (team.equals(Team.NEUTRAL)) {
+                deployedPoliticianToAttackNeutral = true;
+                foundECs.remove(location);
+            }
 
         }
     }

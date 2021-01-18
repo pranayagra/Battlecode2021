@@ -13,9 +13,6 @@ public class SlandererBot implements RunnableBot {
     private double[] moveRewards;
     private int distanceFromMyEC;
 
-    private int[] safeSpawnDirections;
-    private int[] enemySpawnDirections;
-
     //TODO: CHECK AND SET FLAG IF WALL IS MISSING AROUND US? and probably set flag based on it
 
     public SlandererBot(RobotController controller) throws GameActionException {
@@ -31,8 +28,6 @@ public class SlandererBot implements RunnableBot {
         moveLocs = new MapLocation[9];
         moveRewards = new double[9];
         canMoveIndices = new int[9];
-        safeSpawnDirections = new int[8];
-        enemySpawnDirections = new int[8];
     }
 
     @Override

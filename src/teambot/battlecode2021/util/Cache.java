@@ -39,6 +39,7 @@ public class Cache {
     public static Map<MapLocation, Integer> ALL_KNOWN_ENEMY_EC_LOCATIONS; // Location : RobotID
     //Behavior: if does not exist, add to map. If exists, check type (neutral, friendly, enemy) and see if it has changed
     public static Map<MapLocation, CommunicationLocation.FLAG_LOCATION_TYPES> FOUND_ECS;
+    public static Map<MapLocation, Integer> FOUND_ECS_AGE;
 
     public static double PASSABILITY; // not sure about this...
     public static double COOLDOWN; // not sure...
@@ -50,6 +51,7 @@ public class Cache {
 
     public static CommunicationECSpawnFlag.ACTION EC_INFO_ACTION;
     public static MapLocation EC_INFO_LOCATION;
+    public static Direction EC_INFO_DIRECTION;
 
     public static void init(RobotController controller) throws GameActionException {
         Cache.controller = controller;
@@ -64,6 +66,7 @@ public class Cache {
         ALL_KNOWN_FRIENDLY_EC_LOCATIONS = new HashMap<>();
         ALL_KNOWN_ENEMY_EC_LOCATIONS = new HashMap<>();
         FOUND_ECS = new HashMap();
+        FOUND_ECS_AGE = new HashMap<>();
 
         // Find EC spawn
         myECLocation = Cache.CURRENT_LOCATION;
@@ -84,7 +87,8 @@ public class Cache {
             }
         }
         System.out.println(Cache.myECLocation);
-        Cache.FOUND_ECS.put(Cache.myECLocation, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION);
+        FOUND_ECS.put(myECLocation, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION);
+        FOUND_ECS_AGE.put(myECLocation, controller.getRoundNum());
 
         //TODO: Not sure if I like using hashmap to store EC locations (is it bytecode expensive? Is there a different solution / can we create our own structure to hold ECs)?
         //TODO: Not sure how to determine / unadd if EC is captured/lost. I guess it's more reactive as we loop through...
@@ -96,6 +100,7 @@ public class Cache {
         EC_INFO_ACTION = CommunicationECSpawnFlag.decodeAction(encoding);
         CommunicationECSpawnFlag.SAFE_QUADRANT safeQuadrant = CommunicationECSpawnFlag.decodeSafeQuadrant(encoding);
         EC_INFO_LOCATION = CommunicationECSpawnFlag.decodeLocationData(encoding);
+        EC_INFO_DIRECTION = CommunicationECSpawnFlag.decodeDirection(encoding);
         Debug.printInformation("INFORMATION FROM EC IS " + EC_INFO_ACTION + " AND " + EC_INFO_LOCATION, "");
 
         // DO SOMETHING HERE

@@ -126,8 +126,9 @@ public class Scout {
                 CommunicationLocation.FLAG_LOCATION_TYPES locationTypeNew = getECType(info.team);
                 //TODO: add some age factor so we still report every so often even if the team has not changed
 //                System.out.println("HERE IS " + locationTypePrevious + " and " + locationTypeNew + " at " + info.location);
-                if (locationTypePrevious == null || locationTypePrevious != locationTypeNew) { //if null or if the type of EC has since changed
+                if (locationTypePrevious == null || locationTypePrevious != locationTypeNew || controller.getRoundNum() - Cache.FOUND_ECS_AGE.get(info.location) >= 15) { //if null or if the type of EC has since changed
                     Cache.FOUND_ECS.put(info.location, locationTypeNew); //overwrite or add
+                    Cache.FOUND_ECS_AGE.put(info.location, controller.getRoundNum());
                     int flag = CommunicationLocation.encodeLOCATION(false, false, locationTypeNew, info.location);
                     Comms.checkAndAddFlag(flag);
                     flag = CommunicationECInfo.encodeECInfo(false, false, getCommunicatedUnitTeamForECInfo(info.team), info.conviction);
