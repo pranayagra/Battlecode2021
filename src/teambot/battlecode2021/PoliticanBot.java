@@ -4,6 +4,7 @@ import battlecode.common.*;
 import teambot.RunnableBot;
 import teambot.battlecode2021.util.*;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
@@ -12,9 +13,6 @@ public class PoliticanBot implements RunnableBot {
     private RobotController controller;
     private static Random random;
     private Pathfinding pathfinding;
-    private static boolean isTypeAttack;
-    private static MapLocation EnemyEC;
-    public static MapLocation neutralEC;
 
     private static int ECFlagForAttackBot;
 
@@ -35,13 +33,6 @@ public class PoliticanBot implements RunnableBot {
 
         random = new Random(controller.getID());
 
-        if (Cache.CONVICTION % 50 == 3) { //53, 103, 153, etc influence are attackPoliticanBotsOnECFlagLocation
-            isTypeAttack = true;
-            if (controller.canGetFlag(Cache.myECID)) {
-                ECFlagForAttackBot = controller.getFlag(Cache.myECID);
-            }
-        }
-
         friendlySlanderers = new MapLocation[80];
 //        friendlySlandererRobotIDs = new int[999];
 
@@ -49,14 +40,14 @@ public class PoliticanBot implements RunnableBot {
 
     @Override
     public void turn() throws GameActionException {
-        if (moveAndDestroyNeutralEC()) {
-            Debug.printInformation("Moving to destroy netural EC", "");
-            return;
+        if (Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION) {
+            Debug.printInformation("Moving to destroy netural or enemy EC", "");
+            int distance = Pathfinding.travelDistance(Cache.CURRENT_LOCATION, Cache.EC_INFO_LOCATION);
+            if (distance <= 5) attackingPoliticianNearEC();
+            if (moveAndDestroyEC()) return;
         }
-        if (moveAndDestroyEnemyEC()) {
-            Debug.printInformation("Moving to destroy enemy EC", "");
-            return;
-        }
+
+
         if (chaseMuckrakerUntilExplode()) {
             Debug.printInformation("CHASING MUCKRAKER ", "");
             return;
@@ -67,52 +58,9 @@ public class PoliticanBot implements RunnableBot {
         }
     }
 
-    public boolean leaveBaseToEnterLattice() throws GameActionException {
+    public boolean leaveLatticeToDefend() throws GameActionException {
 
         return false;
-    }
-
-    private boolean moveAndDestroyEnemyEC() throws GameActionException {
-        if (EnemyEC == null) {
-            Debug.printInformation("EnemyEC not set", null);
-            return false;
-        }
-        if (!isTypeAttack) {
-            Debug.printInformation("isTypeAttack is false", null);
-            return false;
-        }
-
-        int actionRadius = Cache.ROBOT_TYPE.actionRadiusSquared;
-        RobotInfo[] nearbyRobots = controller.senseNearbyRobots(actionRadius);
-        for (RobotInfo robotInfo : nearbyRobots) {
-            if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER && robotInfo.team == controller.getTeam().opponent()) {
-                // explode if no other nearby allied muckrakers or slanderers
-                int squaredDistance = controller.getLocation().distanceSquaredTo(robotInfo.getLocation());
-                RobotInfo[] nearbyAlliedRobots = controller.senseNearbyRobots(squaredDistance, controller.getTeam());
-                boolean safeToEmpower = true;
-                for (RobotInfo nearbyAlliedRobot : nearbyAlliedRobots) {
-                    if (nearbyAlliedRobot.type == RobotType.MUCKRAKER || nearbyAlliedRobot.type == RobotType.SLANDERER) {
-                        safeToEmpower = false;
-                    }
-                }
-                if (safeToEmpower && controller.canEmpower(actionRadius)) {
-                    controller.empower(squaredDistance);
-                    return true;
-                } else if (!safeToEmpower) {
-                    int flag = CommunicationMovement.encodeMovement(false, true,
-                            CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.NOOP,
-                            CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
-                    if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
-                        controller.setFlag(flag);
-                        Comms.hasSetFlag = true;
-                    }
-                }
-            }
-        }
-
-        pathfinding.move(EnemyEC);
-        return true;
-
     }
 
     //Assumptions: neutralEC is found by a scout and communicated to the EC
@@ -130,16 +78,7 @@ public class PoliticanBot implements RunnableBot {
     //      we only explode if it is a 1-shot (with some extra for health). If it is no longer a 1-shot, this politican is repurposed.
     //      check for enemy politicians?
     //      We may want a way to clear enemies that just surround the neutral EC with weak targets but do not capture
-    public boolean moveAndDestroyNeutralEC() throws GameActionException {
-        if (neutralEC == null) {
-            Debug.printInformation("neutralEC not set", null);
-            return false;
-        }
-        if (!isTypeAttack) {
-            Debug.printInformation("isTypeAttack is false", null);
-            return false;
-        }
-
+    public boolean moveAndDestroyEC() throws GameActionException {
         int actionRadius = Cache.ROBOT_TYPE.actionRadiusSquared;
         RobotInfo[] nearbyRobots = controller.senseNearbyRobots(actionRadius);
         for (RobotInfo robotInfo : nearbyRobots) {
@@ -168,7 +107,7 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        pathfinding.move(neutralEC);
+        pathfinding.move(Cache.EC_INFO_LOCATION);
         return true;
     }
 
@@ -269,7 +208,7 @@ public class PoliticanBot implements RunnableBot {
 
     //ASSUME POLITICIAN CAN PATHFIND TO EC LOCATION
 
-    public boolean attackingPoliticianNearEnemyEC() throws GameActionException {
+    public boolean attackingPoliticianNearEC() throws GameActionException {
         for (RobotInfo robot : Cache.ALL_NEARBY_ROBOTS) {
             if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
                 int flag = CommunicationMovement.encodeMovement(
@@ -277,7 +216,6 @@ public class PoliticanBot implements RunnableBot {
                         CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME, false,false,0);
                 if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
                     controller.setFlag(flag); //CARE ABOUT SEED LATER? //NOTE THIS IS SETFLAG BECAUSE WE DO NOT WANT TO QUEUE IT BUT SKIP QUEUE AND SET FLAG
-                    EnemyEC = robot.getLocation();
                     Comms.hasSetFlag = true;
                     return true;
                 }

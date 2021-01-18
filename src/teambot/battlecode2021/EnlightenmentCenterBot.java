@@ -479,7 +479,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             }
 
             if (ECInfo.health < minNeutralECHealth && ECInfo.team.equals(Team.NEUTRAL)) {
-                minEnemyECHealth = ECInfo.health;
+                minNeutralECHealth = ECInfo.health;
                 neutralLocation = location;
             }
 
@@ -545,6 +545,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         slanderersToPoliticians();
         iterateAllUnitIDs();
         processAllECInformation();
+        updateWallDistance();
 
         int ran = random.nextInt(5);
 
@@ -603,7 +604,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 Debug.printInformation("Spawned Scout => ", targetLocation);
             }
         } else if (randomInt == 9) {
-            spawnDefendingPolitician(Math.max(21, (int)(controller.getInfluence() * 0.3)), randomValidDirection(),null);
+            Direction dir = randomValidDirection();
+            if (dangerDirection != null) dir = dangerDirection;
+            spawnDefendingPolitician(Math.max(21, (int)(controller.getInfluence() * 0.3)), toBuildDirection(dir,2),null);
         } else if (randomInt == 10 && safeDirection != null) {
             spawnLatticeSlanderer((int) (controller.getInfluence() * 0.3), safeDirection);
         }
@@ -624,7 +627,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     directionFlexibilityDelta: max value 4 */
     private Direction toBuildDirection(Direction preferredDirection, int directionFlexibilityDelta) {
 
-        if (!controller.isReady()) return null;
+        if (!controller.isReady() || preferredDirection == null) return null;
 
         if (controller.canBuildRobot(RobotType.MUCKRAKER, preferredDirection, 1)) {
             return preferredDirection;
