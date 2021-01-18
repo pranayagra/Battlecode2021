@@ -73,7 +73,7 @@ public strictfp class RobotPlayer {
                     }
                     int currentTurn = controller.getRoundNum(); //starts at round 1
 
-                    Debug.resignGame(500);
+//                    Debug.resignGame(500);
 
                     Util.loop();
                     runAwayFromAttackFlag();

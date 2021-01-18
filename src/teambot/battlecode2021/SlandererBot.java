@@ -1,14 +1,8 @@
 package teambot.battlecode2021;
 
 import battlecode.common.*;
-import com.sun.tools.internal.jxc.ap.Const;
-import mushroombot.battlecode2021.util.Communication;
 import teambot.*;
 import teambot.battlecode2021.util.*;
-
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Map;
 
 public class SlandererBot implements RunnableBot {
     private RobotController controller;
