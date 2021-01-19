@@ -677,7 +677,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Direction safeDirection = checkSpawnSlanderers();
         Direction dangerDirection = checkSpawnDefenders();
 
-        //Debug.printInformation("SAFE DIRECTION " + safeDirection + " and DANGER DIRECTION " + dangerDirection, " INFO");
+        Debug.printInformation("SAFE DIRECTION " + safeDirection + " and DANGER DIRECTION " + dangerDirection, " INFO");
 
         int slandererSpawn = random.nextInt(10) + 1; //1-10
         //NOTE: on spawn both safeDirection and dangerDirection will be null, so we  will inheritately spawn scouts first
