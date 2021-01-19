@@ -131,10 +131,8 @@ public class PoliticanBot implements RunnableBot {
                         }
                     }
                 }
-
                 //Debug.printInformation("MUCKRAKER LOCATIONS AFT " + muckrakerSize, Arrays.toString(muckrakerLocations));
                 //Debug.printInformation("MUCKRAKER DISTANCES AFT " + muckrakerSize, Arrays.toString(muckrakerDistances));
-
             }
         }
 
