@@ -4,8 +4,6 @@ import battlecode.common.*;
 import teambot.RunnableBot;
 import teambot.battlecode2021.util.*;
 
-import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Random;
 
 public class PoliticanBot implements RunnableBot {
@@ -109,7 +107,7 @@ public class PoliticanBot implements RunnableBot {
 
         //for each politican in range, go through list and prune locations that are further away
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-            if (robotInfo.type == RobotType.POLITICIAN && robotInfo.conviction <= 15) {
+            if (robotInfo.type == RobotType.POLITICIAN && robotInfo.conviction <= 15 && controller.canGetFlag(robotInfo.ID)) {
                 int flag = controller.getFlag(robotInfo.ID);
                 if (CommunicationMovement.decodeIsSchemaType(flag) &&
                         CommunicationMovement.decodeMyUnitType(flag) == CommunicationMovement.MY_UNIT_TYPE.SL) continue;

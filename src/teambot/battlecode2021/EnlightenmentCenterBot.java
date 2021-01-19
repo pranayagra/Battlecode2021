@@ -230,7 +230,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     @Override
     public void turn() throws GameActionException {
-        Debug.printRobotInformation();
+//        Debug.printRobotInformation();
         Debug.printMapInformation();
 
 //        switch (controller.getRoundNum()) {
@@ -628,10 +628,13 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
 
         //ATTACK NEUTRAL EC
+        Debug.printInformation("EC DATA ", Arrays.toString(foundECs.entrySet().toArray()));
+        Debug.printInformation("attackNeutral? " + attackNeutralLocationHealth + " and influence is " + controller.getInfluence(), controller.getEmpowerFactor(Cache.OUR_TEAM, 5));
 
         if (attackNeutralLocationHealth != 9999999 && attackNeutralLocationHealth / 2 <= controller.getInfluence() * controller.getEmpowerFactor(Cache.OUR_TEAM, 5)) {
             // I want to do half health dmg
             int influence = (int) (((attackNeutralLocationHealth / 2) + 11) / controller.getEmpowerFactor(Cache.OUR_TEAM, 5));
+            Debug.printInformation("INFLUENCE NEUTRAL IS " + influence, " ATTACKING!");
             spawnAttackingPolitician(influence, toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Team.NEUTRAL);
         }
 
@@ -722,7 +725,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     /* Simple bidding strategy */ 
 
     private void naiveBid() throws GameActionException {
-        int bid = Math.max(1,controller.getInfluence() / 100);
+        int bid = Math.max(1, controller.getInfluence() / 100);
         if (controller.canBid(bid)){
             controller.bid(bid);
         }

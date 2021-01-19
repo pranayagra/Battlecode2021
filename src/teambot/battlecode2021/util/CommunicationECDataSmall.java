@@ -13,8 +13,8 @@ public class CommunicationECDataSmall {
 
     public static int encodeECHealthLocation(
             boolean isMoveAwayFromMe, boolean isMyTeam, int health, MapLocation locationData) {
-
-        health = (health + 99 / 100) & 0b11111;
+        health = Math.min(3100, health);
+        health = ((health + 99) / 100) & 0b11111;
 
         return (FLAG_CODE << 21) +
                 ((isMoveAwayFromMe ? 1 : 0) << 20) +

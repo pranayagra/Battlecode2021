@@ -6,7 +6,7 @@ import teambot.battlecode2021.EnlightenmentCenterBot;
 import java.util.Arrays;
 
 public class Debug {
-    public static boolean debug = false;
+    public static boolean debug = true;
     public static boolean debug2 = true;
     public static RobotController controller;
 
@@ -68,7 +68,7 @@ public class Debug {
 
     public static void printByteCode(String msg) {
         if (debug) {
-          // System.out.println(msg + ": " + robotType() + " at " + robotLocation() + " has " + Clock.getBytecodesLeft() + " ByteCode Left");
+           System.out.println(msg + ": " + robotType() + " at " + robotLocation() + " has " + Clock.getBytecodesLeft() + " ByteCode Left");
         }
     }
 
@@ -76,13 +76,13 @@ public class Debug {
         if (debug) {
             String objectPrint = "NULL object";
             if (data != null) objectPrint = data.toString();
-          // System.out.println(uniqueMSG + " => " + robotType() + " at " + robotLocation() + ": " + objectPrint);
+           System.out.println(uniqueMSG + " => " + robotType() + " at " + robotLocation() + ": " + objectPrint);
         }
     }
 
     public static void printInformationArray(String uniqueMSG, Object[] data) {
         if (debug) {
-          // System.out.println(uniqueMSG + " => " + robotType() + " at " + robotLocation() + ": " + Arrays.toString(data));
+           System.out.println(uniqueMSG + " => " + robotType() + " at " + robotLocation() + ": " + Arrays.toString(data));
         }
     }
 
@@ -94,21 +94,21 @@ public class Debug {
 
     public static void printFlag(int flag) {
         if (debug) {
-          // System.out.println(robotType() + " at " + robotLocation() + " has flag " + flag);
+           System.out.println(robotType() + " at " + robotLocation() + " has flag " + flag);
         }
     }
 
     public static void printRobotInformation() {
 //        assertValues();
         if (debug) {
-          // System.out.println(robotType() + " at " + robotLocation() + " has: " + robotInformationOutput());
+           System.out.println(robotType() + " at " + robotLocation() + " has: " + robotInformationOutput());
         }
     }
 
     public static void printMapInformation() {
 //        assertValues();
         if (debug) {
-          // System.out.println(robotType() + " at " + robotLocation() + " knows: " + mapInformationOutput());
+           System.out.println(robotType() + " at " + robotLocation() + " knows: " + mapInformationOutput());
         }
     }
 
