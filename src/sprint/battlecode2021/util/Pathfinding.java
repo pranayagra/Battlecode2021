@@ -25,10 +25,6 @@ public class Pathfinding {
     static int stuckTurns;
 
     public static int move(MapLocation targetLoc) throws GameActionException {
-        //Debugging
-        if (Debug.debug) {
-            controller.setIndicatorLine(Cache.CURRENT_LOCATION, targetLoc, 255, 0, 0);
-        }
         // Is it ready
         if (!controller.isReady()) return 0;
         // Is target out of the map

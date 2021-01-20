@@ -34,7 +34,7 @@ public class SlandererBot implements RunnableBot {
     @Override
     public void turn() throws GameActionException {
         spawnInLattice();
-        Debug.printByteCode("after lattice ");
+        //Debug.printByteCode("after lattice ");
     }
 
     /* return: abs(deltaX) + abs(deltaY) between "location" and the starting EC location */

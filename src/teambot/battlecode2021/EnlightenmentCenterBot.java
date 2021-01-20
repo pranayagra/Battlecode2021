@@ -155,6 +155,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int attackEnemyLocationAge;
     private static boolean deployedPoliticianToAttackEnemy;
 
+    private static MapLocation harassEnemyLocation;
+
     private static MapLocation deployScoutToECLocation;
 
 
@@ -231,7 +233,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     @Override
     public void turn() throws GameActionException {
 //        Debug.printRobotInformation();
-        Debug.printMapInformation();
+        //Debug.printMapInformation();
 
 //        switch (controller.getRoundNum()) {
 //            case 1:
@@ -255,12 +257,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
         numRobotsToProcessFlags %= processRobotIDandFlags.length;
         defaultTurn();
 
-        ////Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
+        //Debug.printInformation("CURRENT EC Information ", Arrays.asList(foundECs));
         //Debug.printInformation("WALL REWARDS: ", Arrays.toString(wallDirectionReward));
         //Debug.printInformation("NUM SLANDERERS: ", Arrays.toString(numSlanderersWallDirectionSpawned));
         //Debug.printInformation("ENEMY DANGERS: ", Arrays.toString(enemyDirectionCounts));
 
-        Debug.printByteCode("EC END TURN => ");
+        //Debug.printByteCode("EC END TURN => ");
 
     }
 
@@ -325,6 +327,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 break;
             case SOUTH_MAP_LOCATION:
                 if (Cache.MAP_BOTTOM == 0) { 
+                    Debug.printInformation("Recieving South coords", encoding);
                     Comms.checkAndAddFlag(encoding);
                     Cache.MAP_BOTTOM = locationData.y;
                     updateWallDistance();
@@ -467,6 +470,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             int robotID = processRobotIDandFlags[i][0]; //the robotID of the corresponding idx
 //          // System.out.println("");
             if (controller.canGetFlag(robotID)) { //this robot is still alive
+                Debug.printInformation("Flag recieved", controller.getFlag(robotID));
                 //query flag information, check isUrgent, isLastFlag bit, or add to list of flags)
                 int encodedFlag = controller.getFlag(robotID);
                 if (encodedFlag == 0) continue;
@@ -517,7 +521,11 @@ public class EnlightenmentCenterBot implements RunnableBot {
         MapLocation enemyLocation = null;
         int minEnemyECHealth = 9999999;
 
+        harassEnemyLocation = null;
+
         for (Map.Entry<MapLocation, EC_Information> entry : foundECs.entrySet()) {
+
+            //Debug.printInformation("Checking",entry.getKey());
 
             MapLocation location = entry.getKey();
             EC_Information ECInfo = entry.getValue();
@@ -536,11 +544,21 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 minEnemyECHealth = ECInfo.health;
                 enemyLocation = location;
             }
+
+            //Debug.printInformation("",ECInfo.team);
+            //if (ECInfo.team.equals(Cache.OPPONENT_TEAM)) {
+            if (ECInfo.team.equals(Team.NEUTRAL)) {
+                //Debug.printByteCode("Enemy EC found");
+                if (harassEnemyLocation == null || harassEnemyLocation.distanceSquaredTo(Cache.CURRENT_LOCATION) > 
+                    Cache.CURRENT_LOCATION.distanceSquaredTo(location)) {
+                    harassEnemyLocation = location;
+                }
+            }
         }
 
         attackEnemyLocation = enemyLocation; attackEnemyLocationHealth = minEnemyECHealth; attackEnemyLocationAge = controller.getRoundNum();
         attackNeutralLocation = neutralLocation; attackNeutralLocationHealth = minNeutralECHealth; attackNeutralLocationAge = controller.getRoundNum();
-
+        //Debug.printInformation("Harass", harassEnemyLocation);
         //Debug.printInformation("BEST NEUTRAL INFO: " + neutralLocation, minNeutralECHealth);
         //Debug.printInformation("BEST ENEMY INFO: " + enemyLocation, minEnemyECHealth);
 
@@ -619,22 +637,31 @@ public class EnlightenmentCenterBot implements RunnableBot {
         processAllECInformation();
         updateWallDistance();
 
+        // Harass with muckraker attack
+        if (controller.getRoundNum() % 70 == 0) {
+            if (harassEnemyLocation != null) {
+                int flag = CommunicationLocation.encodeLOCATION(
+                    false, true, CommunicationLocation.FLAG_LOCATION_TYPES.ENEMY_EC_LOCATION, harassEnemyLocation);
+                Comms.checkAndAddFlag(flag);
+            }
+        }
+
         int ran = random.nextInt(5);
 
         // IF NO INFLUENCE, SPAWN MUCKRAKER
         if (controller.getInfluence() <= 15) {
-            spawnScoutMuckraker(1, randomValidDirection(), null);
+            spawnScoutMuckraker(1, randomValidDirection(), harassEnemyLocation);
             return;
         }
 
         //ATTACK NEUTRAL EC
-        Debug.printInformation("EC DATA ", Arrays.toString(foundECs.entrySet().toArray()));
-        Debug.printInformation("attackNeutral? " + attackNeutralLocationHealth + " and influence is " + controller.getInfluence(), controller.getEmpowerFactor(Cache.OUR_TEAM, 5));
+        //Debug.printInformation("EC DATA ", Arrays.toString(foundECs.entrySet().toArray()));
+        //Debug.printInformation("attackNeutral? " + attackNeutralLocationHealth + " and influence is " + controller.getInfluence(), controller.getEmpowerFactor(Cache.OUR_TEAM, 5));
 
         if (attackNeutralLocationHealth != 9999999 && attackNeutralLocationHealth / 2 <= controller.getInfluence() * controller.getEmpowerFactor(Cache.OUR_TEAM, 5)) {
             // I want to do half health dmg
             int influence = (int) (((attackNeutralLocationHealth / 2) + 11) / controller.getEmpowerFactor(Cache.OUR_TEAM, 5));
-            Debug.printInformation("INFLUENCE NEUTRAL IS " + influence, " ATTACKING!");
+            //Debug.printInformation("INFLUENCE NEUTRAL IS " + influence, " ATTACKING!");
             spawnAttackingPolitician(influence, toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Team.NEUTRAL);
         }
 
@@ -677,12 +704,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Direction safeDirection = checkSpawnSlanderers();
         Direction dangerDirection = checkSpawnDefenders();
 
-        Debug.printInformation("SAFE DIRECTION " + safeDirection + " and DANGER DIRECTION " + dangerDirection, " INFO");
+        //Debug.printInformation("SAFE DIRECTION " + safeDirection + " and DANGER DIRECTION " + dangerDirection, " INFO");
 
         int slandererSpawn = random.nextInt(10) + 1; //1-10
         //NOTE: on spawn both safeDirection and dangerDirection will be null, so we  will inheritately spawn scouts first
         if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12) { //80% of time spawn slanderer in safe direction
-            spawnLatticeSlanderer((int) (controller.getInfluence() * 0.6), safeDirection);
+            spawnLatticeSlanderer((int)(controller.getInfluence() * 0.6), safeDirection);
         } else if (dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6) { //20% of time spawn politician in safe direction
             int influenceSpend = 15;
             spawnDefendingPolitician(influenceSpend, dangerDirection,null);
@@ -710,14 +737,14 @@ public class EnlightenmentCenterBot implements RunnableBot {
         randomInt = random.nextInt(10) + 1;
 
         if (randomInt <= 5) {
-            spawnScoutMuckraker(1, randomValidDirection(), null);
+            spawnScoutMuckraker(1, randomValidDirection(), harassEnemyLocation);
         } else if (randomInt <= 7 && SLANDERER_IDs.getSize() >= 3) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
             int influenceSpend = 15;
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 3), null);
         } else {
-            spawnLatticeSlanderer((int) (controller.getInfluence() * 0.65), safeDirection);
+            spawnLatticeSlanderer((int)(controller.getInfluence() * 0.65), safeDirection);
         }
 
     }
