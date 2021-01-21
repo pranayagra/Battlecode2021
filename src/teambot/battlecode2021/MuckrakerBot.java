@@ -70,6 +70,7 @@ public class MuckrakerBot implements RunnableBot {
         // Check EC
         if (controller.canGetFlag(Cache.myECID)) {
             int encoding = controller.getFlag(Cache.myECID);
+
             processValidFlag(encoding);
         }
         // Check other bots in sight
@@ -100,15 +101,18 @@ public class MuckrakerBot implements RunnableBot {
                     Cache.MAP_LEFT = locationData.x;
                     break;
                 case MY_EC_LOCATION: 
+                    break;
                 case ENEMY_EC_LOCATION:
                     Cache.FOUND_ECS.put(locationData, CommunicationLocation.FLAG_LOCATION_TYPES.ENEMY_EC_LOCATION);
                     Cache.FOUND_ECS_AGE.put(locationData, controller.getRoundNum());
                     // Stream mucks to enemy EC
+                    Debug.printInformation("Recieved enemy EC location", locationData);
                     if (Cache.MAP_LEFT > 0 && Cache.MAP_RIGHT > 0 && Cache.MAP_TOP > 0 && Cache.MAP_BOTTOM > 0) {
                         if (Cache.ID % 5 < 4) {
                             scoutTarget = locationData;
                         }
                     }
+                    break;
                 case NEUTRAL_EC_LOCATION:
                     break;
                 default:
@@ -161,9 +165,19 @@ public class MuckrakerBot implements RunnableBot {
         if (!controller.isReady()) {
             return false;
         }
-        //Debug.printInformation("Scouting", scoutTarget);
+
+        // Check if target is viable
+        boolean switchTarget = false;
         int moveRes = Pathfinding.move(scoutTarget);
         if (moveRes >= 2 || moveRes == 0) {
+            switchTarget = true;
+        }
+
+        if (Cache.FOUND_ECS.containsKey(scoutTarget) && Cache.FOUND_ECS.get(scoutTarget) == CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
+            switchTarget = true;
+        }
+
+        if (switchTarget) {
             Cache.CURRENT_LOCATION = controller.getLocation();
             //TODO: Adjust so muckracker chooses a side thats likely to be close
             if (Cache.MAP_TOP == 0) {
@@ -211,6 +225,9 @@ public class MuckrakerBot implements RunnableBot {
         // Move away from EC if too close to prevent impact to spawning
         if (Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation) <= 2) {
             Pathfinding.naiveMove(Pathfinding.toMovePreferredDirection(Cache.CURRENT_LOCATION.directionTo(Cache.myECLocation).opposite(), 4));
+        }
+        else if (Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation) >= 9) {
+            Pathfinding.naiveMove(Cache.myECLocation);
         }
 
         // Rotate flag to send out map location
