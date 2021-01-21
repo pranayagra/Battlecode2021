@@ -1,7 +1,7 @@
-package teambot.battlecode2021.util;
+package sprint.battlecode2021.util;
 
 import battlecode.common.*;
-import teambot.*;
+import sprint.*;
 import java.util.*;
 
 public class Pathfinding {

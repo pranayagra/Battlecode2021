@@ -1,12 +1,10 @@
-package teambot.battlecode2021;
+package sprint.battlecode2021;
 
 import battlecode.common.*;
-import teambot.RunnableBot;
-import teambot.battlecode2021.util.*;
+import sprint.RunnableBot;
+import sprint.battlecode2021.util.*;
 
 import java.util.*;
-
-// Update: See bot "sprint" for legacy code (wall, enemy blocking)
 
 public class MuckrakerBot implements RunnableBot {
     private RobotController controller;
@@ -53,6 +51,13 @@ public class MuckrakerBot implements RunnableBot {
             case ATTACK_LOCATION:
                 break;
             case DEFEND_LOCATION:
+                //muckWall strat
+
+                //muckWall(Cache.myECID);
+                //TODO: close wall if and only if we can sense an enemy (move a rank up or down, not sure which)
+                //TODO: create a structure around slanderers, not EC
+                //TODO: some type of communication between EC spawn location (or flag) and direction (or location) to fill wall, which is intitated by slanderers?
+
                 //guide strat
                 GuideRoutine();
                 break;
@@ -63,7 +68,7 @@ public class MuckrakerBot implements RunnableBot {
                 break;
         }
 
-        //Debug.printByteCode("turn() => END");
+        Debug.printByteCode("turn() => END");
     }
 
     private void muckrakerComms() throws GameActionException {
@@ -100,15 +105,7 @@ public class MuckrakerBot implements RunnableBot {
                     Cache.MAP_LEFT = locationData.x;
                     break;
                 case MY_EC_LOCATION: 
-                case ENEMY_EC_LOCATION:
-                    Cache.FOUND_ECS.put(locationData, CommunicationLocation.FLAG_LOCATION_TYPES.ENEMY_EC_LOCATION);
-                    Cache.FOUND_ECS_AGE.put(locationData, controller.getRoundNum());
-                    // Stream mucks to enemy EC
-                    if (Cache.MAP_LEFT > 0 && Cache.MAP_RIGHT > 0 && Cache.MAP_TOP > 0 && Cache.MAP_BOTTOM > 0) {
-                        if (Cache.ID % 5 < 4) {
-                            scoutTarget = locationData;
-                        }
-                    }
+                case ENEMY_EC_LOCATION: // TODO: Should probably change to attack muck, on this EC
                 case NEUTRAL_EC_LOCATION:
                     break;
                 default:
@@ -116,6 +113,46 @@ public class MuckrakerBot implements RunnableBot {
             }
         }
         // Other flags add here
+    }
+
+    // If you can still sense the nucleus, then move away from it greedily
+    /* brainstorming ideas ->
+    *       1) we should do something based on slanderers (not EC)
+    *       2) we want lattice structure with rectangle
+    * */
+    // Bug: tryMove() may return invalid direction
+    /*
+    public void muckWall(int nucleus) throws GameActionException {
+
+        // TODO: watch flags for nucleus!
+
+        if (!controller.isReady()) return;
+        boolean move = false;
+        MapLocation center = null;
+        for (RobotInfo info : Cache.ALL_NEARBY_ROBOTS) {
+            if (info.ID == nucleus) {
+                move = true;
+                center = info.location;
+                break;
+            }
+        }
+        if (move) {
+            Direction dir = center.directionTo(controller.getLocation());
+            Direction moveDirection = pathfinding.toMovePreferredDirection(dir, 4);
+            if (moveDirection != null) controller.move(moveDirection);
+        }
+    }
+    */
+
+    //assume robot always tries to surround/get as close as possible to a EC (only 1 distance, extras can roam around to edge map/bounce around)
+
+    public boolean updateBlockingEnemyEC() {
+        for (RobotInfo robot : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+            if (robot.getType() == RobotType.ENLIGHTENMENT_CENTER) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean simpleAttack() throws GameActionException {
@@ -157,7 +194,6 @@ public class MuckrakerBot implements RunnableBot {
     }
     
     private boolean scoutMovement() throws GameActionException {
-        controller.setIndicatorLine(Cache.CURRENT_LOCATION, scoutTarget, 255, 0, 0);
         if (!controller.isReady()) {
             return false;
         }
@@ -187,7 +223,7 @@ public class MuckrakerBot implements RunnableBot {
                     }
                 }
                 // Unfinished
-                */ 
+                */
                 scoutTarget = Pathfinding.randomLocation();
             }
         }
@@ -206,7 +242,6 @@ public class MuckrakerBot implements RunnableBot {
     // TODO: Send out closest enemy EC location as well
 
     private void GuideRoutine() throws GameActionException {
-        controller.setIndicatorDot(Cache.CURRENT_LOCATION, 0,0,255);
         //Debug.printInformation("I'm a guide with", controller.getFlag(controller.getID()));
         // Move away from EC if too close to prevent impact to spawning
         if (Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation) <= 2) {
@@ -219,29 +254,25 @@ public class MuckrakerBot implements RunnableBot {
             int flag = CommunicationLocation.encodeLOCATION(
                 false, true, CommunicationLocation.FLAG_LOCATION_TYPES.NORTH_MAP_LOCATION, 
                 new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_TOP));
-            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_TOP),255,0,0);
-            Comms.scheduleFlag(controller.getRoundNum(),flag);
+            Comms.checkAndAddFlag(flag);
         }
         else if (Cache.MAP_RIGHT != 0 && round % 4 == 1) {
             int flag = CommunicationLocation.encodeLOCATION(
                 false, true, CommunicationLocation.FLAG_LOCATION_TYPES.EAST_MAP_LOCATION, 
                 new MapLocation(Cache.MAP_RIGHT,Cache.CURRENT_LOCATION.y));
-            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.MAP_RIGHT,Cache.CURRENT_LOCATION.y),255,0,0);
-            Comms.scheduleFlag(controller.getRoundNum(),flag);
+            Comms.checkAndAddFlag(flag);
         }
         else if (Cache.MAP_BOTTOM != 0 && round % 4 == 2) {
             int flag = CommunicationLocation.encodeLOCATION(
                 false, true, CommunicationLocation.FLAG_LOCATION_TYPES.SOUTH_MAP_LOCATION, 
                 new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_BOTTOM));
-            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_BOTTOM),255,0,0);
-            Comms.scheduleFlag(controller.getRoundNum(),flag);
+            Comms.checkAndAddFlag(flag);
         }
         else if (Cache.MAP_LEFT != 0 && round % 4 == 3) {
             int flag = CommunicationLocation.encodeLOCATION(
                 false, true, CommunicationLocation.FLAG_LOCATION_TYPES.WEST_MAP_LOCATION, 
                 new MapLocation(Cache.MAP_LEFT,Cache.CURRENT_LOCATION.y));
-            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.MAP_LEFT,Cache.CURRENT_LOCATION.y),255,0,0);
-            Comms.scheduleFlag(controller.getRoundNum(),flag);
+            Comms.checkAndAddFlag(flag);
         }
     }
     

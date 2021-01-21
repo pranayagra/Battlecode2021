@@ -1,8 +1,8 @@
-package teambot.battlecode2021;
+package sprint.battlecode2021;
 
 import battlecode.common.*;
-import teambot.*;
-import teambot.battlecode2021.util.*;
+import sprint.*;
+import sprint.battlecode2021.util.*;
 
 public class SlandererBot implements RunnableBot {
     private RobotController controller;
@@ -34,7 +34,7 @@ public class SlandererBot implements RunnableBot {
     @Override
     public void turn() throws GameActionException {
         spawnInLattice();
-        //Debug.printByteCode("after lattice ");
+        Debug.printByteCode("after lattice ");
     }
 
     /* return: abs(deltaX) + abs(deltaY) between "location" and the starting EC location */
@@ -134,7 +134,6 @@ public class SlandererBot implements RunnableBot {
     *           perform a moving action to square if and only if the square is a good square AND it is closer to the EC AND if we are ready
     *           else: do nothing
     * */
-    //TODO: check why sometimes we have a bug with the units not moving closer to EC?
     public void currentSquareIsGoodExecute() throws GameActionException {
         // try to move towards EC with any ordinal directions that decreases distance (NE, SE, SW, NW)
 
