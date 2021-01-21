@@ -406,13 +406,14 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //ATTACK NEUTRAL EC
         attackingLocationFlagSet = false;
         int totalCurrentDamageOnMap = processRobots.getPassivePoliticianAttackDamage();
-        //TODO (1/21): calculate total damage capable of other ECs too
+        //TODO (1/21): calculate total damage capable of other ECs too -- I think line above is bugged currently?
 
         //TODO (1/21): think about the health we want when capturing vs leaving our base and also if attackingLocationFlagSet should technically be in spawnAttackingPoli instead
-        if (attackNeutralLocationHealth != 9999999 && attackNeutralLocationHealth / 2 <= (controller.getInfluence() + totalCurrentDamageOnMap) * controller.getEmpowerFactor(Cache.OUR_TEAM, 15)) {
+        if (attackNeutralLocationHealth != 9999999 && controller.getInfluence() >= 60 && attackNeutralLocationHealth / 2 <= (controller.getInfluence() + totalCurrentDamageOnMap) * controller.getEmpowerFactor(Cache.OUR_TEAM, 15)) {
             // I want to do half health dmg
-            int influenceToSpend = Math.max(0, (attackNeutralLocationHealth / 2) - totalCurrentDamageOnMap + 0); // we want to have 0 health at minimum of new captured EC
-            influenceToSpend = (int) (Math.max(influenceToSpend, (controller.getInfluence() - 30) * 0.5));
+            int influenceToSpend = Math.max(0, (attackNeutralLocationHealth / 2) - totalCurrentDamageOnMap + 10); // we want to have 0 health at minimum of new captured EC
+            influenceToSpend = (int) (Math.max(influenceToSpend, (controller.getInfluence() * 0.3) + 35));
+
             if (controller.getInfluence() - 30 >= influenceToSpend) { //we want to have at minimum 30 health left in our base
                 attackingLocationFlagSet = true;
                 Debug.printInformation("ATTACKING NEUTRAL AT " + attackNeutralLocation + " WITH MAP DMG " + totalCurrentDamageOnMap, attackNeutralLocationHealth);
@@ -421,9 +422,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
             }
         }
 
-        if (attackEnemyLocationHealth != 9999999 && attackEnemyLocationHealth / 2 <= (controller.getInfluence() + totalCurrentDamageOnMap) * controller.getEmpowerFactor(Cache.OUR_TEAM, 15)) {
-            int influenceToSpend = Math.max(0, (attackEnemyLocationHealth / 3) - totalCurrentDamageOnMap + 0);
-            influenceToSpend = (int) (Math.max(influenceToSpend, (controller.getInfluence() - 30) * 0.5));
+        if (attackEnemyLocationHealth != 9999999 && controller.getInfluence() >= 60 && attackEnemyLocationHealth / 2 <= (controller.getInfluence() + totalCurrentDamageOnMap) * controller.getEmpowerFactor(Cache.OUR_TEAM, 15)) {
+            int influenceToSpend = Math.max(0, (attackEnemyLocationHealth / 3) - totalCurrentDamageOnMap + 10);
+            influenceToSpend = (int) (Math.max(influenceToSpend, (controller.getInfluence() * 0.3) + 55));
             if (controller.getInfluence() - 30 >= influenceToSpend) { //we want to have at minimum 30 health left in our base
                 attackingLocationFlagSet = true;
                 Debug.printInformation("ATTACKING ENEMY WITH MAP DMG " + totalCurrentDamageOnMap , " VALID");

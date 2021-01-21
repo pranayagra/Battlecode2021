@@ -331,7 +331,7 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        if (getCloser != null && triedCloserCnt <= 10) {
+        if (getCloser != null && triedCloserCnt <= 15) {
             triedCloserCnt++;
             pathfinding.move(getCloser);
             return true;
@@ -339,7 +339,10 @@ public class PoliticanBot implements RunnableBot {
 
         // WAIT FOR OUR TEAM TO MOVE AWAY
         int ourTeamSize = controller.senseNearbyRobots(distance, Cache.OUR_TEAM).length;
-        if (ourTeamSize > 0) return false;
+        if (ourTeamSize > 0 && triedCloserCnt <= 10) {
+            ++triedCloserCnt;
+            return false;
+        }
 
         ECExists = true;
         if (controller.canEmpower(distance)) {

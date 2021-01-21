@@ -133,13 +133,17 @@ public strictfp class RobotPlayer {
             }
         }
 
-        if (Cache.ROBOT_TYPE != RobotType.POLITICIAN && robotToAvoid != null) {
+        if (robotToAvoid == null || Cache.CURRENT_LOCATION.distanceSquaredTo(robotToAvoid) >= RobotType.POLITICIAN.actionRadiusSquared) {
+            return;
+        }
+
+        if (Cache.ROBOT_TYPE != RobotType.POLITICIAN) {
             moveAwayFromLocation(robotToAvoid);
             return;
         }
 
         /* Check if I am an attacking politician better off to avoid */
-        if (Cache.ROBOT_TYPE == RobotType.POLITICIAN && Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION && robotToAvoid != null) {
+        if (Cache.ROBOT_TYPE == RobotType.POLITICIAN && Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION) {
             if (robotToAvoidHealth < Cache.CONVICTION) {
                 //I have more health than the best politician, so I will move out of the way
                 moveAwayFromLocation(robotToAvoid);
