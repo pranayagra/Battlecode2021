@@ -395,7 +395,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             //Debug.printInformation("",ECInfo.team);
             //if (ECInfo.team.equals(Cache.OPPONENT_TEAM)) {
             if (ECInfo.team == Cache.OPPONENT_TEAM) {
-                //Debug.printByteCode("Enemy EC found");
+                Debug.printByteCode("Enemy EC found " + location);
                 if (harassEnemyLocation == null || harassEnemyLocation.distanceSquaredTo(Cache.CURRENT_LOCATION) >
                     Cache.CURRENT_LOCATION.distanceSquaredTo(location)) {
                     harassEnemyLocation = location;
@@ -414,6 +414,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         iterateAllUnitIDs();
         processAllECInformation();
         updateWallDistance();
+
+        Debug.printInformation("HARASS LOCATION IS " + harassEnemyLocation, " VALID? ");
 
         // Harass with muckraker attack
         if (controller.getRoundNum() % 70 == 0) {
