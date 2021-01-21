@@ -19,6 +19,7 @@ public class Util {
 
     public static void postLoop() throws GameActionException {
         // Scouting
+        Cache.CURRENT_LOCATION = controller.getLocation(); //update location to avoid cache bugs in scouting
         Scout.scoutMapEdges();
         Scout.scoutECs();
         Scout.scoutEnemies();

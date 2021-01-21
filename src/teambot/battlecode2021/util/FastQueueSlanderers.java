@@ -1,7 +1,7 @@
 package teambot.battlecode2021.util;
 
 public class FastQueueSlanderers {
-    private int[][] array; //array[i][j], where i=ID, j=creation time
+    private int[][] array; //array[i][0,1], where 0=ID, 1=creation time
     private int front;
     private int size;
 

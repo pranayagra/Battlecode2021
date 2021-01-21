@@ -9,16 +9,16 @@ public class CommunicationECDataSmall {
     public static final int LOCATION_DATA_BITMASK = (1 << LOCATION_DATA_NBITS) - 1;
 
 
-    /* SCHEMA: 3 bits code | 1 bit moveAwayFromMe | 1 bit myTeam | 5 bits health (value * 100) | 14 bits locationdata */
+    /* SCHEMA: 3 bits code | 1 bit moveAwayFromMe | 1 bit Enemy (0) or Neutral (1) | 5 bits health (value * 100) | 14 bits locationdata */
 
     public static int encodeECHealthLocation(
-            boolean isMoveAwayFromMe, boolean isMyTeam, int health, MapLocation locationData) {
+            boolean isMoveAwayFromMe, boolean isEnemyVSNeutralTeam, int health, MapLocation locationData) {
         health = Math.min(3100, health);
         health = ((health + 99) / 100) & 0b11111;
 
         return (FLAG_CODE << 21) +
                 ((isMoveAwayFromMe ? 1 : 0) << 20) +
-                ((isMyTeam ? 1 : 0) << 19) +
+                ((isEnemyVSNeutralTeam ? 1 : 0) << 19) +
                 (health << 14) +
                 encodeLocationData(locationData);
     }
@@ -31,7 +31,8 @@ public class CommunicationECDataSmall {
         return ((encoding >> 20) & 1) == 1;
     }
 
-    public static boolean decodeIsMyTeam(int encoding) {
+    //NOTE -> 0 means Enemy, 1 means Neutral
+    public static boolean decodeIsEnemyVSNeutralTeam(int encoding) {
         return ((encoding >> 19) & 1) == 1;
     }
 

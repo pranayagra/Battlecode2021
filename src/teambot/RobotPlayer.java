@@ -74,8 +74,8 @@ public strictfp class RobotPlayer {
                     int currentTurn = controller.getRoundNum(); //starts at round 1
 
 //                    Debug.resignGame(500);
-                    // if (controller.getRoundNum() == 500) controller.resign();
-                    if (!Cache.ROBOT_TYPE.equals(controller.getType())) {
+//                    if (controller.getRoundNum() == 1000) controller.resign();
+                    if (Cache.ROBOT_TYPE != controller.getType()) {
                         bot = new PoliticanBot(controller);
                         Cache.ROBOT_TYPE = controller.getType();
                     }
@@ -102,25 +102,52 @@ public strictfp class RobotPlayer {
 
         if (controller.getType() == RobotType.ENLIGHTENMENT_CENTER || !controller.isReady()) return;
 
+        //(1/20 DONE): changed this function so that the politician with the lowest health (break health ties by ID) is used to attack first (does not execute moveAwayFromLocation)
+
+        //find which poli to avoid (which one is planning on attacking)
+        MapLocation robotToAvoid = null;
+        int robotToAvoidHealth = 99999999;
+        int robotToAvoidID = 999999999;
+
         for (RobotInfo nearbyAlliedRobot : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
             if (controller.canGetFlag(nearbyAlliedRobot.ID)) {
                 int encodedFlag = controller.getFlag(nearbyAlliedRobot.ID);
-                boolean moveAway = false;
-                if (CommunicationECDataSmall.decodeIsSchemaType(encodedFlag)) {
-                    moveAway = CommunicationECDataSmall.decodeIsMoveAwayFromMe(encodedFlag);
+
+                /* Find the best politician to avoid */
+                boolean ToMoveAwayFromThisPolitician = CommunicationECDataSmall.decodeIsSchemaType(encodedFlag)
+                        && CommunicationECDataSmall.decodeIsMoveAwayFromMe(encodedFlag);
+                ToMoveAwayFromThisPolitician |= CommunicationMovement.decodeIsSchemaType(encodedFlag)
+                        && CommunicationMovement.decodeCommunicationToOtherBots(encodedFlag) == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME;
+
+                if (ToMoveAwayFromThisPolitician) {
+                    if (nearbyAlliedRobot.conviction < robotToAvoidHealth) {
+                        robotToAvoid = nearbyAlliedRobot.location;
+                        robotToAvoidHealth = nearbyAlliedRobot.conviction;
+                        robotToAvoidID = nearbyAlliedRobot.ID;
+                    } else if (nearbyAlliedRobot.conviction == robotToAvoidHealth && nearbyAlliedRobot.ID < robotToAvoidID) {
+                        robotToAvoid = nearbyAlliedRobot.location;
+                        robotToAvoidHealth = nearbyAlliedRobot.conviction;
+                        robotToAvoidID = nearbyAlliedRobot.ID;
+                    }
                 }
-                if (CommunicationMovement.decodeIsSchemaType(encodedFlag) && CommunicationMovement.decodeCommunicationToOtherBots(encodedFlag) == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME) {
-                    moveAway = true;
-                }
-//                    CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS otherBotIsTellingMeTo = CommunicationMovement.decodeCommunicationToOtherBots(encodedFlag);
-                if (moveAway) moveAwayFromLocation(nearbyAlliedRobot.location);
-//                    switch (moveAway) {
-//                        case MOVE_AWAY_FROM_ME:
-//                            moveAwayFromLocation(nearbyAlliedRobot.location);
-//                            break;
-//                        case MOVE_TOWARDS_ME:
-//                            break;
-//
+            }
+        }
+
+        if (Cache.ROBOT_TYPE != RobotType.POLITICIAN && robotToAvoid != null) {
+            moveAwayFromLocation(robotToAvoid);
+            return;
+        }
+
+        /* Check if I am an attacking politician better off to avoid */
+        if (Cache.ROBOT_TYPE == RobotType.POLITICIAN && Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION && robotToAvoid != null) {
+            if (robotToAvoidHealth < Cache.CONVICTION) {
+                //I have more health than the best politician, so I will move out of the way
+                moveAwayFromLocation(robotToAvoid);
+                return;
+            }
+            if (robotToAvoidHealth == Cache.CONVICTION && Cache.ID > robotToAvoidID) {
+                moveAwayFromLocation(robotToAvoid);
+                return;
             }
         }
     }

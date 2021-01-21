@@ -23,6 +23,8 @@ public class PoliticanBot implements RunnableBot {
     private int triedCloserCnt;
 //    private int[] friendlySlandererRobotIDs;
 
+    private boolean tickUpdateToPassiveAttacking;
+
     //TODO: Politican bot upgrade movement (currently bugged and random movement) + fix explosion bug/optimize explosion radius
 
     public PoliticanBot(RobotController controller) throws GameActionException {
@@ -42,6 +44,7 @@ public class PoliticanBot implements RunnableBot {
         muckrakerDistances = new int[30];
 //        friendlySlandererRobotIDs = new int[999];
 
+        tickUpdateToPassiveAttacking = false;
     }
 
     @Override
@@ -66,12 +69,24 @@ public class PoliticanBot implements RunnableBot {
                 moveAndDestroyEC();
             } else {
                 //read EC flag attack to change attack location
+
+                /* send a tick update to the EC that this bot is a free attacking bot not currently targeting any location */
+                int flag = CommunicationHealth.encodeECInfo(false, true, CommunicationHealth.COMMUNICATION_UNIT_TEAM.CONVERTING_TO_PASSIVE_POLITICIAN, controller.getConviction());
+
+                if (controller.canSetFlag(flag) && !tickUpdateToPassiveAttacking) {
+                    tickUpdateToPassiveAttacking = true;
+                    Comms.checkAndAddFlag(flag);
+                }
+
                 if (controller.canGetFlag(Cache.myECID)) {
-                    int flag = controller.getFlag(Cache.myECID);
-                    if (CommunicationECSpawnFlag.decodeIsSchemaType(flag)) {
-                        CommunicationECSpawnFlag.ACTION action = CommunicationECSpawnFlag.decodeAction(flag);
+                    int ECFlag = controller.getFlag(Cache.myECID);
+                    if (CommunicationECSpawnFlag.decodeIsSchemaType(ECFlag)) {
+                        CommunicationECSpawnFlag.ACTION action = CommunicationECSpawnFlag.decodeAction(ECFlag);
                         if (action == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION) {
-                            Cache.EC_INFO_LOCATION = CommunicationECSpawnFlag.decodeLocationData(flag);
+                            Cache.EC_INFO_LOCATION = CommunicationECSpawnFlag.decodeLocationData(ECFlag);
+                            Cache.FOUND_ECS.remove(Cache.EC_INFO_LOCATION); // remove the location from my cache (something has changed since!)
+                            Debug.printInformation("PASSIVE POLITICIAN GIVEN PURPOSE TO ATTACK! ", Cache.EC_INFO_LOCATION);
+                            tickUpdateToPassiveAttacking = false;
                         }
                     }
                 }
@@ -82,11 +97,6 @@ public class PoliticanBot implements RunnableBot {
 
         Debug.printByteCode("END TURN POLI => ");
     }
-
-    //check if any muckraker close enough => explode
-    //chaseMuckraker()
-    //moveLattice()
-    //other stuff()?
 
     //for all muckrakers in my range, see which ones im closest too when compared to all polis =>
     // then calculate a threat level for all of them =>
@@ -440,20 +450,6 @@ public class PoliticanBot implements RunnableBot {
         return false;
 
          */
-    }
-
-    //ASSUME POLITICIAN CAN PATHFIND TO EC LOCATION
-
-    public boolean attackingPoliticianNearEC() throws GameActionException {
-//        int flag = CommunicationECDataSmall.encodeECHealthLocation(
-//                true,true, CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE,
-//                CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME, false,false,0);
-//        if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
-//            controller.setFlag(flag); //CARE ABOUT SEED LATER? //NOTE THIS IS SETFLAG BECAUSE WE DO NOT WANT TO QUEUE IT BUT SKIP QUEUE AND SET FLAG
-//            Comms.hasSetFlag = true;
-//            return true;
-//        }
-        return false;
     }
 
 

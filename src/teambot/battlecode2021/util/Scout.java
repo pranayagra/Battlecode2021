@@ -1,8 +1,5 @@
 package teambot.battlecode2021.util;
 import battlecode.common.*;
-import teambot.battlecode2021.util.*;
-
-import java.nio.file.Path;
 
 public class Scout {
 
@@ -45,8 +42,7 @@ public class Scout {
         MapLocation currentLocation = controller.getLocation();
         int distance = Pathfinding.travelDistance(currentLocation, Cache.myECLocation);
         int numEnemies = controller.senseNearbyRobots(-1, Cache.OPPONENT_TEAM).length;
-        int cost = (int)((1 + 15.0/distance) * numEnemies);
-        //Debug.printInformation("Trying to scout enemies " + numEnemies, cost);
+        int cost = (int)((1 + (15.0/distance)) * numEnemies);
         if (numEnemies > 0) {
             int dangerDirection = Cache.myECLocation.directionTo(currentLocation).ordinal();
             flag = CommunicationMovement.encodeMovement(true, true,
@@ -101,50 +97,50 @@ public class Scout {
                     Cache.MAP_LEFT=scanLocation.x;
                     flag = CommunicationLocation.encodeLOCATION(false, true, CommunicationLocation.FLAG_LOCATION_TYPES.WEST_MAP_LOCATION, scanLocation);
                 }
-                //Debug.printInformation("Found edge", dir);
                 Comms.checkAndAddFlag(flag);
                 return;
             }
         }
     }
 
-    // Check for ECs
-
-    /* Find all ECs in sensor range and communicate it if and only if
-    *  1) the bot has never seen it before OR
-    *  2) the bot previously scouted it but has since changed teams (ally, enemy, neutral)
-    * */
-
     //TODO: Not sure if hashmap best data structure. Bytecode inefficient - change to array?
     public static void scoutECs() throws GameActionException {
-        MapLocation currentLocation = controller.getLocation();
         RobotInfo[] nearbyRobots = controller.senseNearbyRobots();
         for (RobotInfo info : nearbyRobots) { 
             if (info.type == RobotType.ENLIGHTENMENT_CENTER) {
-                //Debug.printInformation( "checking EC location " + info.location + " => ", "");
-//                CommunicationLocation.FLAG_LOCATION_TYPES locationTypePrevious = Cache.FOUND_ECS.get(info.location);
-//                CommunicationLocation.FLAG_LOCATION_TYPES locationTypeNew = getECType(info.team);
-                boolean isMyTeam = false;
-                if (Cache.OUR_TEAM.equals(info.team)) isMyTeam = true;
-                boolean moveAwayFromMe = false;
-                if (Cache.ROBOT_TYPE.equals(RobotType.POLITICIAN)) {
-                    if (Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION && Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION) <= RobotType.POLITICIAN.actionRadiusSquared + 5) moveAwayFromMe = true;
+
+                if (Cache.OUR_TEAM == info.team) { // COMMUNICATE EC location + ID iff I own the EC
+                    if (Cache.FOUND_ECS.getOrDefault(info.location, null) != getECType(info.team)) {
+                        int flag = CommunicationLocation.encodeLOCATION(false, false, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION, info.location);
+                        Comms.checkAndAddFlag(flag);
+                        flag = CommunicationRobotID.encodeRobotID(false, true, CommunicationRobotID.COMMUNICATION_UNIT_TYPE.EC, CommunicationRobotID.COMMUNICATION_UNIT_TEAM.MY, info.ID);
+                        Comms.checkAndAddFlag(flag);
+                        Debug.printInformation("OUR EC FOUND " + info.location, "VALID");
+                    }
+                } else { //Otherwise communicate the team (enemy or neutral), health, and location.
+                    boolean isNeutralTeam = true;
+                    if (Cache.OPPONENT_TEAM == info.team) isNeutralTeam = false;
+
+                    boolean moveAwayFromMe = false; // If I am a politician close to the EC I want to attack, then set my flag moveAwayFromMe and send with high priority
+                    if (Cache.ROBOT_TYPE.equals(RobotType.POLITICIAN)
+                            && Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION
+                            && Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION) <= RobotType.POLITICIAN.sensorRadiusSquared) {
+                        moveAwayFromMe = true;
+                    }
+
+                    Debug.printInformation("OTHER EC FOUND", "VALID");
+
+                    int flag = CommunicationECDataSmall.encodeECHealthLocation(moveAwayFromMe, isNeutralTeam, info.conviction, info.location);
+                    if (moveAwayFromMe && !Comms.hasSetFlag && controller.canSetFlag(flag)) {
+                        controller.setFlag(flag);
+                        Debug.printInformation("SETTING FLAG WITH HIGH PRIO FOR ATTACKING POLI -- GET AWAY FROM ME ", flag);
+                        Comms.hasSetFlag = true;
+                    } else {
+                        Comms.checkAndAddFlag(flag);
+                    }
                 }
-                //TODO: add some age factor so we still report every so often even if the team has not changed
-//              // System.out.println("HERE IS " + locationTypePrevious + " and " + locationTypeNew + " at " + info.location);
-                int flag = CommunicationECDataSmall.encodeECHealthLocation(moveAwayFromMe, isMyTeam, info.conviction, info.location);
+
                 Cache.FOUND_ECS.put(info.location, getECType(info.team));
-                Comms.checkAndAddFlag(flag);
-//                if (locationTypePrevious == null || locationTypePrevious != locationTypeNew || controller.getRoundNum() - Cache.FOUND_ECS_AGE.get(info.location) >= 15) { //if null or if the type of EC has since changed
-//                    Cache.FOUND_ECS.put(info.location, locationTypeNew); //overwrite or add
-//                    Cache.FOUND_ECS_AGE.put(info.location, controller.getRoundNum());
-//                    int flag = CommunicationLocation.encodeLOCATION(false, false, locationTypeNew, info.location);
-//                    Comms.checkAndAddFlag(flag);
-//                    flag = CommunicationECInfo.encodeECInfo(false, false, getCommunicatedUnitTeamForECInfo(info.team), info.conviction);
-//                    Comms.checkAndAddFlag(flag);
-//                    flag = CommunicationRobotID.encodeRobotID(false,true, CommunicationRobotID.COMMUNICATION_UNIT_TYPE.EC, getCommunicatedUnitTeamForRobotID(info.team), info.ID);
-//                    Comms.checkAndAddFlag(flag);
-//                }
             }
         }
     }
@@ -160,23 +156,23 @@ public class Scout {
         }
     }
 
-    private static CommunicationECInfo.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForECInfo(Team ECTeam) {
-        if (ECTeam.equals(Cache.OUR_TEAM)) {
-            return CommunicationECInfo.COMMUNICATION_UNIT_TEAM.MY;
-        } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
-            return CommunicationECInfo.COMMUNICATION_UNIT_TEAM.ENEMY;
-        } else {
-            return CommunicationECInfo.COMMUNICATION_UNIT_TEAM.NEUTRAL;
-        }
-    }
-
-    private static CommunicationRobotID.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForRobotID(Team ECTeam) {
-        if (ECTeam.equals(Cache.OUR_TEAM)) {
-            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.MY;
-        } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
-            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.ENEMY;
-        } else {
-            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.NEUTRAL;
-        }
-    }
+//    private static CommunicationHealth.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForECInfo(Team ECTeam) {
+//        if (ECTeam.equals(Cache.OUR_TEAM)) {
+//            return CommunicationHealth.COMMUNICATION_UNIT_TEAM.MY;
+//        } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
+//            return CommunicationHealth.COMMUNICATION_UNIT_TEAM.ENEMY;
+//        } else {
+//            return CommunicationHealth.COMMUNICATION_UNIT_TEAM.NEUTRAL;
+//        }
+//    }
+//
+//    private static CommunicationRobotID.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForRobotID(Team ECTeam) {
+//        if (ECTeam.equals(Cache.OUR_TEAM)) {
+//            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.MY;
+//        } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
+//            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.ENEMY;
+//        } else {
+//            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.NEUTRAL;
+//        }
+//    }
 }
