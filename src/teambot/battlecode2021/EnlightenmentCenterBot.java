@@ -72,6 +72,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     /* Slanderer, useful to communicate danger or production of muckrakers, & to check if the slanderer converted to a politician -- mid prio */
     private static FastQueueSlanderers SLANDERER_IDs;
+    private static int timeSinceLastSlandererSpawn = 999999;
 
     /* Do we have one guide broadcasting information to newly created units */
     private static int GUIDE_ID = 0;
@@ -420,6 +421,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         updateWallDistance();
 
         int slandererInfluence = Spawning.getSpawnInfluence(Cache.INFLUENCE);
+        timeSinceLastSlandererSpawn += 1;
 
         boolean slandererExists = false;
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
@@ -507,9 +509,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         int slandererSpawn = random.nextInt(10) + 1; //1-10
         //NOTE: on spawn both safeDirection and dangerDirection will be null, so we  will inheritately spawn scouts first
-        if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12 && slandererInfluence > 0) { //80% of time spawn slanderer in safe direction
+        if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12 && slandererInfluence > 0 && timeSinceLastSlandererSpawn > 10) { //80% of time spawn slanderer in safe direction
             spawnLatticeSlanderer(slandererInfluence, safeDirection);
-        } else if (slandererExists && dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6) { //20% of time spawn politician in safe direction
+        } else if (slandererExists && dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6 && Cache.INFLUENCE > 50) { //20% of time spawn politician in safe direction
             int influenceSpend = 15;
             spawnDefendingPolitician(influenceSpend, dangerDirection,null);
         }
@@ -527,7 +529,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 SCOUT_LOCATIONS_CURRENT = (++SCOUT_LOCATIONS_CURRENT) % SCOUT_LOCATIONS.length;
                 //Debug.printInformation("Spawned Scout => ", targetLocation);
             }
-        } else if (slandererExists && randomInt == 10 && POLITICIAN_DEFENDING_SLANDERER_SZ <= 10) {
+        } else if (slandererExists && randomInt == 10 && POLITICIAN_DEFENDING_SLANDERER_SZ <= 10 && Cache.INFLUENCE > 150) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
             int influenceSpend = 15;
@@ -624,6 +626,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     private void spawnLatticeSlanderer(int influence, Direction direction) throws GameActionException {
         //TODO: should spawn slanderer, which default behavior is to build lattice
+        timeSinceLastSlandererSpawn = 0;
         if (direction != null && controller.canBuildRobot(RobotType.SLANDERER, direction, influence)) {
             controller.buildRobot(RobotType.SLANDERER, direction, influence);
             numSlanderersWallDirectionSpawned[direction.ordinal()]++;
