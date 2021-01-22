@@ -159,7 +159,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 SLANDERER_IDs.removeFront();
                 Debug.printInformation("SLANDERER " + robotID + " MIGHT BE POLITICIAN", " ??");
                 if (controller.canGetFlag(robotID)) {
-                    Debug.printInformation("SLANDERER " + robotID + " IS DEFINATELY A POLITICIAN", " VALID");
+                    Debug.printInformation("SLANDERER " + robotID + " IS A POLITICIAN", " VALID");
                     processRobots.addItem(robotID, FastProcessIDs.TYPE.PASSIVE_ATTACKING_POLITICIAN, 0);
                 }
             }
@@ -419,6 +419,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         processAllECInformation();
         updateWallDistance();
 
+        int slandererInfluence = Spawning.getSpawnInfluence(Cache.INFLUENCE);
+
         boolean slandererExists = false;
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
             if (robotInfo.type == RobotType.SLANDERER) {
@@ -505,13 +507,14 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         int slandererSpawn = random.nextInt(10) + 1; //1-10
         //NOTE: on spawn both safeDirection and dangerDirection will be null, so we  will inheritately spawn scouts first
-        if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12) { //80% of time spawn slanderer in safe direction
-            spawnLatticeSlanderer((int)(controller.getInfluence() * 0.6), safeDirection);
+        if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12 && slandererInfluence > 0) { //80% of time spawn slanderer in safe direction
+            spawnLatticeSlanderer(slandererInfluence, safeDirection);
         } else if (slandererExists && dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6) { //20% of time spawn politician in safe direction
             int influenceSpend = 15;
             spawnDefendingPolitician(influenceSpend, dangerDirection,null);
         }
 
+        // Guide which points map edges to new scouts
         if (!controller.canGetFlag(GUIDE_ID)) {
             spawnGuideMuckraker(1, randomValidDirection());
         }
@@ -533,8 +536,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         randomInt = random.nextInt(10) + 1;
 
-        if (randomInt <= 2 && safeDirection != null) {
-            spawnLatticeSlanderer((int)(controller.getInfluence() * 0.65), safeDirection);
+        if (randomInt <= 2 && safeDirection != null && slandererInfluence > 0) {
+            spawnLatticeSlanderer(slandererInfluence, safeDirection);
         } else if (slandererExists && randomInt <= 7 && SLANDERER_IDs.getSize() >= 3) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
