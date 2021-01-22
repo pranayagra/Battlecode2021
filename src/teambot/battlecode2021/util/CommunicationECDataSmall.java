@@ -8,13 +8,15 @@ public class CommunicationECDataSmall {
     public static final int LOCATION_DATA_NBITS = 7;
     public static final int LOCATION_DATA_BITMASK = (1 << LOCATION_DATA_NBITS) - 1;
 
+    private static final int HEALTH_MULTIPLIER = 50;
 
-    /* SCHEMA: 3 bits code | 1 bit moveAwayFromMe | 1 bit Enemy (0) or Neutral (1) | 5 bits health (value * 100) | 14 bits locationdata */
+
+    /* SCHEMA: 3 bits code | 1 bit moveAwayFromMe | 1 bit Enemy (0) or Neutral (1) | 5 bits health (value * HEALTH_MULTIPLIER) | 14 bits locationdata */
 
     public static int encodeECHealthLocation(
             boolean isMoveAwayFromMe, boolean isEnemyVSNeutralTeam, int health, MapLocation locationData) {
-        health = Math.min(3100, health);
-        health = ((health + 99) / 100) & 0b11111;
+        health = Math.min(31 * HEALTH_MULTIPLIER, health);
+        health = ((health + (HEALTH_MULTIPLIER - 1)) / HEALTH_MULTIPLIER) & 0b11111;
 
         return (FLAG_CODE << 21) +
                 ((isMoveAwayFromMe ? 1 : 0) << 20) +
@@ -37,7 +39,7 @@ public class CommunicationECDataSmall {
     }
 
     public static int decodeHealth(int encoding) {
-        return ((encoding >> 14) & 0b11111) * 100;
+        return ((encoding >> 14) & 0b11111) * HEALTH_MULTIPLIER;
     }
 
     /* Decode the flag which contains the actual location data. Assumes decodeIsFlagLocationType() is called first */

@@ -476,7 +476,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
 //                Debug.printInformation("SETTING PASSIVE POLIs to ATTACK ", " NEXT TURN SHOULD BE 0 DMG ON MAP ");
                 totalCurrentDamageOnMap = 0;
             } else {
-                int influenceToSpend = (Math.max(amountOfMoreDamageNeeded / 3, 40));
+                int influenceToSpend = (Math.max(amountOfMoreDamageNeeded / 2, 50));
                 if (influenceToSpend + 20 <= controller.getInfluence()) {
                     boolean isSuccess = spawnAttackingPolitician(influenceToSpend, toBuildDirection(Cache.START_LOCATION.directionTo(attackEnemyLocation), 4), attackEnemyLocation, Cache.OPPONENT_TEAM);
                     if (isSuccess) return;
