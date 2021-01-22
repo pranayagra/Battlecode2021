@@ -123,7 +123,7 @@ public class PoliticanBot implements RunnableBot {
                 }
 
                 /* send a tick update to the EC ONCE that this bot is a free attacking bot not currently targeting any location */
-                int flag = CommunicationHealth.encodeECInfo(false, true, CommunicationHealth.COMMUNICATION_UNIT_TEAM.CONVERTING_TO_PASSIVE_POLITICIAN, controller.getConviction());
+                int flag = CommunicationHealth.encodeECInfo(true, true, CommunicationHealth.COMMUNICATION_UNIT_TEAM.CONVERTING_TO_PASSIVE_POLITICIAN, controller.getConviction());
                 if (controller.canSetFlag(flag) && !tickUpdateToPassiveAttacking) {
                     if (!Comms.hasSetFlag) {
                         controller.setFlag(flag);

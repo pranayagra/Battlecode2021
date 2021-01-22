@@ -277,6 +277,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         } else if (CommunicationMovement.decodeIsSchemaType(encoding)) {
             parseCommsMovement(encoding);
         } else if (CommunicationRobotID.decodeIsSchemaType(encoding)) {
+            Debug.printInformation("ERRORING ON " + encoding + " FROM ID " + processRobots.robotIDs[attackingPoliticianIDX] + " HAS #FLAGS " + processRobots.numFlagsForRobotID[attackingPoliticianIDX], " WTF MAN WHY THIS BEING CALLED?? ");
             parseCommsRobotID(encoding);
         } else if (CommunicationHealth.decodeIsSchemaType(encoding)) {
             parseCommsHealth(encoding, attackingPoliticianIDX);
@@ -446,7 +447,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //ATTACK NEUTRAL EC
         attackingLocationFlagSet = false;
         int totalCurrentDamageOnMap = processRobots.getPassivePoliticianAttackDamage();
-//        Debug.printInformation(" DAMAGE ON MAP IS " + totalCurrentDamageOnMap, " CHECK? ");
+        Debug.printInformation(" DAMAGE ON MAP IS " + totalCurrentDamageOnMap, " CHECK? ");
         //TODO (1/21): calculate total damage capable of other ECs too --?
 
         if (attackNeutralLocationHealth != 9999999) {
