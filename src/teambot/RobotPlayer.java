@@ -74,7 +74,7 @@ public strictfp class RobotPlayer {
                     int currentTurn = controller.getRoundNum(); //starts at round 1
 
 //                    Debug.resignGame(500);
-                   if (controller.getRoundNum() == 1000) controller.resign();
+                   // if (controller.getRoundNum() == 1000) controller.resign();
                     if (Cache.ROBOT_TYPE != controller.getType()) {
                         bot = new PoliticanBot(controller);
                         Cache.ROBOT_TYPE = controller.getType();
