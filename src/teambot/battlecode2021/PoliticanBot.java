@@ -75,20 +75,17 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        Debug.printInformation("HAS myEC LOCATION " + Cache.myECLocation, " wtf ");
-
         if (defendType) {
             // defend type
             noEnemiesSeenCnt++;
             for (RobotInfo robotInfo: Cache.ALL_NEARBY_ENEMY_ROBOTS) {
                 if (robotInfo.type == RobotType.MUCKRAKER) noEnemiesSeenCnt = 0;
             }
-            Debug.printInformation("noEnemiesSeenCnt ", noEnemiesSeenCnt);
 
-            if (noEnemiesSeenCnt >= 50) {
-                int switchToAttack = random.nextInt(10) + 1; // 0|1|2|3
+            if (noEnemiesSeenCnt >= 75) {
+                boolean switchToAttack = random.nextInt(10) + 1 <= 5;
                 Debug.printInformation("SWITCHING TO ATTACK? " + switchToAttack, Cache.EC_INFO_LOCATION);
-                if (switchToAttack <= 7) {
+                if (switchToAttack) {
                     defendType = false;
                     Cache.EC_INFO_LOCATION = null;
                 }
