@@ -144,7 +144,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //TODO (1/20): sum up attacking politicans influence (and other ECs) and determine if EC should attack
         defaultTurn();
 
-        Debug.printByteCode("EC END TURN BYTECODE => ");
+//        Debug.printByteCode("EC END TURN BYTECODE => ");
 
     }
 
@@ -157,7 +157,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
             if (controller.getRoundNum() - SLANDERER_IDs.getFrontCreationTime() >= 300) { //need to retire slanderer as 1) it got killed or 2) converted
                 int robotID = SLANDERER_IDs.getFrontID();
                 SLANDERER_IDs.removeFront();
+                Debug.printInformation("SLANDERER " + robotID + " MIGHT BE POLITICIAN", " ??");
                 if (controller.canGetFlag(robotID)) {
+                    Debug.printInformation("SLANDERER " + robotID + " IS DEFINATELY A POLITICIAN", " VALID");
                     processRobots.addItem(robotID, FastProcessIDs.TYPE.PASSIVE_ATTACKING_POLITICIAN, 0);
                 }
             }
@@ -179,7 +181,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 break;
             case SOUTH_MAP_LOCATION:
                 if (Cache.MAP_BOTTOM == 0) {
-                    Debug.printInformation("Recieving South coords", encoding);
+//                    Debug.printInformation("Recieving South coords", encoding);
                     Comms.checkAndAddFlag(encoding);
                     Cache.MAP_BOTTOM = locationData.y;
                     updateWallDistance();
@@ -342,6 +344,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
              */
 
             if (processRobots.typeForRobotID[i] == FastProcessIDs.TYPE.PASSIVE_ATTACKING_POLITICIAN && attackingLocationFlagSet) {
+                Debug.printInformation("SETTING PASSIVE POLIs to ATTACK ", " VALID ");
                 processRobots.typeForRobotID[i] = FastProcessIDs.TYPE.ACTIVE_ATTACKING_POLITICIAN;
             }
 
@@ -415,7 +418,15 @@ public class EnlightenmentCenterBot implements RunnableBot {
         processAllECInformation();
         updateWallDistance();
 
-        Debug.printInformation("HARASS LOCATION IS " + harassEnemyLocation, " VALID? ");
+        boolean slandererExists = false;
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+            if (robotInfo.type == RobotType.SLANDERER) {
+                slandererExists = true;
+                break;
+            }
+        }
+
+//        Debug.printInformation("HARASS LOCATION IS " + harassEnemyLocation, " VALID? ");
 
         // Harass with muckraker attack
         if (controller.getRoundNum() % 70 == 0) {
@@ -435,30 +446,41 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //ATTACK NEUTRAL EC
         attackingLocationFlagSet = false;
         int totalCurrentDamageOnMap = processRobots.getPassivePoliticianAttackDamage();
-        //TODO (1/21): calculate total damage capable of other ECs too -- I think implementation is bugged currently?
+        Debug.printInformation(" DAMAGE ON MAP IS " + totalCurrentDamageOnMap, " CHECK? ");
+        //TODO (1/21): calculate total damage capable of other ECs too --?
 
-        //TODO (1/21): think about the health we want when capturing vs leaving our base and also if attackingLocationFlagSet should technically be in spawnAttackingPoli instead
-        if (attackNeutralLocationHealth != 9999999 && controller.getInfluence() >= 60 && attackNeutralLocationHealth / 2 <= (controller.getInfluence() + totalCurrentDamageOnMap) * controller.getEmpowerFactor(Cache.OUR_TEAM, 15)) {
-            // I want to do half health dmg
-            int influenceToSpend = Math.max(0, (attackNeutralLocationHealth / 2) - totalCurrentDamageOnMap + 10); // we want to have 0 health at minimum of new captured EC
-            influenceToSpend = (int) (Math.max(influenceToSpend, (controller.getInfluence() * 0.3) + 35));
-
-            if (controller.getInfluence() - 30 >= influenceToSpend) { //we want to have at minimum 30 health left in our base
+        if (attackNeutralLocationHealth != 9999999) {
+            int amountOfMoreDamageNeeded = (int) (10 + attackNeutralLocationHealth - totalCurrentDamageOnMap * controller.getEmpowerFactor(Cache.OUR_TEAM, 25));
+            if (amountOfMoreDamageNeeded <= 0) {
+                int flag = CommunicationECSpawnFlag.encodeSpawnInfo(Direction.NORTH, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, attackNeutralLocation);
+                Comms.checkAndAddFlag(flag);
                 attackingLocationFlagSet = true;
-                Debug.printInformation("ATTACKING NEUTRAL AT " + attackNeutralLocation + " WITH MAP DMG " + totalCurrentDamageOnMap, attackNeutralLocationHealth);
-                spawnAttackingPolitician(influenceToSpend, toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Team.NEUTRAL);
-                return;
+                totalCurrentDamageOnMap = 0;
+            } else {
+                int influenceToSpend = (Math.max(amountOfMoreDamageNeeded, 40));
+                if (influenceToSpend + 20 <= controller.getInfluence()) {
+                    boolean isSuccess = spawnAttackingPolitician(influenceToSpend, toBuildDirection(Cache.START_LOCATION.directionTo(attackNeutralLocation), 4), attackNeutralLocation, Team.NEUTRAL);
+                    if (isSuccess) return;
+                }
             }
         }
 
-        if (attackEnemyLocationHealth != 9999999 && controller.getInfluence() >= 60 && attackEnemyLocationHealth / 2 <= (controller.getInfluence() + totalCurrentDamageOnMap) * controller.getEmpowerFactor(Cache.OUR_TEAM, 15)) {
-            int influenceToSpend = Math.max(0, (attackEnemyLocationHealth / 3) - totalCurrentDamageOnMap + 10);
-            influenceToSpend = (int) (Math.max(influenceToSpend, (controller.getInfluence() * 0.3) + 55));
-            if (controller.getInfluence() - 30 >= influenceToSpend) { //we want to have at minimum 30 health left in our base
+        if (attackEnemyLocationHealth != 9999999) {
+            //&& controller.getInfluence() >= 60 && attackEnemyLocationHealth / 2 <= (controller.getInfluence() + totalCurrentDamageOnMap) * controller.getEmpowerFactor(Cache.OUR_TEAM, 15)
+            //Depending on current damage on the map, we may not need to use any influence
+            int amountOfMoreDamageNeeded = (int) (20 + attackEnemyLocationHealth - totalCurrentDamageOnMap * controller.getEmpowerFactor(Cache.OUR_TEAM, 25));
+            if (amountOfMoreDamageNeeded <= 0) { // no need to deploy units
+                int flag = CommunicationECSpawnFlag.encodeSpawnInfo(Direction.NORTH, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, attackEnemyLocation);
+                Comms.checkAndAddFlag(flag); // set flag passively (on a round with EC cooldown > 1)
                 attackingLocationFlagSet = true;
-                Debug.printInformation("ATTACKING ENEMY WITH MAP DMG " + totalCurrentDamageOnMap , " VALID");
-                spawnAttackingPolitician(influenceToSpend, toBuildDirection(Cache.START_LOCATION.directionTo(attackEnemyLocation), 4), attackEnemyLocation, Cache.OPPONENT_TEAM);
-                return;
+                Debug.printInformation("SETTING PASSIVE POLIs to ATTACK ", " NEXT TURN SHOULD BE 0 DMG ON MAP ");
+                totalCurrentDamageOnMap = 0;
+            } else {
+                int influenceToSpend = (Math.max(amountOfMoreDamageNeeded / 3, 40));
+                if (influenceToSpend + 20 <= controller.getInfluence()) {
+                    boolean isSuccess = spawnAttackingPolitician(influenceToSpend, toBuildDirection(Cache.START_LOCATION.directionTo(attackEnemyLocation), 4), attackEnemyLocation, Cache.OPPONENT_TEAM);
+                    if (isSuccess) return;
+                }
             }
         }
 
@@ -484,7 +506,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //NOTE: on spawn both safeDirection and dangerDirection will be null, so we  will inheritately spawn scouts first
         if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12) { //80% of time spawn slanderer in safe direction
             spawnLatticeSlanderer((int)(controller.getInfluence() * 0.6), safeDirection);
-        } else if (dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6) { //20% of time spawn politician in safe direction
+        } else if (slandererExists && dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6) { //20% of time spawn politician in safe direction
             int influenceSpend = 15;
             spawnDefendingPolitician(influenceSpend, dangerDirection,null);
         }
@@ -501,7 +523,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 SCOUT_LOCATIONS_CURRENT = (++SCOUT_LOCATIONS_CURRENT) % SCOUT_LOCATIONS.length;
                 //Debug.printInformation("Spawned Scout => ", targetLocation);
             }
-        } else if (randomInt == 10 && POLITICIAN_DEFENDING_SLANDERER_SZ <= 10) {
+        } else if (slandererExists && randomInt == 10 && POLITICIAN_DEFENDING_SLANDERER_SZ <= 10) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
             int influenceSpend = 15;
@@ -510,15 +532,15 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         randomInt = random.nextInt(10) + 1;
 
-        if (randomInt <= 5) {
-            spawnScoutMuckraker(1, randomValidDirection(), harassEnemyLocation);
-        } else if (randomInt <= 7 && SLANDERER_IDs.getSize() >= 3) {
+        if (randomInt <= 2 && safeDirection != null) {
+            spawnLatticeSlanderer((int)(controller.getInfluence() * 0.65), safeDirection);
+        } else if (slandererExists && randomInt <= 7 && SLANDERER_IDs.getSize() >= 3) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
             int influenceSpend = 15;
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 3), null);
         } else {
-            spawnLatticeSlanderer((int)(controller.getInfluence() * 0.65), safeDirection);
+            spawnScoutMuckraker(1, randomValidDirection(), harassEnemyLocation);
         }
 
     }
@@ -615,7 +637,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
     }
 
-    private void spawnAttackingPolitician(int influence, Direction direction, MapLocation location, Team team) throws GameActionException {
+    private boolean spawnAttackingPolitician(int influence, Direction direction, MapLocation location, Team team) throws GameActionException {
         //TODO: should only be called if the politician is meant to attack some base -> need to create politician with enough influence, set my EC flag to the location + attacking poli
         //Assumption: politician upon creation should read EC flag and know it's purpose in life. It can determine what to do then
         Debug.printInformation("TRYING TO CREATE " + influence + " POLI AT " + direction + " ATTACKING LOCATION " + location + " ??", " TRYME");
@@ -626,7 +648,10 @@ public class EnlightenmentCenterBot implements RunnableBot {
             setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
             int robotID = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
             processRobots.addItem(robotID, FastProcessIDs.TYPE.ACTIVE_ATTACKING_POLITICIAN, influence);
+            attackingLocationFlagSet = true;
+            return true;
         }
+        return false;
     }
 
     //Determine how close each wall is to the EC to guide slanderer spawn location

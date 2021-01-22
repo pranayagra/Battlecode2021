@@ -110,6 +110,12 @@ public class Scout {
             if (info.type == RobotType.ENLIGHTENMENT_CENTER) {
 
                 if (Cache.OUR_TEAM == info.team) { // COMMUNICATE EC location + ID iff I own the EC
+
+                    if (!controller.canGetFlag(Cache.myECID)) {
+                        Cache.myECLocation = info.location;
+                        Cache.myECID = info.ID;
+                    }
+
                     if (Cache.FOUND_ECS.getOrDefault(info.location, null) != getECType(info.team)) {
                         int flag = CommunicationLocation.encodeLOCATION(false, false, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION, info.location);
                         Comms.checkAndAddFlag(flag);
@@ -117,6 +123,7 @@ public class Scout {
                         Comms.checkAndAddFlag(flag);
                         Debug.printInformation("OUR EC FOUND " + info.location, "VALID");
                     }
+
                 } else { //Otherwise communicate the team (enemy or neutral), health, and location.
                     boolean isNeutralTeam = true;
                     if (Cache.OPPONENT_TEAM == info.team) isNeutralTeam = false;

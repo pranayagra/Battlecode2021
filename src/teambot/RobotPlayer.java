@@ -74,7 +74,7 @@ public strictfp class RobotPlayer {
                     int currentTurn = controller.getRoundNum(); //starts at round 1
 
 //                    Debug.resignGame(500);
-//                    if (controller.getRoundNum() == 1000) controller.resign();
+                   if (controller.getRoundNum() == 1000) controller.resign();
                     if (Cache.ROBOT_TYPE != controller.getType()) {
                         bot = new PoliticanBot(controller);
                         Cache.ROBOT_TYPE = controller.getType();
@@ -83,6 +83,7 @@ public strictfp class RobotPlayer {
                     runAwayFromAttackFlag();
                     bot.turn();
                     Util.postLoop();
+
                     if (controller.getRoundNum() != currentTurn) {
                         //Ran out of bytecodes - MAGENTA color debug
                         controller.setIndicatorDot(controller.getLocation(),255,0,255);

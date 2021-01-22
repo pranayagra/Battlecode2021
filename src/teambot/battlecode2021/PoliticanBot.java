@@ -25,10 +25,20 @@ public class PoliticanBot implements RunnableBot {
 
     private boolean tickUpdateToPassiveAttacking;
 
+    private int noEnemiesSeenCnt;
+    private boolean defendType;
+
+    private int bestDistanceOnAttack;
+    private int numActionTurnsTaken;
+    private int numRoundsTaken;
+
     //TODO: Politican bot upgrade movement (currently bugged and random movement) + fix explosion bug/optimize explosion radius
 
     public PoliticanBot(RobotController controller) throws GameActionException {
         this.controller = controller;
+
+        noEnemiesSeenCnt = 0;
+
         init();
     }
 
@@ -37,19 +47,27 @@ public class PoliticanBot implements RunnableBot {
         this.pathfinding = new Pathfinding();
         pathfinding.init(controller);
 
-        random = new Random(controller.getID());
+        random = new Random (controller.getID());
 
 //        friendlySlanderers = new MapLocation[80];
         muckrakerLocations = new MapLocation[30];
         muckrakerDistances = new int[30];
 //        friendlySlandererRobotIDs = new int[999];
 
+        if (controller.getConviction() <= 15) defendType = true;
+
         tickUpdateToPassiveAttacking = false;
+        bestDistanceOnAttack = 999999999;
+        numActionTurnsTaken = 0;
+        numRoundsTaken = 0;
     }
 
     @Override
     public void turn() throws GameActionException {
         controller.setFlag(0);
+
+        if (controller.getRoundNum() <= 150) noEnemiesSeenCnt = 0;
+        if (Cache.NUM_ROUNDS_SINCE_SPAWN <= 50) noEnemiesSeenCnt = 0;
 
         if (Cache.myECLocation == null) {
             if (controller.isReady()) {
@@ -57,10 +75,29 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        if (controller.getConviction() <= 15) {
-            // attack muck type
+        Debug.printInformation("HAS myEC LOCATION " + Cache.myECLocation, " wtf ");
+
+        if (defendType) {
+            // defend type
+            noEnemiesSeenCnt++;
+            for (RobotInfo robotInfo: Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+                if (robotInfo.type == RobotType.MUCKRAKER) noEnemiesSeenCnt = 0;
+            }
+            Debug.printInformation("noEnemiesSeenCnt ", noEnemiesSeenCnt);
+
+            if (noEnemiesSeenCnt >= 50) {
+                int switchToAttack = random.nextInt(10) + 1; // 0|1|2|3
+                Debug.printInformation("SWITCHING TO ATTACK? " + switchToAttack, Cache.EC_INFO_LOCATION);
+                if (switchToAttack <= 7) {
+                    defendType = false;
+                    Cache.EC_INFO_LOCATION = null;
+                }
+                noEnemiesSeenCnt = 0;
+            }
+
             if (chaseMuckraker()) return;
             if (leaveLatticeToDefend()) return;
+
         } else {
             // attack poli/EC type
             if (Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) == null) {
@@ -68,30 +105,49 @@ public class PoliticanBot implements RunnableBot {
             } else if (Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) != CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
                 moveAndDestroyEC();
             } else {
+
                 //read EC flag attack to change attack location
-
-                /* send a tick update to the EC that this bot is a free attacking bot not currently targeting any location */
-                int flag = CommunicationHealth.encodeECInfo(false, true, CommunicationHealth.COMMUNICATION_UNIT_TEAM.CONVERTING_TO_PASSIVE_POLITICIAN, controller.getConviction());
-
-                if (controller.canSetFlag(flag) && !tickUpdateToPassiveAttacking) {
-                    tickUpdateToPassiveAttacking = true;
-                    Comms.checkAndAddFlag(flag);
-                }
-
                 if (controller.canGetFlag(Cache.myECID)) {
                     int ECFlag = controller.getFlag(Cache.myECID);
                     if (CommunicationECSpawnFlag.decodeIsSchemaType(ECFlag)) {
                         CommunicationECSpawnFlag.ACTION action = CommunicationECSpawnFlag.decodeAction(ECFlag);
                         if (action == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION) {
                             Cache.EC_INFO_LOCATION = CommunicationECSpawnFlag.decodeLocationData(ECFlag);
+                            Cache.EC_INFO_ACTION = action;
                             Cache.FOUND_ECS.remove(Cache.EC_INFO_LOCATION); // remove the location from my cache (something has changed since!)
                             Debug.printInformation("PASSIVE POLITICIAN GIVEN PURPOSE TO ATTACK! ", Cache.EC_INFO_LOCATION);
+                            bestDistanceOnAttack = 999999999;
+                            numActionTurnsTaken = 0;
+                            numRoundsTaken = 0;
                             tickUpdateToPassiveAttacking = false;
+                            return;
                         }
                     }
                 }
-                Direction random = Pathfinding.randomValidDirection();
-                if (random != null && controller.canMove(random)) controller.move(random);
+
+                /* send a tick update to the EC ONCE that this bot is a free attacking bot not currently targeting any location */
+                int flag = CommunicationHealth.encodeECInfo(false, true, CommunicationHealth.COMMUNICATION_UNIT_TEAM.CONVERTING_TO_PASSIVE_POLITICIAN, controller.getConviction());
+                if (controller.canSetFlag(flag) && !tickUpdateToPassiveAttacking) {
+                    if (!Comms.hasSetFlag) {
+                        controller.setFlag(flag);
+                        tickUpdateToPassiveAttacking = true;
+                        Comms.hasSetFlag = true;
+                        Debug.printInformation("SENDING URGENT PASSIVE TICK TO EC ", flag);
+                    } else {
+                        Comms.checkAndAddFlag(flag);
+                    }
+                }
+
+                //TODO (1/21): change so it is outside our base + defenders always or something
+                //TODO (1/21): make politicians (if they stumble upon an EC with low health) attack automatically
+                if (controller.getConviction() <= 15) {
+                    Debug.printInformation("ATTACKING UNIT PRETENDING TO DEFEND", " VALID ");
+                    if (chaseMuckraker()) return;
+                    if (leaveLatticeToDefend()) return;
+                } else {
+                    Direction random = Pathfinding.randomValidDirection();
+                    if (random != null && controller.canMove(random)) controller.move(random);
+                }
             }
         }
 
@@ -239,7 +295,7 @@ public class PoliticanBot implements RunnableBot {
 
     //TODO: also move away from other politicians?
     public boolean leaveLatticeToDefend() throws GameActionException {
-//        boolean closeToSlanderer = false;
+        boolean hasSlanderer = false;
         int miniDistance = 999;
 
         if (!controller.isReady()) return false;
@@ -251,6 +307,7 @@ public class PoliticanBot implements RunnableBot {
                     CommunicationMovement.MY_UNIT_TYPE myUnitType = CommunicationMovement.decodeMyUnitType(encodedFlag);
                     int distance = Pathfinding.travelDistance(Cache.CURRENT_LOCATION, robotInfo.location);
                     if (myUnitType == CommunicationMovement.MY_UNIT_TYPE.SL) {
+                        hasSlanderer = true;
                         miniDistance = Math.min(miniDistance, distance);
                         if (distance <= 2) {
                             Direction preferredDirection = Cache.myECLocation.directionTo(Cache.CURRENT_LOCATION);
@@ -273,8 +330,19 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
+        // TOO CLOSE TO EC
+        Debug.printInformation("HAS myEC LOCATION " + Cache.myECLocation, " NULL? ");
+        if (!hasMuckraker && Cache.CURRENT_LOCATION.isAdjacentTo(Cache.myECLocation)) {
+            Direction preferredDirection = Cache.myECLocation.directionTo(Cache.CURRENT_LOCATION);
+            Direction validDirection = Pathfinding.toMovePreferredDirection(preferredDirection, 2);
+            if (validDirection != null) {
+                controller.move(validDirection);
+                return true;
+            }
+        }
+
         // TOO FAR FROM CLOSEST SLANDERER, GO CLOSER ONLY IF NO MUCKRAKER
-        if (miniDistance >= 3 && !hasMuckraker) {
+        if (hasSlanderer && miniDistance >= 3 && !hasMuckraker) {
             Direction preferredDirection = Cache.CURRENT_LOCATION.directionTo(Cache.myECLocation);
             Direction validDirection = Pathfinding.toMovePreferredDirection(preferredDirection, 2);
             if (validDirection != null) {
@@ -306,7 +374,28 @@ public class PoliticanBot implements RunnableBot {
         int actionRadius = Cache.ROBOT_TYPE.actionRadiusSquared;
         boolean ECExists = false;
         int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
+
+        Debug.printInformation("Moving towards EC", distance);
+
+        if (bestDistanceOnAttack > distance) {
+            bestDistanceOnAttack = distance;
+            numActionTurnsTaken = 0;
+            numRoundsTaken = 0;
+        }
+
+        if (numRoundsTaken >= 20 && numActionTurnsTaken >= 5) {
+            //TODO: if distance has not gotten better, we need to mine our way through
+            if (controller.senseNearbyRobots(1, Cache.OPPONENT_TEAM).length > 0 && controller.canEmpower(1)) {
+                controller.empower(1);
+                return true;
+            }
+        }
+
         if (distance > actionRadius - 2) {
+            if (controller.isReady()) {
+                numActionTurnsTaken++;
+            }
+            numRoundsTaken++;
             pathfinding.move(Cache.EC_INFO_LOCATION);
             return true;
         }
@@ -316,13 +405,13 @@ public class PoliticanBot implements RunnableBot {
             return false;
         }
 
-        // GET CLOSERT TO OPPONENT
+        // GET CLOSER TO OPPONENT
         int currSize = controller.senseNearbyRobots(distance, Cache.OPPONENT_TEAM).length;
         int bestSize = currSize;
         MapLocation getCloser = null;
         for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
             MapLocation candidateLocation = Cache.EC_INFO_LOCATION.add(direction);
-            if (controller.canSenseLocation(candidateLocation)) {
+            if (controller.canSenseLocation(candidateLocation) && !controller.isLocationOccupied(candidateLocation)) {
                 int trySize = controller.senseNearbyRobots(candidateLocation, 1, Cache.OPPONENT_TEAM).length;
                 if (trySize < bestSize) {
                     bestSize = trySize;
@@ -345,7 +434,13 @@ public class PoliticanBot implements RunnableBot {
         }
 
         ECExists = true;
-        if (controller.canEmpower(distance)) {
+
+        if (controller.getConviction() <= 15) {
+            if (controller.canEmpower(RobotType.POLITICIAN.actionRadiusSquared)) {
+                controller.empower(RobotType.POLITICIAN.actionRadiusSquared);
+                return true;
+            }
+        } else if (controller.canEmpower(distance)) {
             controller.empower(distance);
             return true;
         }
