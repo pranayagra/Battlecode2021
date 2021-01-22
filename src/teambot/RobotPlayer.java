@@ -110,6 +110,10 @@ public strictfp class RobotPlayer {
         int robotToAvoidHealth = 99999999;
         int robotToAvoidID = 999999999;
 
+        /* Find the closest EC */
+        MapLocation ecLocationGuess = null;
+        int ecDistanceGuess = 99999999;
+
         for (RobotInfo nearbyAlliedRobot : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
             if (controller.canGetFlag(nearbyAlliedRobot.ID)) {
                 int encodedFlag = controller.getFlag(nearbyAlliedRobot.ID);
@@ -119,7 +123,7 @@ public strictfp class RobotPlayer {
                         && CommunicationECDataSmall.decodeIsMoveAwayFromMe(encodedFlag);
                 ToMoveAwayFromThisPolitician |= CommunicationMovement.decodeIsSchemaType(encodedFlag)
                         && CommunicationMovement.decodeCommunicationToOtherBots(encodedFlag) == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME;
-
+                System.out.println("move away? " + ToMoveAwayFromThisPolitician);
                 if (ToMoveAwayFromThisPolitician) {
                     if (nearbyAlliedRobot.conviction < robotToAvoidHealth) {
                         robotToAvoid = nearbyAlliedRobot.location;
@@ -132,14 +136,24 @@ public strictfp class RobotPlayer {
                     }
                 }
             }
+
+            if (nearbyAlliedRobot.type == RobotType.ENLIGHTENMENT_CENTER && nearbyAlliedRobot.team != Cache.OUR_TEAM) {
+                int ecDist = Cache.CURRENT_LOCATION.distanceSquaredTo(nearbyAlliedRobot.location);
+                if (ecDist < ecDistanceGuess) {
+                    ecDistanceGuess = ecDist;
+                    ecLocationGuess = nearbyAlliedRobot.location;
+                }
+            }
         }
+
+        Debug.printInformation("robotToAvoid " + robotToAvoid, " ? ");
 
         if (robotToAvoid == null || Cache.CURRENT_LOCATION.distanceSquaredTo(robotToAvoid) >= RobotType.POLITICIAN.actionRadiusSquared) {
             return;
         }
 
         if (Cache.ROBOT_TYPE != RobotType.POLITICIAN) {
-            moveAwayFromLocation(robotToAvoid);
+            moveAwayFromLocation(robotToAvoid, ecLocationGuess);
             return;
         }
 
@@ -147,11 +161,11 @@ public strictfp class RobotPlayer {
         if (Cache.ROBOT_TYPE == RobotType.POLITICIAN && Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION) {
             if (robotToAvoidHealth < Cache.CONVICTION) {
                 //I have more health than the best politician, so I will move out of the way
-                moveAwayFromLocation(robotToAvoid);
+                moveAwayFromLocation(robotToAvoid, ecLocationGuess);
                 return;
             }
             if (robotToAvoidHealth == Cache.CONVICTION && Cache.ID > robotToAvoidID) {
-                moveAwayFromLocation(robotToAvoid);
+                moveAwayFromLocation(robotToAvoid, ecLocationGuess);
                 return;
             }
         }
@@ -162,7 +176,7 @@ public strictfp class RobotPlayer {
         return Math.abs(one.x - two.x) + Math.abs(one.y - two.y);
     }
 
-    private static boolean moveAwayFromLocation(MapLocation avoidLocation) throws GameActionException {
+    private static boolean moveAwayFromLocation(MapLocation avoidLocation, MapLocation ecToAvoid) throws GameActionException {
 
         if (!controller.isReady()) return false;
 
@@ -171,6 +185,7 @@ public strictfp class RobotPlayer {
         if (Cache.CURRENT_LOCATION.distanceSquaredTo(avoidLocation) > RobotType.POLITICIAN.actionRadiusSquared + 3) return false;
 
         Direction maximizedDirection = null;
+        MapLocation maximizedLocation = null;
 
         for (Direction direction : Constants.DIRECTIONS) {
             if (controller.canMove(direction)) {
@@ -179,6 +194,16 @@ public strictfp class RobotPlayer {
                 if (candidateDistance > maximizedDistance) {
                     maximizedDistance = candidateDistance;
                     maximizedDirection = direction;
+                    maximizedLocation = candidateLocation;
+                } else if (candidateDistance == maximizedDistance && ecToAvoid != null) {
+                    int candidateDistToEC = candidateLocation.distanceSquaredTo(ecToAvoid);
+                    int currentBestDistToEC = maximizedLocation.distanceSquaredTo(ecToAvoid);
+                    Debug.printInformation("DEBUG MOVE AWAY -> candidate distance " + candidateDistToEC + ", current distance " + currentBestDistToEC + " ", " VERIFY? ");
+                    if (candidateDistToEC > currentBestDistToEC) {
+                        maximizedDistance = candidateDistance;
+                        maximizedDirection = direction;
+                        maximizedLocation = candidateLocation;
+                    }
                 }
             }
         }

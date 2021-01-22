@@ -402,15 +402,16 @@ public class PoliticanBot implements RunnableBot {
             return false;
         }
 
-        // GET CLOSER TO OPPONENT
-        int currSize = controller.senseNearbyRobots(distance, Cache.OPPONENT_TEAM).length;
-        int bestSize = currSize;
+        int ourTeamSize = controller.senseNearbyRobots(distance, Cache.OUR_TEAM).length;
+
+        // GET CLOSER TO OPPONENT (move away from enemy units). In a tie, move closer to EC
+        int bestSize = controller.senseNearbyRobots(distance, Cache.OPPONENT_TEAM).length;
         MapLocation getCloser = null;
         for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
             MapLocation candidateLocation = Cache.EC_INFO_LOCATION.add(direction);
             if (controller.canSenseLocation(candidateLocation) && !controller.isLocationOccupied(candidateLocation)) {
                 int trySize = controller.senseNearbyRobots(candidateLocation, 1, Cache.OPPONENT_TEAM).length;
-                if (trySize < bestSize) {
+                if (trySize < bestSize || (ourTeamSize > 0 && distance > 1)) {
                     bestSize = trySize;
                     getCloser = candidateLocation;
                 }
@@ -424,7 +425,7 @@ public class PoliticanBot implements RunnableBot {
         }
 
         // WAIT FOR OUR TEAM TO MOVE AWAY
-        int ourTeamSize = controller.senseNearbyRobots(distance, Cache.OUR_TEAM).length;
+
         if (ourTeamSize > 0 && triedCloserCnt <= 10) {
             ++triedCloserCnt;
             return false;
