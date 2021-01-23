@@ -103,7 +103,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static Random random;
 
     // bidding
-    int previousBid = 0;
+    private static int previousBid = 0;
+    private static int previousTeamVote = 0;
+    private static boolean previousWon = false;
 
     public EnlightenmentCenterBot(RobotController controller) throws GameActionException {
         this.controller = controller;
@@ -152,7 +154,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     public void turn() throws GameActionException {
         incomeGeneration = controller.getInfluence() - lastRoundInfluence + previousBid/2;
 
-        naiveBid();
+        bid();
         //TODO (1/20): sum up attacking politicans influence (and other ECs) and determine if EC should attack
         defaultTurn();
 
@@ -622,17 +624,39 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     /* Simple bidding strategy */
 
-    private void naiveBid() throws GameActionException {
+    private void bid() throws GameActionException {
 
-        int bid = (int) Math.max(1 + controller.getInfluence() / 100, incomeGeneration * (0.5 / (1 + Math.pow(Math.E, (-0.01 * (controller.getRoundNum() - 500)))))  ); //slow logistic function from 0 to 0.5 centered around 500 (round 500 = 1/4 of income bid) and growing at rate 0.01
+        if (previousTeamVote > 750) {
+            return;
+        }
+
+        boolean won = controller.getTeamVotes() > previousTeamVote ? true : false;
+        int bid = previousBid;
+        if (!won) {
+            bid += 1;
+        } 
+        else if (won == previousWon) {
+            bid -= 1;
+        }
+
+        int maxBid = (int) Math.max(1 + controller.getInfluence() / 100, 
+            incomeGeneration * (0.6 / (0.5 + Math.pow(Math.E, (-0.01 * (controller.getRoundNum() - 500)))))  ); //slow logistic function from 0 to 0.5 centered around 500 (round 500 = 1/4 of income bid) and growing at rate 0.01
+        bid = Math.min(bid, maxBid);
         if (controller.getRoundNum() >= 250 && controller.canBid(bid)){
             controller.bid(bid);
         }
         else if (controller.getRoundNum() > 50 && controller.canBid(1)) {
             //System.out.println("BID 1");
-            controller.bid(1);
+            bid = 1;
+            controller.bid(bid);
+        }
+        else {
+            bid = 0;
         }
         previousBid = bid;
+        previousTeamVote = controller.getTeamVotes();
+        previousWon = won;
+
     }
 
 
