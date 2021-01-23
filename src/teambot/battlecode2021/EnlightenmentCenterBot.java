@@ -435,7 +435,16 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Direction safeDirection = checkSpawnSlanderers();
         Direction dangerDirection = checkSpawnDefenders();
 
-        int slandererInfluence = Spawning.getSpawnInfluence(Cache.INFLUENCE);
+        //Spawning influence
+        int totalEnemyNearby = 0;
+        for (RobotInfo  info : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+            if (info.type == RobotType.POLITICIAN) {
+                totalEnemyNearby += info.influence;
+            }
+        }
+        int slandererInfluence = Spawning.getSpawnInfluence(Math.max(Cache.INFLUENCE*0.5,Cache.INFLUENCE-totalEnemyNearby*0.5));
+        
+
         timeSinceLastSlandererSpawn += 1;
         timeSinceLastDefendingPoliticianSpawn += 1;
 
