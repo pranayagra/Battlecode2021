@@ -6,8 +6,8 @@ import teambot.battlecode2021.EnlightenmentCenterBot;
 import java.util.Arrays;
 
 public class Debug {
-    public static boolean debug = true;
-    public static boolean debug2 = true;
+    public static boolean debug = false;
+    public static boolean debug2 = false;
     public static RobotController controller;
 
     public static void init(RobotController controller) {

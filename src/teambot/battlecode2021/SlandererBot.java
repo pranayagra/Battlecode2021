@@ -37,22 +37,13 @@ public class SlandererBot implements RunnableBot {
         //Debug.printByteCode("after lattice ");
     }
 
-    /* return: abs(deltaX) + abs(deltaY) between "location" and the starting EC location */
-    private int calculateLocationDistanceFromMyEC(MapLocation location) {
-        return Math.abs(location.x - Cache.myECLocation.x) + Math.abs(location.y - Cache.myECLocation.y);
-    }
-
     /* Behavior =>
         Good Square => not blocking the EC AND an odd distance away
         Bad Square => blocking the EC or an even distance away
     Return: true if and only if the square is good
     */
     private boolean checkIfGoodSquare(MapLocation location) {
-        int distance = calculateLocationDistanceFromMyEC(location);
-        if (distance <= 2 || distance % 2 == 0) {
-            return false;
-        }
-        return true;
+        return (location.x % 2 == location.y % 2) && !location.isAdjacentTo(Cache.myECLocation);
     }
 
 
@@ -62,13 +53,10 @@ public class SlandererBot implements RunnableBot {
     *       if one side of the EC is overproduced and bots can't get further away... is this really a bug tho or a feature? I think feature
     * */
     public void spawnInLattice() throws GameActionException {
-        distanceFromMyEC = calculateLocationDistanceFromMyEC(Cache.CURRENT_LOCATION);
         boolean isMyCurrentSquareGood = checkIfGoodSquare(Cache.CURRENT_LOCATION);
-        //Debug.printInformation("CL: " + Cache.CURRENT_LOCATION + " ECLoc: " + Cache.myECLocation + " dist: " + distanceFromMyEC, isMyCurrentSquareGood);
 
         // if in danger from muckraker, get out
         if (runFromMuckrakerMove() != 0) {
-//          // System.out.println("IN DANGER OR COOLDOWN");
             return;
         }
 
@@ -90,7 +78,7 @@ public class SlandererBot implements RunnableBot {
 
         if (!controller.isReady()) return;
 
-        int badSquareMaximizedDistance = distanceFromMyEC;
+        int badSquareMaximizedDistance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation);;
         Direction badSquareMaximizedDirection = null;
 
         // try to find a good square
@@ -103,8 +91,11 @@ public class SlandererBot implements RunnableBot {
         for (Direction direction : Constants.DIRECTIONS) {
             if (controller.canMove(direction)) {
                 MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
-                int candidateDistance = calculateLocationDistanceFromMyEC(candidateLocation);
+                int candidateDistance = candidateLocation.distanceSquaredTo(Cache.myECLocation);
                 boolean isGoodSquare = checkIfGoodSquare(candidateLocation);
+
+                if (candidateLocation.isAdjacentTo(Cache.myECLocation)) continue;
+
                 if (isGoodSquare) {
                     if (goodSquareMinimizedDistance > candidateDistance) {
                         goodSquareMinimizedDistance = candidateDistance;
@@ -125,6 +116,7 @@ public class SlandererBot implements RunnableBot {
             controller.move(badSquareMaximizedDirection);
         } else {
             // stuck, forfeit turn
+            Debug.printInformation("SLANDERER STUCK ON BAD SQUARE ",  " NO VALID GOOD SQUARE OR FURTHER BAD SQUARE");
         }
 
     }
@@ -140,13 +132,13 @@ public class SlandererBot implements RunnableBot {
 
         if (!controller.isReady()) return;
 
-        int moveTowardsDistance = distanceFromMyEC;
+        int moveTowardsDistance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation);
         Direction moveTowardsDirection = null;
 
-        for (Direction direction : Constants.DIRECTIONS) {
+        for (Direction direction : Constants.ORDINAL_DIRECTIONS) {
             if (controller.canMove(direction)) {
                 MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
-                int candidateDistance = calculateLocationDistanceFromMyEC(candidateLocation);
+                int candidateDistance = candidateLocation.distanceSquaredTo(Cache.myECLocation);
                 boolean isGoodSquare = checkIfGoodSquare(candidateLocation);
                 if (isGoodSquare && candidateDistance < moveTowardsDistance) {
                     moveTowardsDistance = candidateDistance;
@@ -166,7 +158,7 @@ public class SlandererBot implements RunnableBot {
         2) Set flag to the best reward of the 9 action decisions regardless of feasibility
         3) Select one of 9 decisions among the valid ones via controller.canMove(direction) (including no action)
         4) Terminate algorithm UNLESS no muckrakers were found (meaning the rewards were useless)
-        5) Iterate through all friendly robots of type politicans and check if any have the danger flag. If so, set flag to danger and save bestDirectionBasedOnPoliticianDangerIdx.
+        5) Iterate through all friendly robots of type politicans and check if any have the danger flag. If so, save the opposite of the direction in bestDirectionBasedOnPoliticianDangerIdx.
         5) Iterate through all friendly robots of type slanderers and find the closest one with a movement flag with danger bit. Call this preferedMovementDirectionIdx
         6) Attempt to move in preferedMovementDirectionIdx direction. If cannot move, try the next-to directions
         7) Attempt to move in bestDirectionBasedOnPoliticianDangerIdx direction. If cannot move, try the next-to directions
@@ -239,30 +231,31 @@ public class SlandererBot implements RunnableBot {
         }
 
         //TODO: THINK -> if a politican has both a muckraker and slanderer in range, then
-        // 1) should this slanderer just RUN away towards the EC |OR| <-- I think this one
+        // 1) should this slanderer just RUN away opposite of the danger direction |OR| <-- I think this one
         // 2) should this slanderer SET its flag to danger (so neighboring slanderers will also run) and then RUN away towards EC?
         // 3) this slanderer SET its flag to danger (so neighboring slanderers will also run) and then RUN away from POLI direction
         int bestDirectionBasedOnPoliticianDangerIdx = -1;
-//        if (!foundEnemyMuckraker) {
-//            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-//                if (robotInfo.getType() == RobotType.POLITICIAN) {
-//                    int encodedFlag = controller.getFlag(robotInfo.ID);
-//                    if (CommunicationMovement.decodeIsSchemaType(encodedFlag) &&
-//                            CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.PO &&
-//                            CommunicationMovement.decodeIsDangerBit(encodedFlag)) {
-//                        //A POLITICIAN WHO SAYS HE IS IN DANGER (muckraker nearby)
-//                        CommunicationMovement.MOVEMENT_BOTS_DATA badArea = CommunicationMovement.decodeMyPreferredMovement(encodedFlag);
-//                        int badIdx = CommunicationMovement.convert_MovementBotData_DirectionInt(badArea);
-//                        Direction bestDirection = Constants.DIRECTIONS[badIdx].opposite();
-////                        //Debug.printInformation("BEST DIRECTION AWAY FROM POLI IS", bestDirection);
-//                        bestDirectionBasedOnPoliticianDangerIdx = bestDirection.ordinal();
-////                        flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.SL,
-////                                CommunicationMovement.convert_DirectionInt_MovementBotsData(bestDirectionBasedOnPoliticianDangerIdx),
-////                                CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_TOWARDS_ME, false, true, 0);
-//                    }
-//                }
-//            }
-//        }
+        if (!foundEnemyMuckraker) {
+            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+                if (robotInfo.getType() == RobotType.POLITICIAN) {
+                    int encodedFlag = controller.getFlag(robotInfo.ID);
+                    if (CommunicationMovement.decodeIsSchemaType(encodedFlag) &&
+                            CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.PO &&
+                            CommunicationMovement.decodeIsDangerBit(encodedFlag)) {
+                        //A POLITICIAN WHO SAYS HE IS IN DANGER (muckraker nearby)
+                        CommunicationMovement.MOVEMENT_BOTS_DATA badArea = CommunicationMovement.decodeMyPreferredMovement(encodedFlag);
+                        int badIdx = CommunicationMovement.convert_MovementBotData_DirectionInt(badArea);
+                        Direction bestDirection = Constants.DIRECTIONS[badIdx].opposite();
+//                        //Debug.printInformation("BEST DIRECTION AWAY FROM POLI IS", bestDirection);
+                        bestDirectionBasedOnPoliticianDangerIdx = bestDirection.ordinal();
+//                        flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.SL,
+//                                CommunicationMovement.convert_DirectionInt_MovementBotsData(bestDirectionBasedOnPoliticianDangerIdx),
+//                                CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_TOWARDS_ME, false, true, 0);
+                        break;
+                    }
+                }
+            }
+        }
 
         /* Set communication for other slanderers if there is a muckraker within my range */
         if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
@@ -322,7 +315,7 @@ public class SlandererBot implements RunnableBot {
             return 1;
         }
 
-        return 0; // no reason to move
+        return 0; // no reason whatsoever to move
     }
 
 }

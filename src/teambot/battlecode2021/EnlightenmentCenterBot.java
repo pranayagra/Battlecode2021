@@ -54,6 +54,9 @@ class EC_Information {
 public class EnlightenmentCenterBot implements RunnableBot {
     private RobotController controller;
 
+    private static int incomeGeneration;
+    private static int lastRoundInfluence;
+
     private static int[] enemyDirectionCounts; //8 values indicating how dangerous a side of the map is (used in spawning politicians/scouting)
     private static int[] wallDirectionReward; // 8 values for how close the wall is from a certain direction (used in spawning slanderers in conjuction to enemyDirectionCounts)
     private static int[] numSlanderersWallDirectionSpawned;
@@ -125,26 +128,30 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         /* PROCESS FLAGS THROUGH MULTIPLE ROUNDS */
 
-        SLANDERER_IDs = new FastQueueSlanderers(152); //We cannot have more than 150ish slanderers
+        SLANDERER_IDs = new FastQueueSlanderers(100); //We cannot have more than 150ish slanderers, but unlikely to have more than 100
 
         SCOUT_MUCKRAKER_SZ = 0;
         POLITICIAN_DEFENDING_SLANDERER_SZ = 0;
 
-        processRobots = new FastProcessIDs(200, 3, controller);
+        processRobots = new FastProcessIDs(200, 2, controller);
         attackingLocationFlagSet = false;
 
         foundECs = new HashMap<>();
+        incomeGeneration = 0;
+        lastRoundInfluence = 150;
 
     }
 
     @Override
     public void turn() throws GameActionException {
+        incomeGeneration = controller.getInfluence() - lastRoundInfluence;
 
         naiveBid();
 
         //TODO (1/20): sum up attacking politicans influence (and other ECs) and determine if EC should attack
         defaultTurn();
 
+        lastRoundInfluence = controller.getInfluence();
 //        Debug.printByteCode("EC END TURN BYTECODE => ");
 
     }
@@ -443,7 +450,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
 
         // IF NO INFLUENCE, SPAWN MUCKRAKER
-        if (controller.getInfluence() <= 15) {
+        if (controller.getInfluence() <= 20) {
             spawnScoutMuckraker(1, randomValidDirection(), harassEnemyLocation);
             return;
         }
@@ -512,7 +519,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12 && slandererInfluence > 0 && timeSinceLastSlandererSpawn > 10) { //80% of time spawn slanderer in safe direction
             spawnLatticeSlanderer(slandererInfluence, safeDirection);
         } else if (slandererExists && dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6 && Cache.INFLUENCE > 50) { //20% of time spawn politician in safe direction
-            int influenceSpend = 15;
+            int influenceSpend = PoliticanBot.HEALTH_DEFEND_UNIT;
             spawnDefendingPolitician(influenceSpend, dangerDirection,null);
         }
 
@@ -532,7 +539,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         } else if (slandererExists && randomInt == 10 && POLITICIAN_DEFENDING_SLANDERER_SZ <= 10 && Cache.INFLUENCE > 150) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
-            int influenceSpend = 15;
+            int influenceSpend = PoliticanBot.HEALTH_DEFEND_UNIT;
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dir,3),null);
         }
 
@@ -543,7 +550,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         } else if (slandererExists && randomInt <= 7 && SLANDERER_IDs.getSize() >= 3) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
-            int influenceSpend = 15;
+            int influenceSpend = PoliticanBot.HEALTH_DEFEND_UNIT;
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 3), null);
         } else {
             spawnScoutMuckraker(1, randomValidDirection(), harassEnemyLocation);
@@ -554,10 +561,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
     /* Simple bidding strategy */
 
     private void naiveBid() throws GameActionException {
-        int bid = Math.max(1, controller.getInfluence() / 100);
-        if (controller.canBid(bid)){
+
+        int bid = (int) Math.max(1 + controller.getInfluence() / 100, incomeGeneration * (0.5 / (1 + Math.pow(Math.E, (-0.01 * (controller.getRoundNum() - 500)))))  ); //slow logistic function from 0 to 0.5 centered around 500 (round 500 = 1/4 of income bid) and growing at rate 0.01
+        if (controller.getRoundNum() >= 250 && controller.canBid(bid)){
             controller.bid(bid);
         }
+
     }
 
     private boolean setFlagForSpawnedUnit(Direction direction, CommunicationECSpawnFlag.ACTION actionType, CommunicationECSpawnFlag.SAFE_QUADRANT safeQuadrant, MapLocation locationData) throws GameActionException {
