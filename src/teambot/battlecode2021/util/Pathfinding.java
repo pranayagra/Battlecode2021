@@ -267,7 +267,7 @@ public class Pathfinding {
         MapLocation res = new MapLocation((int)(Math.random()*64- 32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
         int i = 0;
         while (!inMap(res) && i <= 100) {
-            res = new MapLocation((int)(Math.random()*64- 32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
+            res = new MapLocation((int) (Math.random() * 64 - 32) + Cache.CURRENT_LOCATION.x, (int) (Math.random() * 64 - 32) + Cache.CURRENT_LOCATION.y);
             ++i;
         }
         return res;
