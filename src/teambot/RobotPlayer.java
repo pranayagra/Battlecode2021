@@ -74,7 +74,7 @@ public strictfp class RobotPlayer {
                     }
                     int currentTurn = controller.getRoundNum(); //starts at round 1
 
-//                    Debug.resignGame(500);
+                    Debug.resignGame(1000);
                    // if (controller.getRoundNum() == 1000) controller.resign();
                     if (Cache.ROBOT_TYPE != controller.getType()) {
                         bot = new PoliticanBot(controller);
@@ -124,7 +124,6 @@ public strictfp class RobotPlayer {
                         && CommunicationECDataSmall.decodeIsMoveAwayFromMe(encodedFlag);
                 ToMoveAwayFromThisPolitician |= CommunicationMovement.decodeIsSchemaType(encodedFlag)
                         && CommunicationMovement.decodeCommunicationToOtherBots(encodedFlag) == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME;
-                System.out.println("move away? " + ToMoveAwayFromThisPolitician);
                 if (ToMoveAwayFromThisPolitician) {
                     if (nearbyAlliedRobot.conviction < robotToAvoidHealth) {
                         robotToAvoid = nearbyAlliedRobot.location;

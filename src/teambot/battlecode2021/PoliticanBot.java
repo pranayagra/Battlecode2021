@@ -13,21 +13,27 @@ public class PoliticanBot implements RunnableBot {
 
     private MapLocation[] muckrakerLocations;
     private int[] muckrakerDistances;
-
     private int friendlySlanderersSize;
 
-    private int triedCloserCnt;
+    private MapLocation[] slanderLocations;
+    private int slanderSize;
 
-    private boolean tickUpdateToPassiveAttacking;
-
-    private int noEnemiesSeenCnt;
     private boolean defendType;
 
+    /* DEFENSIVE Variables */
+    private int numRoundsStuckOnBadSquare;
+    public static final int HEALTH_DEFEND_UNIT = 18;
+    private int noEnemiesSeenCnt;
+    private MapLocation targetWhenStuck = null;
+
+    /* OFFENSIVE Variables */
+    private int triedCloserCnt;
     private int bestDistanceOnAttack;
     private int numActionTurnsTaken;
     private int numRoundsTaken;
 
-    public static final int HEALTH_DEFEND_UNIT = 18;
+    /* OFFENSIVE -> PASSIVE Variable */
+    private boolean tickUpdateToPassiveAttacking;
 
     //TODO (1/23): optimize bytecode, especially when on defense!
     //TODO: Politican bot upgrade movement (currently bugged and random movement) + fix explosion bug/optimize explosion radius
@@ -50,66 +56,105 @@ public class PoliticanBot implements RunnableBot {
         muckrakerLocations = new MapLocation[30];
         muckrakerDistances = new int[30];
 
+        slanderLocations = new MapLocation[50];
+
         if (controller.getConviction() <= HEALTH_DEFEND_UNIT) defendType = true;
 
         tickUpdateToPassiveAttacking = false;
         bestDistanceOnAttack = 999999999;
         numActionTurnsTaken = 0;
         numRoundsTaken = 0;
+
+        numRoundsStuckOnBadSquare = 0;
     }
 
-
-    /* Behavior =>
-    Good Square => for locations greater than y coordinate: 4,8,12,16,20...  for locations less than y coordinate: 6,10,12,14,18...
-    Bad Square => other squares
-    Return: true if and only if the square is good
-    */
-    private boolean checkIfGoodSquare(MapLocation location) throws GameActionException {
-        boolean valid = location.x % 2 == 1 && location.y % 2 == 0 && (location.x + location.y) % 4 == 1 && !location.isAdjacentTo(Cache.myECLocation);
-
-        for (RobotInfo robotInfo : controller.senseNearbyRobots(location, 5, Cache.OUR_TEAM)) {
-            if (robotInfo.type == RobotType.POLITICIAN) {
-                if (controller.canGetFlag(robotInfo.ID)) {
-                    int encodedFlag = controller.getFlag(robotInfo.ID);
-                    if (CommunicationMovement.decodeIsSchemaType(encodedFlag) && CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.SL) {
-                        valid = false;
-                    }
+    private void precomputeSlandererLocations() throws GameActionException {
+        slanderSize = 0;
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+            if (controller.canGetFlag(robotInfo.ID)) {
+                int encodedFlag = controller.getFlag(robotInfo.ID);
+                if (CommunicationMovement.decodeIsSchemaType(encodedFlag) && CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.SL) {
+                    slanderLocations[slanderSize++] = robotInfo.location;
                 }
             }
         }
 
-        return valid;
+    }
+
+    /* Behavior =>
+    Good Square => mod math below + not adjacent to EC + away from slanderers
+    Bad Square => other squares
+    Return: true if and only if the square is good
+    */
+    private boolean checkIfGoodSquare(MapLocation location) {
+
+        boolean valid = location.x % 2 == 1 && location.y % 2 == 0 && (location.x + location.y) % 4 == 1 && !location.isAdjacentTo(Cache.myECLocation);
+
+        if (!valid) return false;
+
+        for (int i = 0; i < slanderSize; ++i) {
+            if (location.distanceSquaredTo(slanderLocations[i]) <= 5) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     @Override
     public void turn() throws GameActionException {
 
-        if (controller.getRoundNum() <= 150) noEnemiesSeenCnt = 0;
+        if (controller.getRoundNum() <= 175) noEnemiesSeenCnt = 0;
         if (Cache.NUM_ROUNDS_SINCE_SPAWN <= 50) noEnemiesSeenCnt = 0;
 
-        if (Cache.myECLocation == null) {
+        if (Cache.myECLocation == null || (2 <= controller.getInfluence() && controller.getInfluence() <= 10)) {
             if (controller.isReady()) {
                 controller.empower(RobotType.POLITICIAN.actionRadiusSquared);
             }
         }
 
         if (defendType) {
-            // defend type
+
+            precomputeSlandererLocations();
+            setFlagToIndicateDangerToSlanderer();
+
             noEnemiesSeenCnt++;
             for (RobotInfo robotInfo: Cache.ALL_NEARBY_ENEMY_ROBOTS) {
-                if (robotInfo.type == RobotType.MUCKRAKER) noEnemiesSeenCnt = 0;
+                if (robotInfo.type == RobotType.MUCKRAKER) {
+                    noEnemiesSeenCnt = 0;
+                    break;
+                }
             }
 
             if (noEnemiesSeenCnt >= 75) {
-                boolean switchToAttack = random.nextInt(10) + 1 <= 5;
-                Debug.printInformation("SWITCH TO ATTACK: " + switchToAttack, Cache.EC_INFO_LOCATION);
-                if (switchToAttack) {
+
+                boolean switchToAttack = true;
+                if (Math.abs(Cache.CURRENT_LOCATION.x - Cache.myECLocation.x) <= 11 || Math.abs(Cache.CURRENT_LOCATION.y - Cache.myECLocation.y) <= 11) {
+                    switchToAttack = false;
+                }
+
+                boolean hasDefenseBehind = false;
+                int myECDist = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation);
+                for (RobotInfo robotInfo: Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+                    if (robotInfo.type == RobotType.POLITICIAN && robotInfo.conviction <= HEALTH_DEFEND_UNIT) {
+                        int otherDefendingPoliDistance = robotInfo.location.distanceSquaredTo(Cache.myECLocation);
+                        if (otherDefendingPoliDistance <= myECDist) {
+                            hasDefenseBehind = true;
+                            break;
+                        }
+                    }
+                }
+
+                switchToAttack &= (random.nextInt(2) == 1);
+
+                Debug.printInformation("SWITCH TO ATTACK?: " + switchToAttack, Cache.EC_INFO_LOCATION);
+                if (switchToAttack && hasDefenseBehind) {
                     defendType = false;
                     Cache.EC_INFO_LOCATION = null;
                 }
                 noEnemiesSeenCnt = 0;
             }
-            setFlagToIndicateDangerToSlanderer();
+
             if (chaseMuckraker()) return;
             if (buildLattice()) return;
 
@@ -153,8 +198,7 @@ public class PoliticanBot implements RunnableBot {
                     }
                 }
 
-                //TODO (1/21): change so it is outside our base + defenders always or something
-                //TODO (1/21): make politicians (if they stumble upon an EC with low health) attack automatically
+
                 if (controller.getConviction() <= HEALTH_DEFEND_UNIT) {
                     Debug.printInformation("ATTACKING UNIT PRETENDING TO DEFEND", " VALID ");
                     setFlagToIndicateDangerToSlanderer();
@@ -274,38 +318,6 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-
-//        Direction toMove = Cache.CURRENT_LOCATION.directionTo(bestLocation);
-//        Direction validDir = Pathfinding.toMovePreferredDirection(toMove, 1);
-//        if (Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]) <= 3) {
-//            if (controller.canEmpower()) {
-//                controller.empower(Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]));
-//            }
-//        }
-//
-//        if (validDir != null && toMove != Direction.CENTER) {
-//            if (controller.canMove(validDir)) {
-//                controller.move(validDir);
-//            }
-//            int miniDistance = 999;
-//            MapLocation expectedLocation = Cache.CURRENT_LOCATION.add(validDir);
-//
-//            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-//                int encodedFlag = controller.getFlag(robotInfo.ID);
-//                if (CommunicationMovement.decodeIsSchemaType(encodedFlag)) {
-//                    CommunicationMovement.MY_UNIT_TYPE myUnitType = CommunicationMovement.decodeMyUnitType(encodedFlag);
-//                    if (myUnitType == CommunicationMovement.MY_UNIT_TYPE.SL) {
-//                        int distance = Pathfinding.travelDistance(expectedLocation, robotInfo.location);
-//                        miniDistance = Math.min(miniDistance, distance);
-//                    }
-//                }
-//            }
-//            if (miniDistance <= 4) {
-//                controller.move(validDir);
-//                //Debug.printInformation("MOVING FOR MUCKRAKER ", validDir);
-//            }
-//        }
-
         return false;
     }
 
@@ -324,7 +336,6 @@ public class PoliticanBot implements RunnableBot {
             int candidateDistance = candidateLocation.distanceSquaredTo(Cache.myECLocation);
             boolean isGoodSquare = checkIfGoodSquare(candidateLocation);
 
-
             if (isGoodSquare && candidateDistance < moveTowardsDistance && controller.canMove(moveDirection) && controller.canSenseLocation(candidateLocation) && controller.senseRobotAtLocation(candidateLocation) == null) {
                 moveTowardsDirection = moveDirection;
                 moveTowardsDistance = candidateDistance;
@@ -342,10 +353,6 @@ public class PoliticanBot implements RunnableBot {
 
         int badSquareMaximizedDistance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation);;
         Direction badSquareMaximizedDirection = null;
-
-        // try to find a good square
-
-        // move further or equal to EC
 
         int goodSquareMinimizedDistance = (int) 1E9;
         Direction goodSquareMinimizedDirection = null;
@@ -378,12 +385,47 @@ public class PoliticanBot implements RunnableBot {
         }
 
         if (goodSquareMinimizedDirection != null) {
+            //move onto good square
             controller.move(goodSquareMinimizedDirection);
+            numRoundsStuckOnBadSquare = 0;
+        } else if (numRoundsStuckOnBadSquare >= 20) {
+            //follow edge of unvisited when stuck
+            Pathfinding.move(targetWhenStuck);
         } else if (badSquareMaximizedDirection != null) {
+            //move onto bad square in hopes to find good square later
             controller.move(badSquareMaximizedDirection);
+            numRoundsStuckOnBadSquare = 0;
         } else {
             // stuck, forfeit turn
-            Debug.printInformation("SLANDERER STUCK ON BAD SQUARE ",  " NO VALID GOOD SQUARE OR FURTHER BAD SQUARE");
+            numRoundsStuckOnBadSquare++;
+            if (numRoundsStuckOnBadSquare == 20) {
+                Cache.CURRENT_LOCATION = controller.getLocation();
+                int ranCounter = 0;
+                if (Cache.MAP_TOP == 0) ++ranCounter;
+                if (Cache.MAP_RIGHT == 0) ++ranCounter;
+                if (Cache.MAP_BOTTOM == 0) ++ranCounter;
+                if (Cache.MAP_LEFT == 0) ++ranCounter;
+
+                if (ranCounter == 0) {
+                    targetWhenStuck = Pathfinding.randomLocation();
+                } else {
+                    int randomDirection = random.nextInt(ranCounter) + 1; //[1,...,#of options]
+                    if (Cache.MAP_TOP == 0 && --randomDirection == 0) {
+                        targetWhenStuck = Cache.CURRENT_LOCATION.translate(0,64);
+                    }
+                    if (Cache.MAP_RIGHT == 0 && --randomDirection == 0) {
+                        targetWhenStuck = Cache.CURRENT_LOCATION.translate(64,0);
+                    }
+                    if (Cache.MAP_BOTTOM == 0 && --randomDirection == 0) {
+                        targetWhenStuck = Cache.CURRENT_LOCATION.translate(0,-64);
+                    }
+                    if (Cache.MAP_LEFT == 0 && --randomDirection == 0) {
+                        targetWhenStuck = Cache.CURRENT_LOCATION.translate(-64,0);
+                    }
+                }
+                if (targetWhenStuck == null) targetWhenStuck = Pathfinding.randomLocation();
+                Debug.printInformation("STUCK DEFENDER. MOVING TOWARDS " + targetWhenStuck, " VALID ");
+            }
         }
 
     }
@@ -391,7 +433,7 @@ public class PoliticanBot implements RunnableBot {
     public boolean buildLattice() throws GameActionException {
 
         boolean isGoodSquare = checkIfGoodSquare(Cache.CURRENT_LOCATION);
-
+        Debug.printInformation("isGoodSquare ", isGoodSquare);
         if (isGoodSquare) {
             executeGoodSquare();
         } else {
