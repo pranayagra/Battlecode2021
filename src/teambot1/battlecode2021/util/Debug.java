@@ -1,14 +1,13 @@
-package mushroombot.battlecode2021.util;
+package teambot1.battlecode2021.util;
 
-import battlecode.common.Clock;
-import battlecode.common.MapLocation;
-import battlecode.common.RobotController;
-import battlecode.common.RobotType;
+import battlecode.common.*;
+import teambot1.battlecode2021.EnlightenmentCenterBot;
 
 import java.util.Arrays;
 
 public class Debug {
     public static boolean debug = true;
+    public static boolean debug2 = true;
     public static RobotController controller;
 
     public static void init(RobotController controller) {
@@ -69,33 +68,48 @@ public class Debug {
 
     public static void printByteCode(String msg) {
         if (debug) {
-            System.out.println(msg + ": " + robotType() + " at " + robotLocation() + " has " + Clock.getBytecodesLeft() + " ByteCode Left");
+           System.out.println(msg + ": " + robotType() + " at " + robotLocation() + " has " + Clock.getBytecodesLeft() + " ByteCode Left");
+        }
+    }
+
+    public static void printInformation(String uniqueMSG, Object data) {
+        if (debug) {
+            String objectPrint = "NULL object";
+            if (data != null) objectPrint = data.toString();
+           System.out.println(uniqueMSG + " => " + robotType() + " at " + robotLocation() + ": " + objectPrint);
+        }
+    }
+
+    public static void printInformationArray(String uniqueMSG, Object[] data) {
+        if (debug) {
+           System.out.println(uniqueMSG + " => " + robotType() + " at " + robotLocation() + ": " + Arrays.toString(data));
+        }
+    }
+
+    public static void printLocation(MapLocation location) {
+        if (debug) {
+          // System.out.println(robotType() + " at " + robotLocation() + " has location " + location);
+        }
+    }
+
+    public static void printFlag(int flag) {
+        if (debug) {
+           System.out.println(robotType() + " at " + robotLocation() + " has flag " + flag);
         }
     }
 
     public static void printRobotInformation() {
 //        assertValues();
         if (debug) {
-            System.out.println(robotType() + " at " + robotLocation() + " has: " + robotInformationOutput());
+           System.out.println(robotType() + " at " + robotLocation() + " has: " + robotInformationOutput());
         }
     }
 
     public static void printMapInformation() {
 //        assertValues();
         if (debug) {
-            System.out.println(robotType() + " at " + robotLocation() + " knows: " + mapInformationOutput());
+           System.out.println(robotType() + " at " + robotLocation() + " knows: " + mapInformationOutput());
         }
-    }
-
-    public static void printECInformation() {
-//        assertValues();
-        if (debug) {
-            System.out.println(robotType() + " at " + robotLocation() + " knows: " + ECInformationOutput());
-        }
-    }
-
-    private static String ECInformationOutput() {
-        return "[Enemy EC Locations: " + Arrays.toString(Cache.ALL_KNOWN_ENEMY_EC_LOCATIONS.toArray()) +  "]";
     }
 
     private static String mapInformationOutput() {
@@ -105,6 +119,12 @@ public class Debug {
 
     private static String robotInformationOutput() {
         return "[ByteCode Left: " + Clock.getBytecodesLeft() + ", Influence: " + robotInfluence() + ", Conviction: " + robotConviction() + "]";
+    }
+
+    public static void resignGame(int round) {
+        if (debug) {
+            if (controller.getRoundNum() >= round) controller.resign();
+        }
     }
 
 }

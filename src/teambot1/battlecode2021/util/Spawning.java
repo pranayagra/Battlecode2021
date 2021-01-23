@@ -1,16 +1,11 @@
-package teambot.battlecode2021.util;
+package teambot1.battlecode2021.util;
 
 import battlecode.common.*;
-import teambot.*;
+import teambot1.*;
 import java.util.*;
 
 public class Spawning {
 
-    public static RobotController controller;
-
-    public static void init(RobotController controller) {
-        Scout.controller = controller;
-    }
 
     // Slanderers
 
@@ -34,5 +29,5 @@ public class Spawning {
         return res;
 
     }
-
+    
 }

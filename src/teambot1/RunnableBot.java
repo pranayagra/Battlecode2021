@@ -1,4 +1,4 @@
-package mushroombot;
+package teambot1;
 
 import battlecode.common.GameActionException;
 

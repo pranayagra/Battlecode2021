@@ -1,10 +1,10 @@
-package teambot;
+package teambot1;
 import battlecode.common.*;
-import teambot.battlecode2021.EnlightenmentCenterBot;
-import teambot.battlecode2021.MuckrakerBot;
-import teambot.battlecode2021.PoliticanBot;
-import teambot.battlecode2021.SlandererBot;
-import teambot.battlecode2021.util.*;
+import teambot1.battlecode2021.EnlightenmentCenterBot;
+import teambot1.battlecode2021.MuckrakerBot;
+import teambot1.battlecode2021.PoliticanBot;
+import teambot1.battlecode2021.SlandererBot;
+import teambot1.battlecode2021.util.*;
 
 public strictfp class RobotPlayer {
     public static RobotController controller;
@@ -48,7 +48,6 @@ public strictfp class RobotPlayer {
         RunnableBot bot;
         switch (controller.getType()) {
             case ENLIGHTENMENT_CENTER:
-                Spawning.init(controller);
                 bot = new EnlightenmentCenterBot(controller);
                 break;
             case POLITICIAN:

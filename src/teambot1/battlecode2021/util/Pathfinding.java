@@ -1,15 +1,17 @@
-package mushroombot.battlecode2021.util;
+package teambot1.battlecode2021.util;
 
 import battlecode.common.*;
-import mushroombot.*;
+import teambot1.*;
 import java.util.*;
 
 public class Pathfinding {
 
     private static RobotController controller;
+    private static Random random;
 
     public static void init(RobotController controller) {
         Pathfinding.controller = controller;
+        random = new Random(controller.getID());
     }
 
     // Multiple navigation algorithm
@@ -23,14 +25,10 @@ public class Pathfinding {
     static int stuckTurns;
 
     public static int move(MapLocation targetLoc) throws GameActionException {
-        //Debugging
-        if (Debug.debug) {
-            controller.setIndicatorLine(Cache.CURRENT_LOCATION, targetLoc, 255, 0, 0);
-        }
         // Is it ready
         if (!controller.isReady()) return 0;
         // Is target out of the map
-        if (!controller.onTheMap(Cache.CURRENT_LOCATION.add(Cache.CURRENT_LOCATION.directionTo(targetLoc)))) return 2;
+        if (targetLoc == null || !controller.onTheMap(Cache.CURRENT_LOCATION.add(Cache.CURRENT_LOCATION.directionTo(targetLoc)))) return 2;
         // At destination
         if (targetLoc.equals(Cache.CURRENT_LOCATION)) {
             isBugging = false;
@@ -76,13 +74,13 @@ public class Pathfinding {
             if (clockwise) {
                 targetDirection = targetDirection.rotateRight();
             } else {
-                targetDirection = targetDirection.rotateLeft(); 
+                targetDirection = targetDirection.rotateLeft();
             }
             while (!naiveMove(targetDirection)) {
                 if (clockwise) {
                     targetDirection = targetDirection.rotateRight();
                 } else {
-                    targetDirection = targetDirection.rotateLeft(); 
+                    targetDirection = targetDirection.rotateLeft();
                 }
                 //If on the edge of the map, switch bug directions
                 //Or, there is no way past
@@ -94,7 +92,7 @@ public class Pathfinding {
                     } else {
                         stuckTurns += 1;
                         if (Debug.debug) {
-                            System.out.println("I am stuck.");
+                          // System.out.println("I am stuck.");
                         }
                         return 0;
                     }
@@ -114,7 +112,7 @@ public class Pathfinding {
             if (Cache.CURRENT_LOCATION.distanceSquaredTo(targetLoc) < startBugLocation.distanceSquaredTo(targetLoc)) {
                 if (calculateGradient(Cache.CURRENT_LOCATION, targetLoc) > gradient && calculateGradient(moveLoc, targetLoc) <= gradient) {
                     isBugging = false;
-                } 
+                }
                 else if (calculateGradient(moveLoc, targetLoc) >= gradient) {
                     isBugging = false;
                 }
@@ -126,8 +124,10 @@ public class Pathfinding {
         }
     }
 
-        // Geedily from 3 naive options
+    // Geedily from 3 naive options
     public static int greedyMove(MapLocation targetLoc) throws GameActionException {
+
+        if (targetLoc == null) return 0;
 
         // TODO: Some type of basic BFS which is within bytecode limit
         // Potential choices
@@ -135,7 +135,7 @@ public class Pathfinding {
         MapLocation b = Cache.CURRENT_LOCATION.add(Cache.CURRENT_LOCATION.directionTo(targetLoc).rotateRight());
         MapLocation c = Cache.CURRENT_LOCATION.add(Cache.CURRENT_LOCATION.directionTo(targetLoc).rotateLeft());
         MapLocation[] choices = new MapLocation[3];
-            //Bytecode efficient insertion sort
+        //Bytecode efficient insertion sort
         if (controller.canSenseLocation(a)) {
             choices[0] = a;
         }
@@ -145,7 +145,7 @@ public class Pathfinding {
             if (costB < costA) {
                 choices[0] = b;
                 choices[1] = a;
-            } 
+            }
             else {
                 choices[1] = b;
             }
@@ -155,7 +155,7 @@ public class Pathfinding {
                     choices[2] = choices[1];
                     choices[1] = choices[0];
                     choices[0] = c;
-                } 
+                }
                 else if (costC < costA || costC < costB) {
                     choices[2] = choices[1];
                     choices[1] = c;
@@ -171,7 +171,7 @@ public class Pathfinding {
                 choices[1] = a;
             }
         }
-        
+
         // Move
         for (int i = 0; i <= 2; i ++) {
             if (choices[i] == null) {
@@ -184,9 +184,37 @@ public class Pathfinding {
         return 0;
     }
     // Naive movement | error checks
-    
+
+    /* Finds a random valid direction.
+    returns null if no valid direction */
+    public static Direction randomValidDirection() {
+        return toMovePreferredDirection(Constants.DIRECTIONS[random.nextInt(8)], 4);
+    }
+
+    /* Greedily returns the closest valid direction to preferredDirection within the directionFlexibilityDelta value (2 means allow for 2 clockwise 45 deg in both directions)
+    Returns null if no valid direction with specification
+    directionFlexibilityDelta: max value 4 */
+    public static Direction toMovePreferredDirection(Direction preferredDirection, int directionFlexibilityDelta) {
+
+        if (!controller.isReady() || preferredDirection == null) return null;
+
+        if (controller.canMove(preferredDirection)) {
+            return preferredDirection;
+        }
+
+        Direction left = preferredDirection;
+        Direction right = preferredDirection;
+        for (int i = 1; i <= directionFlexibilityDelta; ++i) {
+            right = right.rotateRight();
+            left = left.rotateLeft();
+            if (controller.canMove(right)) return right;
+            if (controller.canMove(left)) return left;
+        }
+        return null;
+    }
+
     public static Boolean naiveMove(Direction dir) throws GameActionException {
-        if (controller.canMove(dir)) {
+        if (dir != null && controller.canMove(dir)) {
             controller.move(dir);
             return true;
         }
@@ -194,15 +222,18 @@ public class Pathfinding {
     }
 
     public static Boolean naiveMove(MapLocation loc) throws GameActionException {
+        if (loc == null) return false;
         return naiveMove(controller.getLocation().directionTo(loc));
     }
 
     // Util
     public static Integer travelDistance(MapLocation a, MapLocation b) {
+        if (a == null || b == null) return 99999;
         return Math.max(Math.abs(a.x-b.x), Math.abs(a.y-b.y));
     }
 
     public static boolean inMap(MapLocation a) {
+        if (a == null) return false;
         if (Cache.MAP_BOTTOM != 0 && Cache.MAP_BOTTOM > a.y) {
             return false;
         }
@@ -222,7 +253,8 @@ public class Pathfinding {
         return new int[] {to.x-from.x,to.y-from.y};
     }
 
-    public static double calculateGradient(MapLocation start, MapLocation end) {
+    private static double calculateGradient(MapLocation start, MapLocation end) {
+        if (start == null || end == null) return -2;
         if (end.x-start.x == 0) {
             return -1;
         }
@@ -232,16 +264,10 @@ public class Pathfinding {
 
     //TODO: Make random take into account map areas
     public static MapLocation randomLocation() {
-        MapLocation res = new MapLocation((int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
-        if (Cache.MAP_TOP>0&&Cache.MAP_BOTTOM>0&&Cache.MAP_LEFT>0&&Cache.MAP_RIGHT>0) {
-            res = new MapLocation((int)(Math.random()*(Cache.MAP_RIGHT-Cache.MAP_LEFT)+Cache.MAP_LEFT),(int)(Math.random()*(Cache.MAP_TOP-Cache.MAP_BOTTOM)+Cache.MAP_BOTTOM));
-        }
-        else {
-            while (!inMap(res)) {
-                res = new MapLocation((int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
-            }
+        MapLocation res = new MapLocation((int)(Math.random()*64- 32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
+        while (!inMap(res)) {
+            res = new MapLocation((int)(Math.random()*64- 32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
         }
         return res;
     }
-
 }

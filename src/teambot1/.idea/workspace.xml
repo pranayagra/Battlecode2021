@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="b6aff38c-986f-49eb-859c-955712f4b1aa" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/battlecode2021/util/Debug.java" beforeDir="false" afterPath="$PROJECT_DIR$/battlecode2021/util/Debug.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../teambot/battlecode2021/EnlightenmentCenterBot.java" beforeDir="false" afterPath="$PROJECT_DIR$/../teambot/battlecode2021/EnlightenmentCenterBot.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../teambot/battlecode2021/MuckrakerBot.java" beforeDir="false" afterPath="$PROJECT_DIR$/../teambot/battlecode2021/MuckrakerBot.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../teambot/battlecode2021/util/Cache.java" beforeDir="false" afterPath="$PROJECT_DIR$/../teambot/battlecode2021/util/Cache.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../teambot/battlecode2021/util/Communication.java" beforeDir="false" afterPath="$PROJECT_DIR$/../teambot/battlecode2021/util/Communication.java" afterDir="false" />
-    </list>
+    <list default="true" id="290f6ec4-bfc5-4b4d-b213-f2f8f835b651" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -17,7 +11,7 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
   </component>
-  <component name="ProjectId" id="1mwdgV8r5nIs2fI77r3F7iivfeM" />
+  <component name="ProjectId" id="1nH6LjR0YtGf3HuxSCQeYvaNkdz" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="PropertiesComponent">
     <property name="WebServerToolWindowFactoryState" value="false" />
@@ -41,12 +35,12 @@
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="b6aff38c-986f-49eb-859c-955712f4b1aa" name="Default Changelist" comment="" />
-      <created>1610408698739</created>
+      <changelist id="290f6ec4-bfc5-4b4d-b213-f2f8f835b651" name="Default Changelist" comment="" />
+      <created>1611034615970</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1610408698739</updated>
-      <workItem from="1610408702761" duration="41000" />
+      <updated>1611034615970</updated>
+      <workItem from="1611034622905" duration="212000" />
     </task>
     <servers />
   </component>
