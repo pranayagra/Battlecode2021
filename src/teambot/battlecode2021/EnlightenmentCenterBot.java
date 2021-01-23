@@ -189,6 +189,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 if (Cache.MAP_TOP == 0) {
                     Comms.checkAndAddFlag(encoding);
                     Cache.MAP_TOP = locationData.y;
+                    if (Cache.MAP_TOP < Cache.CURRENT_LOCATION.y) {
+                        Cache.MAP_TOP += 128;
+                    }
                     updateWallDistance();
                 }
                 break;
@@ -197,6 +200,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
 //                    Debug.printInformation("Recieving South coords", encoding);
                     Comms.checkAndAddFlag(encoding);
                     Cache.MAP_BOTTOM = locationData.y;
+                    if (Cache.MAP_BOTTOM > Cache.CURRENT_LOCATION.y) {
+                        Cache.MAP_BOTTOM -= 128;
+                    }
                     updateWallDistance();
                 }
                 break;
@@ -204,6 +210,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 if (Cache.MAP_RIGHT == 0) {
                     Comms.checkAndAddFlag(encoding);
                     Cache.MAP_RIGHT = locationData.x;
+                    if (Cache.MAP_RIGHT < Cache.CURRENT_LOCATION.x) {
+                        Cache.MAP_RIGHT += 128;
+                    }
                     updateWallDistance();
                 }
                 break;
@@ -211,6 +220,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 if (Cache.MAP_LEFT == 0) {
                     Comms.checkAndAddFlag(encoding);
                     Cache.MAP_LEFT = locationData.x;
+                    if (Cache.MAP_LEFT > Cache.CURRENT_LOCATION.x) {
+                        Cache.MAP_LEFT -= 128;
+                    }
                     updateWallDistance();
                 }
                 break;
@@ -443,7 +455,6 @@ public class EnlightenmentCenterBot implements RunnableBot {
             }
         }
         int slandererInfluence = Spawning.getSpawnInfluence(Math.max(Cache.INFLUENCE*0.5,Cache.INFLUENCE-totalEnemyNearby*0.5));
-        
 
         timeSinceLastSlandererSpawn += 1;
         timeSinceLastDefendingPoliticianSpawn += 1;
@@ -518,27 +529,32 @@ public class EnlightenmentCenterBot implements RunnableBot {
             if (Cache.ALL_NEARBY_ENEMY_ROBOTS.length > 0) {
                 //rush strat here?
                 spawnScoutMuckraker(1, randomValidDirection(), null);
+                return;
             } else {
                 //econ strat start
                 spawnLatticeSlanderer(130, randomValidDirection());
+                return;
             }
-            return;
+            
         }
 
         //Debug.printInformation("SAFE DIRECTION " + safeDirection + " and DANGER DIRECTION " + dangerDirection, " INFO");
-        
         int slandererSpawn = random.nextInt(10) + 1; //1-10
         //NOTE: on spawn both safeDirection and dangerDirection will be null, so we  will inheritately spawn scouts first
         if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12 && slandererInfluence > 0 && timeSinceLastSlandererSpawn > 6) { //80% of time spawn slanderer in safe direction
             spawnLatticeSlanderer(slandererInfluence, safeDirection);
+            return;
         } else if (slandererExists && dangerDirection != null && POLITICIAN_DEFENDING_SLANDERER_SZ <= 6 && Cache.INFLUENCE > 50) { //20% of time spawn politician in safe direction
-            int influenceSpend = 15;
-            spawnDefendingPolitician(influenceSpend, dangerDirection,null);
+            int influenceSpend = PoliticanBot.HEALTH_DEFEND_UNIT;
+            System.out.println(Clock.getBytecodesLeft());
+            spawnDefendingPolitician(influenceSpend, toBuildDirection(dangerDirection,3),null);
+            return;
         }
-
+        
         // Guide which points map edges to new scouts
         if (!controller.canGetFlag(GUIDE_ID)) {
             spawnGuideMuckraker(1, randomValidDirection());
+            return;
         }
 
         int randomInt = random.nextInt(10) + 1;
@@ -552,21 +568,33 @@ public class EnlightenmentCenterBot implements RunnableBot {
         } else if (slandererExists && randomInt == 10 && POLITICIAN_DEFENDING_SLANDERER_SZ <= 10 && Cache.INFLUENCE > 150) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
-            int influenceSpend = 15;
+            int influenceSpend = PoliticanBot.HEALTH_DEFEND_UNIT;
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dir,3),null);
+            return;
         }
 
         randomInt = random.nextInt(10) + 1;
 
         if (timeSinceLastSlandererSpawn > 8 && safeDirection != null && slandererInfluence > 0) {
             spawnLatticeSlanderer(slandererInfluence, safeDirection);
-        } else if (slandererExists && randomInt <= 7 && SLANDERER_IDs.getSize() >= 3) {
+            return;
+        } 
+        else if (slandererExists && randomInt <= 2 && SLANDERER_IDs.getSize() >= 3) {
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
-            int influenceSpend = 15;
+            int influenceSpend = PoliticanBot.HEALTH_DEFEND_UNIT;
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 3), null);
+            return; 
+        }
+        else if (slandererExists && randomInt <= 7 && SLANDERER_IDs.getSize() >= 3 && (Cache.INFLUENCE > 200 || dangerDirection !=null)) {
+            Direction dir = randomValidDirection();
+            if (dangerDirection != null) dir = dangerDirection;
+            int influenceSpend = PoliticanBot.HEALTH_DEFEND_UNIT;
+            spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 3), null);
+            return;
         } else {
             spawnScoutMuckraker(1, randomValidDirection(), harassEnemyLocation);
+            return;
         }
 
 
@@ -600,8 +628,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (controller.getRoundNum() >= 250 && controller.canBid(bid)){
             controller.bid(bid);
         }
-        else if (controller.canBid(1)) {
-            System.out.println("BID 1");
+        else if (controller.getRoundNum() > 50 && controller.canBid(1)) {
+            //System.out.println("BID 1");
             controller.bid(1);
         }
         previousBid = bid;
@@ -688,11 +716,11 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private void spawnDefendingPolitician(int influence, Direction direction, MapLocation location) throws GameActionException {
         //TODO: should defend slanderers outside the muckrakers wall
         timeSinceLastDefendingPoliticianSpawn = 0;
+        //System.out.println(Clock.getBytecodesLeft());
         if (location == null) location = spawnLocationNull();
-        if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
+        if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence) && setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location)) {
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
             /* DO NOT KEEP TRACK OF DEFENDING POLITICIANS FOR NOW */
-            setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
         }
     }
 

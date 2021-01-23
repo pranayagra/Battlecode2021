@@ -116,7 +116,7 @@ public class SlandererBot implements RunnableBot {
             controller.move(badSquareMaximizedDirection);
         } else {
             // stuck, forfeit turn
-            Debug.printInformation("SLANDERER STUCK ON BAD SQUARE ",  " NO VALID GOOD SQUARE OR FURTHER BAD SQUARE");
+            //Debug.printInformation("SLANDERER STUCK ON BAD SQUARE ",  " NO VALID GOOD SQUARE OR FURTHER BAD SQUARE");
         }
 
     }

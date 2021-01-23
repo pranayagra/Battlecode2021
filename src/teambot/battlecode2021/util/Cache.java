@@ -117,6 +117,19 @@ public class Cache {
         PASSABILITY = controller.sensePassability(CURRENT_LOCATION);
         COOLDOWN = controller.getCooldownTurns();
 
+        if (MAP_TOP != 0 && MAP_TOP < CURRENT_LOCATION.y) {
+            MAP_TOP = MAP_TOP + 128;
+        }
+        if (MAP_BOTTOM != 0 && MAP_BOTTOM > CURRENT_LOCATION.y) {
+            MAP_BOTTOM = MAP_BOTTOM - 128;
+        }
+        if (MAP_RIGHT != 0 && MAP_RIGHT < CURRENT_LOCATION.x) {
+            MAP_RIGHT = MAP_RIGHT + 128;
+        }
+        if (MAP_LEFT != 0  && MAP_LEFT > CURRENT_LOCATION.x) {
+            MAP_LEFT = MAP_LEFT - 128;
+        }
+
         if (MAP_TOP != 0 && MAP_BOTTOM != 0) {
             MAP_HEIGHT = MAP_TOP - MAP_BOTTOM;
         }

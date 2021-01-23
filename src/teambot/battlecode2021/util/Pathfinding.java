@@ -266,7 +266,14 @@ public class Pathfinding {
     public static MapLocation randomLocation() {
         MapLocation res = new MapLocation((int)(Math.random()*64- 32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
         while (!inMap(res)) {
-            res = new MapLocation((int)(Math.random()*64- 32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
+            /*
+            System.out.println(res);
+            System.out.println(Cache.MAP_BOTTOM);
+            System.out.println(Cache.MAP_RIGHT);
+            System.out.println(Cache.MAP_TOP);
+            System.out.println(Cache.MAP_LEFT);
+            */
+            res = new MapLocation((int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.x,(int)(Math.random()*64-32) + Cache.CURRENT_LOCATION.y);
         }
         return res;
     }
