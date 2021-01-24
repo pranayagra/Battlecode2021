@@ -465,6 +465,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 timeSinceLastSeenMuckraker = 0;
             }
         }
+        totalEnemyNearby *= controller.getEmpowerFactor(Cache.OPPONENT_TEAM, 0);
 
         /* If the EC senses more attack than health, we need to spawn defensive muckrakers that absorb the hit. This */
         if (totalEnemyNearby > controller.getConviction()) {

@@ -87,6 +87,7 @@ public class MuckrakerBot implements RunnableBot {
                 totalEnemyNearby += Math.max(info.conviction - 10, 0);
             }
         }
+        totalEnemyNearby *= controller.getEmpowerFactor(Cache.OPPONENT_TEAM, 0);
 
         int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation);
 
