@@ -161,9 +161,11 @@ public class PoliticanBot implements RunnableBot {
         } else {
             // attack poli/EC type
             if (Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) == null) {
-                moveAndDestroyEC();
+                attackECLocation();
+//                moveAndDestroyEC();
             } else if (Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) != CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
-                moveAndDestroyEC();
+                attackECLocation();
+//                moveAndDestroyEC();
             } else {
 
                 //read EC flag attack to change attack location
@@ -443,6 +445,178 @@ public class PoliticanBot implements RunnableBot {
         return true;
 
     }
+
+
+
+
+    //poli attack
+    // IF I THINK SLANDERER HERE, COMMUNICATE TO EC -->
+    // IF I THINK GOOD SCORE TO EXPLODE --> ATTACK
+    // OTHERWISE MOVE CLOSER TO EC?
+
+    //SCORE function --> if killed EC=> number of units killed + EC damage / 10 + % of EC damage - poli-health
+
+    // kills 2 units and 10 dmg (5%), kills 0 units and 50 dmg (25%), kills 3 units and 0 damage
+
+    //IF >=50% health
+
+    // my influence => attack (we want to attack pretty quickly)
+    //
+
+    //some score function based on : my conviction (maybe not), number of units killed (scaled with my conviction wasted or something), % and value EC damage (% / 5), captured EC (+1000)
+    //for units: %of damage (decimal) + 2 (if killed)
+
+    public double calculateScore(int empowerDistanceSquared) {
+
+        if (!controller.isReady() || Cache.EC_INFO_LOCATION == null || !controller.canSenseLocation(Cache.EC_INFO_LOCATION)) return 0;
+
+//        int[] numberOfUnits = new int[25];
+        //int ECDistance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
+
+        int numUnits = 0;
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ROBOTS) {
+            int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(robotInfo.location);
+//            ++numberOfUnits[distance];
+            if (distance <= empowerDistanceSquared) {
+                ++numUnits;
+            }
+        }
+
+        if (numUnits == 0) return 0;
+
+        int damage = (int) ((Math.max(0, controller.getConviction() - 10) / numUnits) * controller.getEmpowerFactor(Cache.OUR_TEAM,0));
+
+        if (damage == 0) return -1;
+
+        int unitsKilled = 0;
+        int totalDamage = 0;
+        int ECDamage = 0;
+        double ECHealth = 9999999;
+        boolean ECCaptured = false;
+
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ROBOTS) {
+
+            if (robotInfo.team == Cache.OUR_TEAM) continue;
+
+            int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(robotInfo.location);
+            if (distance <= empowerDistanceSquared) {
+                if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER) {
+                    ECHealth = robotInfo.conviction;
+                    ECDamage = damage;
+                    if (ECDamage >= ECHealth) ECCaptured = true;
+                }
+
+                if (robotInfo.conviction <= damage) {
+                    ++unitsKilled;
+                    Debug.printInformation("KILLING " + robotInfo.location, " KILLED ");
+                }
+                totalDamage += Math.min(robotInfo.conviction, damage);
+            }
+        }
+        //Either attack to control # of units killed
+        //or attack to do damage to EC
+
+        //I think we have heuristic in flag for second value --> and we only do it if the damage >= threshold, and we wait 20 turns until we start counting decreasing threshold
+        int damagedWasted = (controller.getConviction() - 10) - totalDamage;
+
+        double score = unitsKilled * 2; //1 killed unit => +2 score (max realistically 12)
+        score += ((ECDamage / ECHealth) * 20); //5% health => +1 score (max 20)
+        score += ECDamage / 10; //10 health => +1 score (max 40)
+        score += (ECCaptured ? 100000 : 0); //killed EC => +10000 score
+        score += totalDamage / (controller.getConviction() - 10) * unitsKilled * 5; // damage_decimal * unitsKilled * 5
+
+        if (unitsKilled == 0) {
+            score += ECDamage / 5; //5 health => +1 score
+        }
+        //I can use danger direction to indicate score or damage to EC?
+
+
+        Debug.printInformation("EMPOWER DISTANCE " + empowerDistanceSquared + ": [unitsKilled: " + unitsKilled + ", totalDamage: " + totalDamage + ", ECDamage: " + ECDamage + ", ECCaptured: " + ECCaptured + "] => SCORE ", score);
+
+        return score;
+    }
+
+    private static int[] empowerValues = {1, 2, 4, 5, 8, 9};
+    public boolean attackECLocation() throws GameActionException {
+
+        int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
+
+         // only consider exploding at a good time IF we are stuck
+
+        //IF MY DISTANCE IS 1, I AM A PRIMARY EC ATTACK BOT
+        //IF MY DISTANCE IS GREATER, I WANT TO CLEAR THE HERD
+        //ESSENTIALLY => WE HAVE TWO VALUES => KILLING ENEMY DAMAGE WITH ANY RADIUS + IF DISTANCE=1, THEN EC ATTACK
+        //  WE CALCULATE THE TOTAL EC ATTACK => AND DETERMINE IF IT'S WORTH
+        //  EACH OTHER UNIT
+
+        if (bestDistanceOnAttack > distance) {
+            bestDistanceOnAttack = distance;
+            numActionTurnsTaken = 0;
+            numRoundsTaken = 0;
+        } else {
+            numRoundsTaken++;
+            if (controller.isReady()) numActionTurnsTaken++;
+        }
+
+        boolean isStuck = false;
+        if (numRoundsTaken >= 20 && numActionTurnsTaken >= 5) {
+            isStuck = true;
+        }
+
+        if (!isStuck && distance >= 20) {
+            pathfinding.move(Cache.EC_INFO_LOCATION);
+            return true;
+        }
+
+        double scoreThreshold = 1 + (controller.getConviction() - 10) * 0.2;
+
+        if (isStuck) {
+            scoreThreshold = scoreThreshold - (numActionTurnsTaken - 20);
+        }
+
+        //If I am not stuck and >= 20 distance, NEVER explode. just move closer to target.
+        //If I am not stuck and < 20 distance, you can explode if necessary
+
+        //If I am stuck and >= 20 distance, begin limiting the requirement on explosion
+        //If I am stuck and < 20 distance, begin limiting the requirement on explosion
+        //If I am stuck, begin limiting the requirment on explosion
+
+        //When I feel like I am stuck, we should limit the requirement on explosion -->
+
+        double bestScore = -1;
+        int empowerValue = -1;
+
+        int bytecode = Clock.getBytecodeNum();
+
+        for (int i = 0; i < empowerValues.length; ++i) {
+
+            double currentScore = calculateScore(empowerValues[i]);
+            if (currentScore > bestScore) {
+                bestScore = currentScore;
+                empowerValue = empowerValues[i];
+            }
+        }
+
+        Debug.printByteCode("attackECLocation() BYTECODE USED: " + (Clock.getBytecodeNum() - bytecode));
+        Debug.printInformation("[bestScore: " + bestScore + ", empowerValue: " + empowerValue + ", scoreThreshold: " + scoreThreshold + "]", " BEST EXPLOSION ");
+
+        if (bestScore >= scoreThreshold) {
+            Debug.printInformation("EXPLODING WITH " + empowerValue + " SINCE (bestScore) " + bestScore + " >= (scoreThreshold) " + scoreThreshold, Clock.getBytecodesLeft());
+            if (controller.canEmpower(empowerValue)) {
+                controller.empower(empowerValue);
+                return true;
+            }
+        } else {
+            if (distance > 1) {
+                pathfinding.move(Cache.EC_INFO_LOCATION);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // floor(damage/#units) * buff -->
 
     //Assumptions: neutralEC is found by a scout and communicated to the EC
     //Bugs:

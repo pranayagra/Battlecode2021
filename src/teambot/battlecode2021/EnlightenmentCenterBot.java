@@ -443,12 +443,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     // ================================================================================ //
 
-
     public void defaultTurn() throws GameActionException {
         slanderersToPoliticians();
         iterateAllUnitIDs();
         processAllECInformation();
         updateWallDistance();
+
 
         // FIND SAFEST AND DANGEREST DIRECTIONS
         Direction safeDirection = checkSpawnSlanderers();
@@ -458,9 +458,15 @@ public class EnlightenmentCenterBot implements RunnableBot {
         int totalEnemyNearby = 0;
         for (RobotInfo  info : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
             if (info.type == RobotType.POLITICIAN) {
-                totalEnemyNearby += info.influence;
+                totalEnemyNearby += Math.max(info.conviction - 10, 0);
             }
         }
+
+        /* If the EC senses more attack than health, we need to spawn defensive muckrakers that absorb the hit. This */
+        if (totalEnemyNearby > controller.getConviction()) {
+            if (issueMuckSpawnInDanger()) return;
+        }
+
         int slandererInfluence = Spawning.getSpawnInfluence(Math.max(Cache.INFLUENCE*0.5,Cache.INFLUENCE-totalEnemyNearby*0.5));
 
         timeSinceLastSlandererSpawn += 1;
@@ -772,6 +778,39 @@ public class EnlightenmentCenterBot implements RunnableBot {
         return false;
     }
 
+    /* If the EC is in danger (more enemy poli damage than health, issue muckrakers to absorb hits.
+    Note the muckraker class will deal with follow-up behavior. Once the danger is gone, mucks will automatically scout/harassEnemyLocation */
+    public boolean issueMuckSpawnInDanger() throws GameActionException {
+        for (RobotInfo robotInfo : controller.senseNearbyRobots(2, Cache.OPPONENT_TEAM)) {
+            if (robotInfo.type == RobotType.POLITICIAN) {
+                MapLocation enemyLocation = robotInfo.location;
+                for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
+
+                    MapLocation spawnLocation = enemyLocation.add(direction);
+                    if (!Cache.CURRENT_LOCATION.isAdjacentTo(spawnLocation)) continue;
+                    Direction spawnDirection = Cache.CURRENT_LOCATION.directionTo(spawnLocation);
+                    if (spawnScoutMuckraker(1, spawnDirection, harassEnemyLocation)) {
+                        return true;
+                    }
+
+                }
+            }
+        }
+
+        for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
+            if (spawnScoutMuckraker(1, direction, harassEnemyLocation)) {
+                return true;
+            }
+        }
+
+        for (Direction direction : Constants.ORDINAL_DIRECTIONS) {
+            if (spawnScoutMuckraker(1, direction, harassEnemyLocation)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     //Determine how close each wall is to the EC to guide slanderer spawn location
     private void updateWallDistance() {
         //for all 8 directions calculate distance
@@ -810,7 +849,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         boolean noWallsFound = false;
         if (Cache.MAP_TOP == 0 && Cache.MAP_RIGHT == 0 && Cache.MAP_BOTTOM == 0 && Cache.MAP_LEFT == 0) noWallsFound = true;
 
-        if (noWallsFound && hasFoundEnemies) {
+        if (noWallsFound && (hasFoundEnemies || Cache.NUM_ROUNDS_SINCE_SPAWN >= 25)) {
             //spawn away from enemies
             for (int i = 0; i < 8; ++i) {
                 int totalReward = -enemyDirectionCounts[i];

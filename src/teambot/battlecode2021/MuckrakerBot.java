@@ -17,6 +17,9 @@ public class MuckrakerBot implements RunnableBot {
 
     boolean listenToECInstruction;
 
+    private static int numDangerRounds;
+    private static boolean protectEC;
+
 
     public MuckrakerBot(RobotController controller) throws GameActionException {
         this.controller = controller;
@@ -28,6 +31,8 @@ public class MuckrakerBot implements RunnableBot {
 
         this.pathfinding = new Pathfinding();
         pathfinding.init(controller);
+
+        protectEC = true;
 
         random = new Random(controller.getID());
 
@@ -43,6 +48,12 @@ public class MuckrakerBot implements RunnableBot {
     public void turn() throws GameActionException {
 
         muckrakerComms();
+
+        if (protectEC && ECInDanger()) {
+            return;
+        }
+
+        numDangerRounds = 0;
 
         if (simpleAttack()) {
             return;
@@ -64,6 +75,44 @@ public class MuckrakerBot implements RunnableBot {
         }
 
         //Debug.printByteCode("turn() => END");
+    }
+
+    /* ALL MUCKRAKERS FIRST CHECK IF THE EC IS IN DANGER UPON SPAWN */
+    private boolean ECInDanger() throws GameActionException {
+        int totalEnemyNearby = 0;
+        if (Cache.myECLocation == null) return false;
+
+        for (RobotInfo info : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+            if (info.type == RobotType.POLITICIAN) {
+                totalEnemyNearby += Math.max(info.conviction - 10, 0);
+            }
+        }
+
+        int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation);
+
+        if (numDangerRounds >= 100 && distance == 2) {
+            protectEC = false;
+        }
+
+        if (controller.canSenseLocation(Cache.myECLocation) && distance <= 2) {
+            RobotInfo ECInfo = controller.senseRobotAtLocation(Cache.myECLocation);
+            int ECHealth = ECInfo.conviction;
+            if (ECHealth <= totalEnemyNearby + 20) {
+                if (distance == 2) {
+                    for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
+                        if (controller.canMove(direction)) {
+                            MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
+                            if (candidateLocation.distanceSquaredTo(Cache.myECLocation) == 1) {
+                                controller.move(direction);
+                            }
+                        }
+                    }
+                }
+                ++numDangerRounds;
+                return true;
+            }
+        }
+        return false;
     }
 
     private void muckrakerComms() throws GameActionException {

@@ -158,17 +158,17 @@ public strictfp class RobotPlayer {
         }
 
         /* Check if I am an attacking politician better off to avoid */
-        if (Cache.ROBOT_TYPE == RobotType.POLITICIAN && Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION) {
-            if (robotToAvoidHealth < Cache.CONVICTION) {
-                //I have more health than the best politician, so I will move out of the way
-                moveAwayFromLocation(robotToAvoid, ecLocationGuess);
-                return;
-            }
-            if (robotToAvoidHealth == Cache.CONVICTION && Cache.ID > robotToAvoidID) {
-                moveAwayFromLocation(robotToAvoid, ecLocationGuess);
-                return;
-            }
-        }
+//        if (Cache.ROBOT_TYPE == RobotType.POLITICIAN && Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION) {
+//            if (robotToAvoidHealth < Cache.CONVICTION) {
+//                //I have more health than the best politician, so I will move out of the way
+//                moveAwayFromLocation(robotToAvoid, ecLocationGuess);
+//                return;
+//            }
+//            if (robotToAvoidHealth == Cache.CONVICTION && Cache.ID > robotToAvoidID) {
+//                moveAwayFromLocation(robotToAvoid, ecLocationGuess);
+//                return;
+//            }
+//        }
     }
 
 
