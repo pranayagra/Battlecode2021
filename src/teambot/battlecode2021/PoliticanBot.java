@@ -626,8 +626,8 @@ public class PoliticanBot implements RunnableBot {
                 RobotInfo robotInfo = controller.senseRobotAtLocation(checkStrongPoliticianLocation);
                 if (robotInfo != null && robotInfo.type == RobotType.POLITICIAN && robotInfo.team == Cache.OUR_TEAM) {
                     int currentTotalDamage = Math.max(0, robotInfo.conviction - 10);
-                    int currentUnitsNear = controller.detectNearbyRobots(robotInfo.location, 1).length;
-                    Debug.printInformation("CTD: " + currentTotalDamage, currentUnitsNear);
+                    //NOTE -> this method below gets the robot itself as well, so subtract 1
+                    int currentUnitsNear = controller.detectNearbyRobots(robotInfo.location, 1).length - 1;
                     int damagePerUnit = currentTotalDamage / currentUnitsNear;
                     minDamage += damagePerUnit;
                     maxDamage += currentTotalDamage;
