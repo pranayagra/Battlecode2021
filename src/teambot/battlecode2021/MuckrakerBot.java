@@ -20,7 +20,6 @@ public class MuckrakerBot implements RunnableBot {
     private static int numDangerRounds;
     private static boolean protectEC;
 
-
     public MuckrakerBot(RobotController controller) throws GameActionException {
         this.controller = controller;
         init();
@@ -61,6 +60,10 @@ public class MuckrakerBot implements RunnableBot {
 
         if (simpleAttack()) {
             return;
+        }
+
+        if (Cache.EC_INFO_ACTION != CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION) {
+            setFlagToIndicateDangerToSlanderer();
         }
 
         switch (Cache.EC_INFO_ACTION) {
@@ -119,6 +122,55 @@ public class MuckrakerBot implements RunnableBot {
         }
         return false;
     }
+
+    // set flag if muckraker and slanderer in range
+    public void setFlagToIndicateDangerToSlanderer() throws GameActionException {
+
+        boolean slandererExists = false;
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+            if (robotInfo.type == RobotType.SLANDERER) {
+                slandererExists = true;
+                break;
+            }
+        }
+
+        /* Find closest muckraker to me */
+        MapLocation locationToWarnAbout = null;
+        int leastDistance = 9999;
+
+        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+            if (robotInfo.type == RobotType.MUCKRAKER) {
+                int candidateDistance = Cache.CURRENT_LOCATION.distanceSquaredTo(robotInfo.location);
+
+                if (leastDistance > candidateDistance) {
+                    leastDistance = candidateDistance;
+                    locationToWarnAbout = robotInfo.location;
+                }
+            }
+        }
+
+        int flag = CommunicationMovement.encodeMovement(true, true,
+                CommunicationMovement.MY_UNIT_TYPE.MU, CommunicationMovement.MOVEMENT_BOTS_DATA.NOOP,
+                CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
+
+        if (locationToWarnAbout != null && slandererExists) { //If I have both a muckraker and slanderer in range of me, alert danger by inDanger to slanderers!
+            Direction dangerDirection = Cache.myECLocation.directionTo(locationToWarnAbout);
+            flag = CommunicationMovement.encodeMovement(true, true,
+                    CommunicationMovement.MY_UNIT_TYPE.MU, CommunicationMovement.convert_DirectionInt_MovementBotsData(dangerDirection.ordinal()),
+                    CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, true, 0);
+            if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
+                controller.setFlag(flag);
+                Comms.hasSetFlag = true;
+            }
+        } else {
+            if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
+                controller.setFlag(flag);
+                Comms.hasSetFlag = false; // NOTE: FALSE HERE IS BY FUNCTION (not a bug). We want to change the flag only to change its state from the previous one. If it is set to a different state/overridden, that is OKAY
+            }
+        }
+    }
+
+
 
     private void muckrakerComms() throws GameActionException {
         // Check EC

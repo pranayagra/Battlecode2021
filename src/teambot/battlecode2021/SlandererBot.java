@@ -230,28 +230,27 @@ public class SlandererBot implements RunnableBot {
             }
         }
 
-        //TODO: THINK -> if a politican has both a muckraker and slanderer in range, then
+        //TODO: THINK -> if a politician or slanderer has both a muckraker and slanderer in range, then
         // 1) should this slanderer just RUN away opposite of the danger direction |OR| <-- I think this one
         // 2) should this slanderer SET its flag to danger (so neighboring slanderers will also run) and then RUN away towards EC?
         // 3) this slanderer SET its flag to danger (so neighboring slanderers will also run) and then RUN away from POLI direction
         int bestDirectionBasedOnPoliticianDangerIdx = -1;
         if (!foundEnemyMuckraker) {
             for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-                if (robotInfo.getType() == RobotType.POLITICIAN) {
+                if (robotInfo.getType() == RobotType.POLITICIAN || robotInfo.getType() == RobotType.MUCKRAKER) {
                     int encodedFlag = controller.getFlag(robotInfo.ID);
                     if (CommunicationMovement.decodeIsSchemaType(encodedFlag) &&
-                            CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.PO &&
                             CommunicationMovement.decodeIsDangerBit(encodedFlag)) {
-                        //A POLITICIAN WHO SAYS HE IS IN DANGER (muckraker nearby)
-                        CommunicationMovement.MOVEMENT_BOTS_DATA badArea = CommunicationMovement.decodeMyPreferredMovement(encodedFlag);
-                        int badIdx = CommunicationMovement.convert_MovementBotData_DirectionInt(badArea);
-                        Direction bestDirection = Constants.DIRECTIONS[badIdx].opposite();
-//                        //Debug.printInformation("BEST DIRECTION AWAY FROM POLI IS", bestDirection);
-                        bestDirectionBasedOnPoliticianDangerIdx = bestDirection.ordinal();
-//                        flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.SL,
-//                                CommunicationMovement.convert_DirectionInt_MovementBotsData(bestDirectionBasedOnPoliticianDangerIdx),
-//                                CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_TOWARDS_ME, false, true, 0);
-                        break;
+
+                        if (CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.PO
+                                || CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.MU) {
+                            //A POLITICIAN OR MUCKRAKER WHO SAYS HE IS IN DANGER (enemy muckraker nearby)
+                            CommunicationMovement.MOVEMENT_BOTS_DATA badArea = CommunicationMovement.decodeMyPreferredMovement(encodedFlag);
+                            int badIdx = CommunicationMovement.convert_MovementBotData_DirectionInt(badArea);
+                            Direction bestDirection = Constants.DIRECTIONS[badIdx].opposite();
+                            bestDirectionBasedOnPoliticianDangerIdx = bestDirection.ordinal();
+                            break;
+                        }
                     }
                 }
             }

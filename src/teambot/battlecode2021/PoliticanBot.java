@@ -4,7 +4,6 @@ import battlecode.common.*;
 import teambot.RunnableBot;
 import teambot.battlecode2021.util.*;
 
-import java.nio.file.Path;
 import java.util.Random;
 
 public class PoliticanBot implements RunnableBot {
@@ -14,7 +13,6 @@ public class PoliticanBot implements RunnableBot {
 
     private MapLocation[] muckrakerLocations;
     private int[] muckrakerDistances;
-    private int friendlySlanderersSize;
 
     private MapLocation[] slanderLocations;
     private int slanderSize;
@@ -86,7 +84,6 @@ public class PoliticanBot implements RunnableBot {
                 }
             }
         }
-
     }
 
     /* Behavior =>
@@ -542,6 +539,10 @@ public class PoliticanBot implements RunnableBot {
             score -= 1;
         }
 
+        if (ECCaptured) {
+            score += ECDamage / 4.0;
+        }
+
         Debug.printInformation("EMPOWER DISTANCE " + empowerDistanceSquared + ": [unitsKilled: " + unitsKilled + ", totalDamage: " + totalDamage + ", ECDamage: " + ECDamage + ", ECCaptured: " + ECCaptured + "] => SCORE ", score);
 
         return score;
@@ -552,6 +553,9 @@ public class PoliticanBot implements RunnableBot {
 
     //TODO: bug --> unit thinks for 1 turn that EC is still enemies -- maybe idk, not a huge deal I think tho?
 
+    private static double bestScore;
+    private static double scoreThreshold;
+    private static int bestExplosionRadius;
     public void attackECProtocol() throws GameActionException {
         int distanceFromECToAttack = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
 
@@ -564,9 +568,27 @@ public class PoliticanBot implements RunnableBot {
         } else if (distanceFromECToAttack <= 20) { //TODO: not sure if this number 20 is best value
             decreaseScoreThresholdAmount++;
             //TODO: first determine if exploding right now will capture EC -> if so do it
+
+            updateExplosionScores((decreaseScoreThresholdAmount - 3) / 2); //sets bestScore and returns best radius
+
+            if (bestScore >= 50000) {
+                if (controller.canEmpower(bestExplosionRadius)) {
+                    controller.empower(bestExplosionRadius);
+                    return;
+                }
+            }
+
             if (moveToEmptySpot()) return; //TODO: not complete method yet (may get stuck for long time) -- do it based on process too
-            if (explodeUselessRobots((decreaseScoreThresholdAmount - 3) / 2)) return;
+
+            if (bestScore >= scoreThreshold && bestScore >= 1) {
+                if (controller.canEmpower(bestExplosionRadius)) {
+                    controller.empower(bestExplosionRadius);
+                    return;
+                }
+            }
+
             if (circleEnemyEC()) return;
+
         } else {
             //TODO: move closer. If we have not gained distance in ~20 rounds AND ~4 potential moves, then we should consider exploding & decreasing the threshold as time goes on.
             // IF NOT STUCK => DO NOT EXPLODE
@@ -591,7 +613,15 @@ public class PoliticanBot implements RunnableBot {
             }
 
             /* We have tried moving towards the target but have not made any progress in the last 20 rounds AND 4 cooldown moves. Let us start trying to explode and slowly decrease the threshold */
-            if (isStuck && explodeUselessRobots((numRoundsTaken - 20) / 4 )) return;
+            if (isStuck) {
+                updateExplosionScores((numRoundsTaken - 20) / 4);
+                if (bestScore >= scoreThreshold && bestScore >= 1) {
+                    if (controller.canEmpower(bestExplosionRadius)) {
+                        controller.empower(bestExplosionRadius);
+                        return;
+                    }
+                }
+            }
 
             /* We did not cross the threshold on explosion. Just try moving again */
             pathfinding.move(Cache.EC_INFO_LOCATION); return;
@@ -610,7 +640,6 @@ public class PoliticanBot implements RunnableBot {
         //TODO (not as important): improvements --> add some type of cooldown checker (a simple implimentation will be to use the cooldown of the newly entered bot
         int minDamage = 0;
         int maxDamage = 0;
-        //minDamage bugged?
 
         for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
             MapLocation checkStrongPoliticianLocation = Cache.EC_INFO_LOCATION.add(direction);
@@ -721,7 +750,7 @@ public class PoliticanBot implements RunnableBot {
         // go towards it if and only if there is no better politician health-wise who can take it
         // (if tie take closest to attacking location by travelDistance, then squaredDistance, then ID)
 
-        //TODO: bug -- if they are all full by enemy units, do we return false?
+        //TODO: bug -- if they are all full by enemy units, do we return false? <-- I think so
         //TODO: bug -- make sure to still leave a gap of 3 from EC and me
 
         MapLocation closestSquare = null;
@@ -788,19 +817,20 @@ public class PoliticanBot implements RunnableBot {
     }
 
     private static int[] empowerValues = {1, 2, 4, 5, 8, 9};
-    public boolean explodeUselessRobots(int thresholdDecrease) throws GameActionException {
+    public void updateExplosionScores(int thresholdDecrease) throws GameActionException {
 
-        double scoreThreshold = 1 + (controller.getConviction() - 10) * 0.2;
+        bestScore = -1;
+
+        scoreThreshold = 1 + (controller.getConviction() - 10) * 0.2;
         scoreThreshold = scoreThreshold - Math.max(0, thresholdDecrease);
 
         //TODO: if score has reached negative, then just go defend or something
         if (scoreThreshold < 1) {
             defendType = true;
-            return false;
+            return;
         }
 
-        double bestScore = -1;
-        int empowerValue = -1;
+        bestExplosionRadius = -1;
 
         int bytecode = Clock.getBytecodeNum();
 
@@ -808,22 +838,23 @@ public class PoliticanBot implements RunnableBot {
             double currentScore = calculateScore(empowerValues[i]);
             if (currentScore > bestScore) {
                 bestScore = currentScore;
-                empowerValue = empowerValues[i];
+                bestExplosionRadius = empowerValues[i];
             }
         }
 
         Debug.printByteCode("attackECLocation() BYTECODE USED: " + (Clock.getBytecodeNum() - bytecode));
-        Debug.printInformation("[bestScore: " + bestScore + ", empowerValue: " + empowerValue + ", scoreThreshold: " + scoreThreshold + "]", " BEST EXPLOSION ");
+        Debug.printInformation("[bestScore: " + bestScore + ", bestExplosionRadius: " + bestExplosionRadius + ", scoreThreshold: " + scoreThreshold + "]", " BEST EXPLOSION ");
 
-        if (bestScore >= scoreThreshold) {
-            Debug.printInformation("EXPLODING WITH " + empowerValue + " SINCE (bestScore) " + bestScore + " >= (scoreThreshold) " + scoreThreshold, Clock.getBytecodesLeft());
-            if (controller.canEmpower(empowerValue)) {
-                controller.empower(empowerValue);
-                return true;
-            }
-        }
+//        if (bestScore >= scoreThreshold) {
+//            Debug.printInformation("EXPLODING WITH " + bestExplosionRadius + " SINCE (bestScore) " + bestScore + " >= (scoreThreshold) " + scoreThreshold, Clock.getBytecodesLeft());
+//
+//
+//            if (controller.canEmpower(empowerValue)) {
+//                controller.empower(empowerValue);
+//                return empowerValue;
+//            }
+//        }
 
-        return false;
     }
 
     public boolean circleEnemyEC() throws GameActionException {
@@ -893,207 +924,9 @@ public class PoliticanBot implements RunnableBot {
     /* ATTACKING CODE 1/24 */
 
 
-    public boolean attackECLocation() throws GameActionException {
-
-        int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
-
-         // only consider exploding at a good time IF we are stuck
-
-        //IF MY DISTANCE IS 1, I AM A PRIMARY EC ATTACK BOT
-        //IF MY DISTANCE IS GREATER, I WANT TO CLEAR THE HERD
-        //ESSENTIALLY => WE HAVE TWO VALUES => KILLING ENEMY DAMAGE WITH ANY RADIUS + IF DISTANCE=1, THEN EC ATTACK
-        //  WE CALCULATE THE TOTAL EC ATTACK => AND DETERMINE IF IT'S WORTH
-        //  EACH OTHER UNIT
-
-        if (bestDistanceOnAttack > distance) {
-            bestDistanceOnAttack = distance;
-            numActionTurnsTaken = 0;
-            numRoundsTaken = 0;
-        } else {
-            numRoundsTaken++;
-            if (controller.isReady()) numActionTurnsTaken++;
-        }
-
-        boolean isStuck = false;
-        if (numRoundsTaken >= 20 && numActionTurnsTaken >= 5) {
-            isStuck = true;
-        }
-
-        if (!isStuck && distance >= 20) {
-            pathfinding.move(Cache.EC_INFO_LOCATION);
-            return true;
-        }
-
-        double scoreThreshold = 1 + (controller.getConviction() - 10) * 0.2;
-
-        if (isStuck) {
-            scoreThreshold = scoreThreshold - (numActionTurnsTaken - 20);
-        }
-
-        //If I am not stuck and >= 20 distance, NEVER explode. just move closer to target.
-        //If I am not stuck and < 20 distance, you can explode if necessary
-
-        //If I am stuck and >= 20 distance, begin limiting the requirement on explosion
-        //If I am stuck and < 20 distance, begin limiting the requirement on explosion
-        //If I am stuck, begin limiting the requirment on explosion
-
-        //When I feel like I am stuck, we should limit the requirement on explosion -->
-
-        double bestScore = -1;
-        int empowerValue = -1;
-
-        int bytecode = Clock.getBytecodeNum();
-
-        for (int i = 0; i < empowerValues.length; ++i) {
-
-            double currentScore = calculateScore(empowerValues[i]);
-            if (currentScore > bestScore) {
-                bestScore = currentScore;
-                empowerValue = empowerValues[i];
-            }
-        }
-
-        Debug.printByteCode("attackECLocation() BYTECODE USED: " + (Clock.getBytecodeNum() - bytecode));
-        Debug.printInformation("[bestScore: " + bestScore + ", empowerValue: " + empowerValue + ", scoreThreshold: " + scoreThreshold + "]", " BEST EXPLOSION ");
-
-        if (bestScore >= scoreThreshold) {
-            Debug.printInformation("EXPLODING WITH " + empowerValue + " SINCE (bestScore) " + bestScore + " >= (scoreThreshold) " + scoreThreshold, Clock.getBytecodesLeft());
-            if (controller.canEmpower(empowerValue)) {
-                controller.empower(empowerValue);
-                return true;
-            }
-        } else {
-            if (distance > 1) {
-                pathfinding.move(Cache.EC_INFO_LOCATION);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    // floor(damage/#units) * buff -->
-
-    //Assumptions: neutralEC is found by a scout and communicated to the EC
-    //Bugs:
-    //  friendly units nearby our base may move around as a result of the flag. We should have a "no matter what I will not move" flag to avoid this danger situation (especially with wall units) and only set the flag when once
-    //  What if two ECs close together? Then nearbyRobots.length == 1 is always false (I think this condition is too risky regardless of this situation)
-
-    //TODO: I think protocol should be ->
-    // EC spawns politician (maybe let's say xx2 influence politicians are type neutral EC explode) and let's this bot know the location of the neutralEC
-    // Then this bot pathfinds to the location, waits until it is somewhat close, sets its flag to attacking, and then explodes based on condition (hard part)
-
-    // Enhancements:
-    //      the "actionRadius" is not always the most preferred explosion radius. Rather, smaller is usually better here
-    //      the nearbyRobots.length == 1 is too strict (we cannot force enemy robots to leave). Rather, the politican should be able to the best location
-    //      we only explode if it is a 1-shot (with some extra for health). If it is no longer a 1-shot, this politican is repurposed.
-    //      check for enemy politicians?
-    //      We may want a way to clear enemies that just surround the neutral EC with weak targets but do not capture
-    //TODO: still try to optimize the location spawned (get as close as possible and then explode)
-    public boolean moveAndDestroyEC() throws GameActionException {
-
-        int actionRadius = Cache.ROBOT_TYPE.actionRadiusSquared;
-        boolean ECExists = false;
-        int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
-
-        Debug.printInformation("Moving towards EC", distance);
-
-        if (bestDistanceOnAttack > distance) {
-            bestDistanceOnAttack = distance;
-            numActionTurnsTaken = 0;
-            numRoundsTaken = 0;
-        }
-
-        if (numRoundsTaken >= 20 && numActionTurnsTaken >= 5) {
-            //TODO: if distance has not gotten better, we need to mine our way through
-            if (controller.senseNearbyRobots(1, Cache.OPPONENT_TEAM).length > 0 && controller.canEmpower(1)) {
-                controller.empower(1);
-                return true;
-            }
-        }
-
-        if (distance > actionRadius - 2) {
-            if (controller.isReady()) {
-                numActionTurnsTaken++;
-            }
-            numRoundsTaken++;
-            pathfinding.move(Cache.EC_INFO_LOCATION);
-            return true;
-        }
-
-        RobotInfo ECInfo = controller.senseRobotAtLocation(Cache.EC_INFO_LOCATION);
-        if (ECInfo.team.equals(Cache.OUR_TEAM)) {
-            return false;
-        }
-
-        int ourTeamSize = controller.senseNearbyRobots(distance, Cache.OUR_TEAM).length;
-
-        // GET CLOSER TO OPPONENT (move away from enemy units). In a tie, move closer to EC
-        int bestSize = controller.senseNearbyRobots(distance, Cache.OPPONENT_TEAM).length;
-        MapLocation getCloser = null;
-        for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
-            MapLocation candidateLocation = Cache.EC_INFO_LOCATION.add(direction);
-            if (controller.canSenseLocation(candidateLocation) && !controller.isLocationOccupied(candidateLocation)) {
-                int trySize = controller.senseNearbyRobots(candidateLocation, 1, Cache.OPPONENT_TEAM).length;
-                if (trySize < bestSize || (ourTeamSize > 0 && distance > 1)) {
-                    bestSize = trySize;
-                    getCloser = candidateLocation;
-                }
-            }
-        }
-
-        if (getCloser != null && triedCloserCnt <= 15) {
-            triedCloserCnt++;
-            pathfinding.move(getCloser);
-            return true;
-        }
-
-        // WAIT FOR OUR TEAM TO MOVE AWAY
-
-        if (ourTeamSize > 0 && triedCloserCnt <= 10) {
-            ++triedCloserCnt;
-            return false;
-        }
-
-        ECExists = true;
-
-        if (controller.getConviction() <= HEALTH_DEFEND_UNIT) {
-            if (controller.canEmpower(RobotType.POLITICIAN.actionRadiusSquared)) {
-                controller.empower(RobotType.POLITICIAN.actionRadiusSquared);
-                return true;
-            }
-        } else if (controller.canEmpower(distance)) {
-            controller.empower(distance);
-            return true;
-        }
-
-        return true;
-    }
-
-    //chasing flag -> flagType | robotID
-    // has some bugs! Pranay's Method...
-    // enhancements:
-    //      stick to a certain distance away from slanderers or better yet muckrakers (outside the wall) instead of random movement
-    //      only focus on enemy politicians maybe? since muckrakers can't get through the wall anyways... risky
-    //      explosion radius
-    //      sometimes we move which causes us to not be able to cast ability until later
-    //      there are some bugs with not exploding at the right time, or multiple bots exloding at the same time
     //
+    // set flag if muckraker and slanderer in range
     public void setFlagToIndicateDangerToSlanderer() throws GameActionException {
-
-        friendlySlanderersSize = 0;
-
-        for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-            if (robotInfo.type == RobotType.POLITICIAN) {
-                if (controller.canGetFlag(robotInfo.ID)) {
-                    int encodedFlag = controller.getFlag(robotInfo.ID);
-                    if (CommunicationMovement.decodeIsSchemaType(encodedFlag) && CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.SL) {
-                        // This is a slanderer on our team...
-                        friendlySlanderersSize++;
-                    }
-                }
-            }
-        }
 
         MapLocation locationToWarnAbout = null;
         int leastDistance = 9999;
@@ -1112,7 +945,7 @@ public class PoliticanBot implements RunnableBot {
                 CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.NOOP,
                 CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
 
-        if (locationToWarnAbout != null && friendlySlanderersSize > 0) { //If I have both a muckraker and slanderer in range of me, alert danger by inDanger to slanderers!
+        if (locationToWarnAbout != null && slanderSize > 0) { //If I have both a muckraker and slanderer in range of me, alert danger by inDanger to slanderers!
             Direction dangerDirection = Cache.myECLocation.directionTo(locationToWarnAbout);
             flag = CommunicationMovement.encodeMovement(true, true,
                     CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.convert_DirectionInt_MovementBotsData(dangerDirection.ordinal()),
@@ -1127,8 +960,6 @@ public class PoliticanBot implements RunnableBot {
                 Comms.hasSetFlag = false; // NOTE: FALSE HERE IS BY FUNCTION (not a bug). We want to change the flag only to change its state from the previous one. If it is set to a different state/overridden, that is OKAY
             }
         }
-
-
     }
 
 

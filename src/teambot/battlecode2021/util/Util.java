@@ -1,12 +1,11 @@
 package teambot.battlecode2021.util;
 
-import battlecode.common.Direction;
-import battlecode.common.GameActionException;
-import battlecode.common.MapLocation;
-import battlecode.common.RobotController;
+import battlecode.common.*;
 
 public class Util {
     private static RobotController controller;
+
+    private static boolean ECHasScoutedAlready = false;
 
     public static void init(RobotController controller) {
         Util.controller = controller;
@@ -20,9 +19,17 @@ public class Util {
     public static void postLoop() throws GameActionException {
         // Scouting
         Cache.CURRENT_LOCATION = controller.getLocation(); //update location to avoid cache bugs in scouting
-        Scout.scoutMapEdges();
-        Scout.scoutECs();
-        Scout.scoutEnemies();
+
+        if (!ECHasScoutedAlready) {
+            Scout.scoutMapEdges();
+            Scout.scoutECs();
+            Scout.scoutEnemies();
+        }
+
+        if (Cache.ROBOT_TYPE == RobotType.ENLIGHTENMENT_CENTER) {
+            ECHasScoutedAlready = true;
+        }
+
         Comms.loop();
     }
 
