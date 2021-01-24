@@ -79,6 +79,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     /* Spawning helpers */
     private static int timeSinceLastSlandererSpawn = 999999;
     private static int timeSinceLastDefendingPoliticianSpawn = 999999;
+    private static int timeSinceLastSeenMuckraker = 999999;
 
     /* Do we have one guide broadcasting information to newly created units */
     private static int GUIDE_ID = 0;
@@ -172,9 +173,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
             if (controller.getRoundNum() - SLANDERER_IDs.getFrontCreationTime() >= 300) { //need to retire slanderer as 1) it got killed or 2) converted
                 int robotID = SLANDERER_IDs.getFrontID();
                 SLANDERER_IDs.removeFront();
-                Debug.printInformation("SLANDERER " + robotID + " MIGHT BE POLITICIAN", " ??");
+                //Debug.printInformation("SLANDERER " + robotID + " MIGHT BE POLITICIAN", " ??");
                 if (controller.canGetFlag(robotID)) {
-                    Debug.printInformation("SLANDERER " + robotID + " IS A POLITICIAN", " VALID");
+                    //Debug.printInformation("SLANDERER " + robotID + " IS A POLITICIAN", " VALID");
                     processRobots.addItem(robotID, FastProcessIDs.TYPE.PASSIVE_ATTACKING_POLITICIAN, 0);
                 }
             }
@@ -460,6 +461,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
             if (info.type == RobotType.POLITICIAN) {
                 totalEnemyNearby += Math.max(info.conviction - 10, 0);
             }
+            else if (info.type == RobotType.MUCKRAKER) {
+                timeSinceLastSeenMuckraker = 0;
+            }
         }
 
         /* If the EC senses more attack than health, we need to spawn defensive muckrakers that absorb the hit. This */
@@ -468,9 +472,11 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
 
         int slandererInfluence = Spawning.getSpawnInfluence(Math.max(Cache.INFLUENCE*0.5,Cache.INFLUENCE-totalEnemyNearby*0.5));
-
+        
+        // Update state
         timeSinceLastSlandererSpawn += 1;
         timeSinceLastDefendingPoliticianSpawn += 1;
+        timeSinceLastSeenMuckraker += 1;
 
         boolean slandererExists = false;
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
@@ -500,7 +506,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //ATTACK NEUTRAL EC
         attackingLocationFlagSet = false;
         int totalCurrentDamageOnMap = processRobots.getPassivePoliticianAttackDamage();
-        Debug.printInformation(" DAMAGE ON MAP IS " + totalCurrentDamageOnMap, " CHECK? ");
+        //Debug.printInformation(" DAMAGE ON MAP IS " + totalCurrentDamageOnMap, " CHECK? ");
         //TODO (1/21): calculate total damage capable of other ECs too --?
 
         if (attackNeutralLocationHealth != 9999999) {
@@ -552,8 +558,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
 
         //Debug.printInformation("SAFE DIRECTION " + safeDirection + " and DANGER DIRECTION " + dangerDirection, " INFO");
+        /*
         int slandererSpawn = random.nextInt(10) + 1; //1-10
-
         //NOTE: on spawn both safeDirection and dangerDirection will be null, so we  will inheritately spawn scouts first
         if (safeDirection != null && slandererSpawn <= 8 && SLANDERER_IDs.getSize() <= 12 && slandererInfluence > 0 && timeSinceLastSlandererSpawn > 6) { //80% of time spawn slanderer in safe direction
             spawnLatticeSlanderer(slandererInfluence, safeDirection);
@@ -564,6 +570,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dangerDirection,3),null);
             return;
         }
+        */
         
         // Guide which points map edges to new scouts
         if (!controller.canGetFlag(GUIDE_ID)) {
@@ -571,7 +578,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
             return;
         }
 
+        
         int randomInt = random.nextInt(10) + 1;
+        /*
         if (randomInt <= 9 && SCOUT_MUCKRAKER_SZ < 8) {
             MapLocation targetLocation = Cache.START_LOCATION.translate(SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].x, SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].y);
             Direction preferredDirection = Cache.START_LOCATION.directionTo(targetLocation);
@@ -610,25 +619,40 @@ public class EnlightenmentCenterBot implements RunnableBot {
             spawnScoutMuckraker(1, randomValidDirection(), harassEnemyLocation);
             return;
         }
+        */
 
-        /*
-        if (safeDirection != null && slandererInfluence > 0 && timeSinceLastSlandererSpawn > 10) {
-            Direction dir = safeDirection;
-            spawnLatticeSlanderer(slandererInfluence, safeDirection);
+        System.out.println((timeSinceLastSeenMuckraker > 2 && slandererInfluence > 0 && timeSinceLastSlandererSpawn > 6));
+        if (SCOUT_MUCKRAKER_SZ < 8) {
+            MapLocation targetLocation = Cache.START_LOCATION.translate(SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].x, SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].y);
+            Direction preferredDirection = Cache.START_LOCATION.directionTo(targetLocation);
+            if (spawnScoutMuckraker(1, toBuildDirection(preferredDirection,4), targetLocation)) {
+                SCOUT_LOCATIONS_CURRENT = (++SCOUT_LOCATIONS_CURRENT) % SCOUT_LOCATIONS.length;
+                return;
+                //Debug.printInformation("Spawned Scout => ", targetLocation);
+            }
+        }
+        else if (timeSinceLastSeenMuckraker > 2 && slandererInfluence > 0 && timeSinceLastSlandererSpawn > 8) {
+            Direction dir = randomValidDirection();
+            if (safeDirection != null) dir = safeDirection;
+            spawnLatticeSlanderer(slandererInfluence, dir);
             return;
         }
-        else if (1000/Cache.INFLUENCE - timeSinceLastDefendingPoliticianSpawn < 0 && randomInt < 6) {
+        else if (
+            Cache.INFLUENCE > 20 &&
+            ((randomInt < 4 && POLITICIAN_DEFENDING_SLANDERER_SZ < SLANDERER_IDs.getSize()) ||
+            (slandererExists && dangerDirection != null && timeSinceLastSeenMuckraker < 10 && randomInt < 8 && Cache.INFLUENCE > 100) ||
+            (timeSinceLastSeenMuckraker == 0 && randomInt < 2) || 
+            (Cache.INFLUENCE > 1000 && randomInt < 5))
+        ) {
             int influenceSpend = PoliticanBot.HEALTH_DEFEND_UNIT;
             Direction dir = randomValidDirection();
             if (dangerDirection != null) dir = dangerDirection;
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 3), null);
             return;
         }
-        else {
-            spawnScoutMuckraker(1, randomValidDirection(), harassEnemyLocation);
-            return;
-        }
-        */
+        
+        spawnScoutMuckraker(1, randomValidDirection(), harassEnemyLocation);
+        
     }
 
     // ================================================================================ //
@@ -677,7 +701,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private boolean setFlagForSpawnedUnit(Direction direction, CommunicationECSpawnFlag.ACTION actionType, CommunicationECSpawnFlag.SAFE_QUADRANT safeQuadrant, MapLocation locationData) throws GameActionException {
         int flag = CommunicationECSpawnFlag.encodeSpawnInfo(direction, actionType, safeQuadrant, locationData);
         if (!Comms.canScheduleFlag(controller.getRoundNum() + 1)) {
-            Debug.printInformation("Warning - Potential Schedule Conflict at turn", controller.getRoundNum()+1);
+            //Debug.printInformation("Warning - Potential Schedule Conflict at turn", controller.getRoundNum()+1);
             return false;
         }
         if (Comms.scheduleFlag(controller.getRoundNum() + 1, flag)) {
@@ -739,9 +763,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
     }
 
     private void spawnLatticeSlanderer(int influence, Direction direction) throws GameActionException {
-        //TODO: should spawn slanderer, which default behavior is to build lattice
-        timeSinceLastSlandererSpawn = 0;
+        direction = toBuildDirection(direction, 4);
         if (direction != null && controller.canBuildRobot(RobotType.SLANDERER, direction, influence)) {
+            timeSinceLastSlandererSpawn = 0;
             controller.buildRobot(RobotType.SLANDERER, direction, influence);
             numSlanderersWallDirectionSpawned[direction.ordinal()]++;
             SLANDERER_IDs.push(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID, controller.getRoundNum());
@@ -750,11 +774,12 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
     private void spawnDefendingPolitician(int influence, Direction direction, MapLocation location) throws GameActionException {
         //TODO: should defend slanderers outside the muckrakers wall
-        System.out.println("0: " + influence + ", " + direction + ", " + location);
-        timeSinceLastDefendingPoliticianSpawn = 0;
+        //System.out.println("0: " + influence + ", " + direction + ", " + location);
         //System.out.println(Clock.getBytecodesLeft());
         if (location == null) location = spawnLocationNull();
+        direction = toBuildDirection(direction, 3);
         if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence) && setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location)) {
+            timeSinceLastDefendingPoliticianSpawn = 0;
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
             /* DO NOT KEEP TRACK OF DEFENDING POLITICIANS FOR NOW */
         }
@@ -764,10 +789,10 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private boolean spawnAttackingPolitician(int influence, Direction direction, MapLocation location, Team team) throws GameActionException {
         //TODO: should only be called if the politician is meant to attack some base -> need to create politician with enough influence, set my EC flag to the location + attacking poli
         //Assumption: politician upon creation should read EC flag and know it's purpose in life. It can determine what to do then
-        Debug.printInformation("TRYING TO CREATE " + influence + " POLI AT " + direction + " ATTACKING LOCATION " + location + " ??", " TRYME");
+        //Debug.printInformation("TRYING TO CREATE " + influence + " POLI AT " + direction + " ATTACKING LOCATION " + location + " ??", " TRYME");
         if (location == null) location = spawnLocationNull();
         if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
-            Debug.printInformation("CREATED " + influence + " POLI AT " + direction + " ATTACKING LOCATION " + location, " VALID");
+            //Debug.printInformation("CREATED " + influence + " POLI AT " + direction + " ATTACKING LOCATION " + location, " VALID");
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
             setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
             int robotID = controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID;
