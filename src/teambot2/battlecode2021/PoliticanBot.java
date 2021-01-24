@@ -1,8 +1,8 @@
-package teambot.battlecode2021;
+package teambot2.battlecode2021;
 
 import battlecode.common.*;
-import teambot.RunnableBot;
-import teambot.battlecode2021.util.*;
+import teambot2.RunnableBot;
+import teambot2.battlecode2021.util.*;
 
 import java.nio.file.Path;
 import java.util.Random;

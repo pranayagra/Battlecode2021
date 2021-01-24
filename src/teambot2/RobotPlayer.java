@@ -1,10 +1,10 @@
-package teambot;
+package teambot2;
 import battlecode.common.*;
-import teambot.battlecode2021.EnlightenmentCenterBot;
-import teambot.battlecode2021.MuckrakerBot;
-import teambot.battlecode2021.PoliticanBot;
-import teambot.battlecode2021.SlandererBot;
-import teambot.battlecode2021.util.*;
+import teambot2.battlecode2021.EnlightenmentCenterBot;
+import teambot2.battlecode2021.MuckrakerBot;
+import teambot2.battlecode2021.PoliticanBot;
+import teambot2.battlecode2021.SlandererBot;
+import teambot2.battlecode2021.util.*;
 
 public strictfp class RobotPlayer {
     public static RobotController controller;

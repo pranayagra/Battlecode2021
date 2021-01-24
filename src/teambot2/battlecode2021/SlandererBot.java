@@ -1,8 +1,8 @@
-package teambot.battlecode2021;
+package teambot2.battlecode2021;
 
 import battlecode.common.*;
-import teambot.*;
-import teambot.battlecode2021.util.*;
+import teambot2.*;
+import teambot2.battlecode2021.util.*;
 
 public class SlandererBot implements RunnableBot {
     private RobotController controller;
