@@ -489,11 +489,11 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        if (numUnits == 0) return 0;
+        if (numUnits == 0) return -9999;
 
         int damage = (int) ((Math.max(0, controller.getConviction() - 10) / numUnits) * controller.getEmpowerFactor(Cache.OUR_TEAM,0));
 
-        if (damage == 0) return -1;
+        if (damage == 0) return -9999;
 
         int unitsKilled = 0;
         int totalDamage = 0;
@@ -611,6 +611,7 @@ public class PoliticanBot implements RunnableBot {
         //TODO (not as important): improvements --> add some type of cooldown checker (a simple implimentation will be to use the cooldown of the newly entered bot
         int minDamage = 0;
         int maxDamage = 0;
+        //minDamage bugged?
 
         for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
             MapLocation checkStrongPoliticianLocation = Cache.EC_INFO_LOCATION.add(direction);
@@ -626,6 +627,7 @@ public class PoliticanBot implements RunnableBot {
                 if (robotInfo != null && robotInfo.type == RobotType.POLITICIAN && robotInfo.team == Cache.OUR_TEAM) {
                     int currentTotalDamage = Math.max(0, robotInfo.conviction - 10);
                     int currentUnitsNear = controller.detectNearbyRobots(robotInfo.location, 1).length;
+                    Debug.printInformation("CTD: " + currentTotalDamage, currentUnitsNear);
                     int damagePerUnit = currentTotalDamage / currentUnitsNear;
                     minDamage += damagePerUnit;
                     maxDamage += currentTotalDamage;
@@ -682,7 +684,7 @@ public class PoliticanBot implements RunnableBot {
                 if (controller.canSenseLocation(candidateLocation)) {
                     //exists
                     RobotInfo candidateRobot = controller.senseRobotAtLocation(candidateLocation);
-                    int distanceCandidateToStrongest = candidateLocation.distanceSquaredTo(candidateRobot.location);
+                    int distanceCandidateToStrongest = candidateLocation.distanceSquaredTo(candidateLocation);
 
                     if (distanceCandidateToStrongest <= RobotType.POLITICIAN.sensorRadiusSquared) {
 
@@ -721,6 +723,7 @@ public class PoliticanBot implements RunnableBot {
         // (if tie take closest to attacking location by travelDistance, then squaredDistance, then ID)
 
         //TODO: bug -- if they are all full by enemy units, do we return false?
+        //TODO: bug -- make sure to still leave a gap of 3 from EC and me
 
         MapLocation closestSquare = null;
         int distance = 9999999;
@@ -776,6 +779,8 @@ public class PoliticanBot implements RunnableBot {
 
         if (closestSquare != null && moveTowardsEmptySpot) {
             //TODO (IMP): add some stuck parameter in case the closestSquare is inaccessible that returns false
+            //TODO: move() is bugged sometimes where we go between the two same places?
+            //TODO: extend distance mucks from politicians
             Pathfinding.move(closestSquare);
             return true;
         }
@@ -788,6 +793,12 @@ public class PoliticanBot implements RunnableBot {
 
         double scoreThreshold = 1 + (controller.getConviction() - 10) * 0.2;
         scoreThreshold = scoreThreshold - Math.max(0, thresholdDecrease);
+
+        //TODO: if score has reached negative, then just go defend or something
+        if (scoreThreshold < 1) {
+            defendType = true;
+            return false;
+        }
 
         double bestScore = -1;
         int empowerValue = -1;

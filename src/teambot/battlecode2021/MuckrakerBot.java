@@ -211,7 +211,7 @@ public class MuckrakerBot implements RunnableBot {
     }
     
     private boolean scoutMovement() throws GameActionException {
-        controller.setIndicatorLine(Cache.CURRENT_LOCATION, scoutTarget, 255, 0, 0);
+//        controller.setIndicatorLine(Cache.CURRENT_LOCATION, scoutTarget, 255, 0, 0);
         if (!controller.isReady()) {
             return false;
         }
@@ -270,7 +270,7 @@ public class MuckrakerBot implements RunnableBot {
     // TODO: Send out closest enemy EC location as well
 
     private void GuideRoutine() throws GameActionException {
-        controller.setIndicatorDot(Cache.CURRENT_LOCATION, 0,0,255);
+//        controller.setIndicatorDot(Cache.CURRENT_LOCATION, 0,0,255);
         //Debug.printInformation("I'm a guide with", controller.getFlag(controller.getID()));
         // Move away from EC if too close to prevent impact to spawning
         if (Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.myECLocation) <= 2) {
@@ -286,28 +286,28 @@ public class MuckrakerBot implements RunnableBot {
             int flag = CommunicationLocation.encodeLOCATION(
                 false, true, CommunicationLocation.FLAG_LOCATION_TYPES.NORTH_MAP_LOCATION, 
                 new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_TOP));
-            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_TOP),255,0,0);
+//            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_TOP),255,0,0);
             Comms.scheduleFlag(controller.getRoundNum(),flag);
         }
         else if (Cache.MAP_RIGHT != 0 && round % 4 == 1) {
             int flag = CommunicationLocation.encodeLOCATION(
                 false, true, CommunicationLocation.FLAG_LOCATION_TYPES.EAST_MAP_LOCATION, 
                 new MapLocation(Cache.MAP_RIGHT,Cache.CURRENT_LOCATION.y));
-            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.MAP_RIGHT,Cache.CURRENT_LOCATION.y),255,0,0);
+//            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.MAP_RIGHT,Cache.CURRENT_LOCATION.y),255,0,0);
             Comms.scheduleFlag(controller.getRoundNum(),flag);
         }
         else if (Cache.MAP_BOTTOM != 0 && round % 4 == 2) {
             int flag = CommunicationLocation.encodeLOCATION(
                 false, true, CommunicationLocation.FLAG_LOCATION_TYPES.SOUTH_MAP_LOCATION, 
                 new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_BOTTOM));
-            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_BOTTOM),255,0,0);
+//            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.CURRENT_LOCATION.x,Cache.MAP_BOTTOM),255,0,0);
             Comms.scheduleFlag(controller.getRoundNum(),flag);
         }
         else if (Cache.MAP_LEFT != 0 && round % 4 == 3) {
             int flag = CommunicationLocation.encodeLOCATION(
                 false, true, CommunicationLocation.FLAG_LOCATION_TYPES.WEST_MAP_LOCATION, 
                 new MapLocation(Cache.MAP_LEFT,Cache.CURRENT_LOCATION.y));
-            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.MAP_LEFT,Cache.CURRENT_LOCATION.y),255,0,0);
+//            controller.setIndicatorLine(Cache.CURRENT_LOCATION,new MapLocation(Cache.MAP_LEFT,Cache.CURRENT_LOCATION.y),255,0,0);
             Comms.scheduleFlag(controller.getRoundNum(),flag);
         }
     }
