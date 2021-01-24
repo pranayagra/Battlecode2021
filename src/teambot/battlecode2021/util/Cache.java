@@ -48,7 +48,6 @@ public class Cache {
 
     public static MapLocation START_LOCATION;
 
-
     public static CommunicationECSpawnFlag.ACTION EC_INFO_ACTION;
     public static MapLocation EC_INFO_LOCATION;
     public static Direction EC_INFO_DIRECTION;

@@ -47,6 +47,10 @@ public class MuckrakerBot implements RunnableBot {
     @Override
     public void turn() throws GameActionException {
 
+        if (Cache.CONVICTION > 1) {
+            controller.setIndicatorDot(Cache.CURRENT_LOCATION, 255, 255, 255);
+        }
+
         muckrakerComms();
 
         if (protectEC && ECInDanger()) {
@@ -211,7 +215,7 @@ public class MuckrakerBot implements RunnableBot {
     }
     
     private boolean scoutMovement() throws GameActionException {
-//        controller.setIndicatorLine(Cache.CURRENT_LOCATION, scoutTarget, 255, 0, 0);
+        //controller.setIndicatorLine(Cache.CURRENT_LOCATION, scoutTarget, 255, 0, 0);
         if (!controller.isReady()) {
             return false;
         }

@@ -80,6 +80,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int timeSinceLastSlandererSpawn = 999999;
     private static int timeSinceLastDefendingPoliticianSpawn = 999999;
     private static int timeSinceLastSeenMuckraker = 999999;
+    private static int timeSinceLastLargeMuckraker = -100;
 
     /* Do we have one guide broadcasting information to newly created units */
     private static int GUIDE_ID = 0;
@@ -433,8 +434,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
             //if (ECInfo.team.equals(Cache.OPPONENT_TEAM)) {
             if (ECInfo.team == Cache.OPPONENT_TEAM) {
                 Debug.printByteCode("Enemy EC found " + location);
-                if (harassEnemyLocation == null || harassEnemyLocation.distanceSquaredTo(Cache.CURRENT_LOCATION) >
-                    Cache.CURRENT_LOCATION.distanceSquaredTo(location)) {
+                if (harassEnemyLocation == null || (harassEnemyLocation.distanceSquaredTo(Cache.CURRENT_LOCATION) >
+                    Cache.CURRENT_LOCATION.distanceSquaredTo(location) && (random.nextBoolean() || controller.getRoundNum()%70 == 0))) {
                     harassEnemyLocation = location;
                 }
             }
@@ -478,6 +479,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         timeSinceLastSlandererSpawn += 1;
         timeSinceLastDefendingPoliticianSpawn += 1;
         timeSinceLastSeenMuckraker += 1;
+        timeSinceLastLargeMuckraker += 1;
 
         boolean slandererExists = false;
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
@@ -652,6 +654,13 @@ public class EnlightenmentCenterBot implements RunnableBot {
             return;
         }
         
+        if (timeSinceLastLargeMuckraker > 100 && Cache.INFLUENCE > 300) {
+            if (spawnScoutMuckraker(100, randomValidDirection(), harassEnemyLocation)) {
+                timeSinceLastLargeMuckraker = 0;
+                return;
+            }
+        }
+
         spawnScoutMuckraker(1, randomValidDirection(), harassEnemyLocation);
         
     }
@@ -886,7 +895,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             }
         } else if (!noWallsFound) { //found walls
             for (int i = 0; i < 8; ++i) {
-                int totalReward = wallDirectionReward[i] - numSlanderersWallDirectionSpawned[i] - enemyDirectionCounts[i];
+                int totalReward = wallDirectionReward[i] - numSlanderersWallDirectionSpawned[i] - enemyDirectionCounts[i] * 3;
                 if (bestReward < totalReward && wallDirectionReward[i] >= 5 && enemyDirectionCounts[i] <= Cache.NUM_ROUNDS_SINCE_SPAWN / 2) {
                     bestReward = totalReward;
                     bestWallDir = i;

@@ -80,6 +80,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int timeSinceLastSlandererSpawn = 999999;
     private static int timeSinceLastDefendingPoliticianSpawn = 999999;
     private static int timeSinceLastSeenMuckraker = 999999;
+    private static int timeSinceLastLargeMuckraker = -50;
 
     /* Do we have one guide broadcasting information to newly created units */
     private static int GUIDE_ID = 0;
@@ -478,6 +479,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         timeSinceLastSlandererSpawn += 1;
         timeSinceLastDefendingPoliticianSpawn += 1;
         timeSinceLastSeenMuckraker += 1;
+        timeSinceLastLargeMuckraker += 1;
 
         boolean slandererExists = false;
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
