@@ -1,8 +1,8 @@
-package teambot.battlecode2021;
+package teambot2.battlecode2021;
 
 import battlecode.common.*;
-import teambot.RunnableBot;
-import teambot.battlecode2021.util.*;
+import teambot2.RunnableBot;
+import teambot2.battlecode2021.util.*;
 
 import java.nio.file.Path;
 import java.util.Random;
@@ -625,8 +625,8 @@ public class PoliticanBot implements RunnableBot {
                 RobotInfo robotInfo = controller.senseRobotAtLocation(checkStrongPoliticianLocation);
                 if (robotInfo != null && robotInfo.type == RobotType.POLITICIAN && robotInfo.team == Cache.OUR_TEAM) {
                     int currentTotalDamage = Math.max(0, robotInfo.conviction - 10);
-                    //NOTE -> this method below gets the robot itself as well, so subtract 1
-                    int currentUnitsNear = controller.detectNearbyRobots(robotInfo.location, 1).length - 1;
+                    int currentUnitsNear = controller.detectNearbyRobots(robotInfo.location, 1).length;
+                    Debug.printInformation("CTD: " + currentTotalDamage, currentUnitsNear);
                     int damagePerUnit = currentTotalDamage / currentUnitsNear;
                     minDamage += damagePerUnit;
                     maxDamage += currentTotalDamage;
