@@ -1,10 +1,10 @@
-package teambot;
+package teambot3;
 import battlecode.common.*;
-import teambot.battlecode2021.EnlightenmentCenterBot;
-import teambot.battlecode2021.MuckrakerBot;
-import teambot.battlecode2021.PoliticanBot;
-import teambot.battlecode2021.SlandererBot;
-import teambot.battlecode2021.util.*;
+import teambot3.battlecode2021.EnlightenmentCenterBot;
+import teambot3.battlecode2021.MuckrakerBot;
+import teambot3.battlecode2021.PoliticanBot;
+import teambot3.battlecode2021.SlandererBot;
+import teambot3.battlecode2021.util.*;
 
 public strictfp class RobotPlayer {
     public static RobotController controller;
@@ -65,21 +65,16 @@ public strictfp class RobotPlayer {
         }
 
         boolean errored = false;
-        boolean bytecodeError = false;
         while (true) {
             try {
                 while (true) {
                     if (errored) {
-                        // WHITE
-                        controller.setIndicatorDot(controller.getLocation(),255,255,255);
-                    }
-                    if (bytecodeError) {
-                        // MAGENTA
-                        controller.setIndicatorDot(controller.getLocation(),255,0,255);
+                        // RED
+                        controller.setIndicatorDot(controller.getLocation(),255,0,0);
                     }
                     int currentTurn = controller.getRoundNum(); //starts at round 1
 
-//                    Debug.resignGame(600);
+                    //Debug.resignGame(1000);
                    // if (controller.getRoundNum() == 1000) controller.resign();
                     if (Cache.ROBOT_TYPE != controller.getType()) {
                         bot = new PoliticanBot(controller);
@@ -93,7 +88,6 @@ public strictfp class RobotPlayer {
                     if (controller.getRoundNum() != currentTurn) {
                         //Ran out of bytecodes - MAGENTA color debug
                         controller.setIndicatorDot(controller.getLocation(),255,0,255);
-                        bytecodeError = true;
                     }
                     Clock.yield();
                 }
@@ -112,10 +106,10 @@ public strictfp class RobotPlayer {
 
         //(1/20 DONE): changed this function so that the politician with the lowest health (break health ties by ID) is used to attack first (does not execute moveAwayFromLocation)
 
-        //find the closest poli to avoid
+        //find which poli to avoid (which one is planning on attacking)
         MapLocation robotToAvoid = null;
-        int robotToAvoidDistance = 9999999;
         int robotToAvoidHealth = 99999999;
+        int robotToAvoidID = 999999999;
 
         /* Find the closest EC */
         MapLocation ecLocationGuess = null;
@@ -130,22 +124,15 @@ public strictfp class RobotPlayer {
                         && CommunicationECDataSmall.decodeIsMoveAwayFromMe(encodedFlag);
                 ToMoveAwayFromThisPolitician |= CommunicationMovement.decodeIsSchemaType(encodedFlag)
                         && CommunicationMovement.decodeCommunicationToOtherBots(encodedFlag) == CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME;
-
                 if (ToMoveAwayFromThisPolitician) {
-
-                    int candidateDistance = Cache.CURRENT_LOCATION.distanceSquaredTo(nearbyAlliedRobot.location);
-
-                    /* I should avoid the closest robot with the flag. If there is a tie, avoid the robot with the most health. */
-                    if (candidateDistance < robotToAvoidDistance) {
+                    if (nearbyAlliedRobot.conviction < robotToAvoidHealth) {
                         robotToAvoid = nearbyAlliedRobot.location;
-                        robotToAvoidDistance = candidateDistance;
                         robotToAvoidHealth = nearbyAlliedRobot.conviction;
-                    } else if (candidateDistance == robotToAvoidDistance) {
-                        if (nearbyAlliedRobot.conviction > robotToAvoidHealth) {
-                            robotToAvoid = nearbyAlliedRobot.location;
-                            robotToAvoidDistance = candidateDistance;
-                            robotToAvoidHealth = nearbyAlliedRobot.conviction;
-                        }
+                        robotToAvoidID = nearbyAlliedRobot.ID;
+                    } else if (nearbyAlliedRobot.conviction == robotToAvoidHealth && nearbyAlliedRobot.ID < robotToAvoidID) {
+                        robotToAvoid = nearbyAlliedRobot.location;
+                        robotToAvoidHealth = nearbyAlliedRobot.conviction;
+                        robotToAvoidID = nearbyAlliedRobot.ID;
                     }
                 }
             }
@@ -159,7 +146,7 @@ public strictfp class RobotPlayer {
             }
         }
 
-//        Debug.printInformation("robotToAvoid " + robotToAvoid, " ? ");
+        Debug.printInformation("robotToAvoid " + robotToAvoid, " ? ");
 
         if (robotToAvoid == null || Cache.CURRENT_LOCATION.distanceSquaredTo(robotToAvoid) >= RobotType.POLITICIAN.actionRadiusSquared) {
             return;
@@ -204,7 +191,6 @@ public strictfp class RobotPlayer {
             if (controller.canMove(direction)) {
                 MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
                 int candidateDistance = addedLocationDistance(candidateLocation, avoidLocation);
-//                Debug.printInformation("candidateLocation: " + candidateLocation + ", candidateDistance: " + candidateDistance + ", ecToAvoid: " + ecToAvoid, maximizedDistance);
                 if (candidateDistance > maximizedDistance) {
                     maximizedDistance = candidateDistance;
                     maximizedDirection = direction;
@@ -212,7 +198,7 @@ public strictfp class RobotPlayer {
                 } else if (candidateDistance == maximizedDistance && ecToAvoid != null) {
                     int candidateDistToEC = candidateLocation.distanceSquaredTo(ecToAvoid);
                     int currentBestDistToEC = maximizedLocation.distanceSquaredTo(ecToAvoid);
-//                    Debug.printInformation("DEBUG MOVE AWAY -> candidate distance " + candidateDistToEC + ", current distance " + currentBestDistToEC + " ", " VERIFY? ");
+                    Debug.printInformation("DEBUG MOVE AWAY -> candidate distance " + candidateDistToEC + ", current distance " + currentBestDistToEC + " ", " VERIFY? ");
                     if (candidateDistToEC > currentBestDistToEC) {
                         maximizedDistance = candidateDistance;
                         maximizedDirection = direction;

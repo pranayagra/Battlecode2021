@@ -1,8 +1,8 @@
-package teambot.battlecode2021;
+package teambot3.battlecode2021;
 
 import battlecode.common.*;
-import teambot.RunnableBot;
-import teambot.battlecode2021.util.*;
+import teambot3.RunnableBot;
+import teambot3.battlecode2021.util.*;
 
 import java.util.*;
 
@@ -46,19 +46,6 @@ public class MuckrakerBot implements RunnableBot {
     @Override
     public void turn() throws GameActionException {
 
-        muckExecute();
-
-        if (Cache.EC_INFO_ACTION != CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION) {
-            Cache.ALL_NEARBY_ENEMY_ROBOTS = controller.senseNearbyRobots(-1, Cache.OPPONENT_TEAM);
-            Cache.ALL_NEARBY_FRIENDLY_ROBOTS = controller.senseNearbyRobots(-1, Cache.OUR_TEAM);
-            Cache.CURRENT_LOCATION = controller.getLocation();
-            setFlagToIndicateDangerToSlanderer();
-        }
-
-        //Debug.printByteCode("turn() => END");
-    }
-
-    public void muckExecute() throws GameActionException {
         if (Cache.CONVICTION > 1) {
             controller.setIndicatorDot(Cache.CURRENT_LOCATION, 255, 255, 255);
         }
@@ -75,6 +62,10 @@ public class MuckrakerBot implements RunnableBot {
             return;
         }
 
+        if (Cache.EC_INFO_ACTION != CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION) {
+            setFlagToIndicateDangerToSlanderer();
+        }
+
         switch (Cache.EC_INFO_ACTION) {
             // Attack a known slanderer group
             case ATTACK_LOCATION:
@@ -89,8 +80,9 @@ public class MuckrakerBot implements RunnableBot {
             default:
                 break;
         }
-    }
 
+        //Debug.printByteCode("turn() => END");
+    }
 
     /* ALL MUCKRAKERS FIRST CHECK IF THE EC IS IN DANGER UPON SPAWN */
     private boolean ECInDanger() throws GameActionException {
@@ -112,9 +104,7 @@ public class MuckrakerBot implements RunnableBot {
 
         if (controller.canSenseLocation(Cache.myECLocation) && distance <= 2) {
             RobotInfo ECInfo = controller.senseRobotAtLocation(Cache.myECLocation);
-
             Debug.printInformation("ECInfo: " + ECInfo + " myECLocation: " + Cache.myECLocation, " WTF? ");
-
             int ECHealth = ECInfo.conviction;
             if (ECHealth <= totalEnemyNearby + 20) {
                 if (distance == 2) {
@@ -170,12 +160,10 @@ public class MuckrakerBot implements RunnableBot {
                     CommunicationMovement.MY_UNIT_TYPE.MU, CommunicationMovement.convert_DirectionInt_MovementBotsData(dangerDirection.ordinal()),
                     CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, true, 0);
             if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
-                Debug.printInformation("Setting flag to warn friendly slanderers of enemy muckraker nearby --> priority --> ", flag);
                 controller.setFlag(flag);
                 Comms.hasSetFlag = true;
             }
         } else {
-            //NOTE -- MAY NOT BE NEEDED ANYMORE DUE TO SCOUT DEFAULTING FLAG TO 0 IF NO ITEMS IN QUEUE/NOT SET/NOT ALREADY 0
             if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
                 controller.setFlag(flag);
                 Comms.hasSetFlag = false; // NOTE: FALSE HERE IS BY FUNCTION (not a bug). We want to change the flag only to change its state from the previous one. If it is set to a different state/overridden, that is OKAY
@@ -241,44 +229,26 @@ public class MuckrakerBot implements RunnableBot {
         // Other flags add here
     }
 
-    // made attack better (attack strongest unit. if none, walk towards strongest unit)
     public boolean simpleAttack() throws GameActionException {
         Team enemy = Cache.OPPONENT_TEAM;
         int actionRadius = controller.getType().actionRadiusSquared;
-
-        MapLocation bestSlandererToExpose = null;
-        int slandererInfluence = 0;
-
-        MapLocation bestSlandererOutOfReachToExpose = null;
-        int bestSlandererOutOfReachToExposeInfluence = 0;
 
         for (RobotInfo robot : controller.senseNearbyRobots(actionRadius, enemy)) {
             if (robot.type.canBeExposed()) {
                 // It's a slanderer... go get them!
                 if (controller.canExpose(robot.location)) {
-                    if (robot.influence > slandererInfluence) {
-                        slandererInfluence = robot.influence;
-                        bestSlandererToExpose = robot.location;
-                    }
-                } else {
-                    if (robot.influence > bestSlandererOutOfReachToExposeInfluence) {
-                        bestSlandererOutOfReachToExposeInfluence = robot.influence;
-                        bestSlandererOutOfReachToExpose = robot.location;
-                    }
+                    controller.expose(robot.location);
+                    return true;
                 }
             }
         }
 
-        if (bestSlandererToExpose != null) {
-            controller.expose(bestSlandererToExpose);
-            return true;
+        for (RobotInfo robot : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+            if (robot.type.canBeExposed()) {
+                Pathfinding.move(robot.location);
+                return true;
+            }
         }
-
-        if (bestSlandererOutOfReachToExpose != null) {
-            Pathfinding.move(bestSlandererOutOfReachToExpose);
-            return true;
-        }
-
         return false;
     }
 

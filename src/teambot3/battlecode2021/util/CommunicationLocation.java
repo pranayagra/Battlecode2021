@@ -1,4 +1,4 @@
-package teambot.battlecode2021.util;
+package teambot3.battlecode2021.util;
 
 import battlecode.common.MapLocation;
 import battlecode.common.RobotType;
@@ -14,7 +14,7 @@ public class CommunicationLocation extends Comms {
 
     /* 3 bits max */
     public static enum FLAG_LOCATION_TYPES {
-        SLANDERER_LOCATION,
+        NOOP,
         MY_EC_LOCATION,
         ENEMY_EC_LOCATION,
         NEUTRAL_EC_LOCATION,

@@ -1,73 +1,45 @@
-package teambot.battlecode2021.util;
+package teambot3.battlecode2021.util;
 
 import battlecode.common.MapLocation;
-import battlecode.common.RobotType;
 
-public class CommunicationLocation extends Comms {
+public class CommunicationECDataSmall {
 
-    /* DONE */
-
-    public static final int FLAG_CODE = 0b001;
-
+    public static final int FLAG_CODE = 0b110;
     public static final int LOCATION_DATA_NBITS = 7;
     public static final int LOCATION_DATA_BITMASK = (1 << LOCATION_DATA_NBITS) - 1;
 
-    /* 3 bits max */
-    public static enum FLAG_LOCATION_TYPES {
-        SLANDERER_LOCATION,
-        MY_EC_LOCATION,
-        ENEMY_EC_LOCATION,
-        NEUTRAL_EC_LOCATION,
-        NORTH_MAP_LOCATION,
-        EAST_MAP_LOCATION,
-        SOUTH_MAP_LOCATION,
-        WEST_MAP_LOCATION,
-    }
+    private static final int HEALTH_MULTIPLIER = 50;
 
-    /*2 bits max */
-    public static enum MY_UNIT_TYPE {
-        EC,
-        MU,
-        PO,
-        SL,
-    }
 
-    private static MY_UNIT_TYPE getMyUnitType() {
-        switch (Cache.ROBOT_TYPE) {
-            case ENLIGHTENMENT_CENTER:
-                return MY_UNIT_TYPE.EC;
-            case MUCKRAKER:
-                return MY_UNIT_TYPE.MU;
-            case POLITICIAN:
-                return MY_UNIT_TYPE.PO;
-            default:
-                return MY_UNIT_TYPE.SL;
-        }
-    }
+    /* SCHEMA: 3 bits code | 1 bit moveAwayFromMe | 1 bit Enemy (0) or Neutral (1) | 5 bits health (value * HEALTH_MULTIPLIER) | 14 bits locationdata */
 
-    /* SCHEMA: 3 bits code | 1 bit skippedQueue | 1 bit last flag | 2 bits unit type (me) | 3 bits location type | 14 bits locationdata */
-    public static int encodeLOCATION(
-            boolean isUrgent, boolean isLastFlag, FLAG_LOCATION_TYPES locationType, MapLocation locationData) {
+    public static int encodeECHealthLocation(
+            boolean isMoveAwayFromMe, boolean isEnemyVSNeutralTeam, int health, MapLocation locationData) {
+        health = Math.min(31 * HEALTH_MULTIPLIER, health);
+        health = ((health + (HEALTH_MULTIPLIER - 1)) / HEALTH_MULTIPLIER) & 0b11111;
 
         return (FLAG_CODE << 21) +
-                ((isUrgent ? 1 : 0) << 20) +
-                ((isLastFlag ? 1 : 0) << 19) +
-                (getMyUnitType().ordinal() << 17) +
-                (locationType.ordinal() << 14) +
+                ((isMoveAwayFromMe ? 1 : 0) << 20) +
+                ((isEnemyVSNeutralTeam ? 1 : 0) << 19) +
+                (health << 14) +
                 encodeLocationData(locationData);
-
     }
 
     public static boolean decodeIsSchemaType(int encoding) {
-       return (encoding >> 21) == FLAG_CODE;
+        return (encoding >> 21) == FLAG_CODE;
     }
 
-    public static MY_UNIT_TYPE decodeMyUnitType(int encoding) {
-        return MY_UNIT_TYPE.values()[(encoding >> 17) & 0b11];
+    public static boolean decodeIsMoveAwayFromMe(int encoding) {
+        return ((encoding >> 20) & 1) == 1;
     }
 
-    public static FLAG_LOCATION_TYPES decodeLocationType(int encoding) {
-        return FLAG_LOCATION_TYPES.values()[(encoding >> 14) & 0b111];
+    //NOTE -> 0 means Enemy, 1 means Neutral
+    public static boolean decodeIsEnemyVSNeutralTeam(int encoding) {
+        return ((encoding >> 19) & 1) == 1;
+    }
+
+    public static int decodeHealth(int encoding) {
+        return ((encoding >> 14) & 0b11111) * HEALTH_MULTIPLIER;
     }
 
     /* Decode the flag which contains the actual location data. Assumes decodeIsFlagLocationType() is called first */
@@ -94,7 +66,5 @@ public class CommunicationLocation extends Comms {
         return ((locationData.x & LOCATION_DATA_BITMASK) << LOCATION_DATA_NBITS) +
                 (locationData.y & LOCATION_DATA_BITMASK);
     }
-
-
 
 }

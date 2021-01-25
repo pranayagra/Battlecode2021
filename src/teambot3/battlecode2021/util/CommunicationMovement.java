@@ -1,4 +1,4 @@
-package teambot.battlecode2021.util;
+package teambot3.battlecode2021.util;
 
 public class CommunicationMovement extends Comms {
 
@@ -35,7 +35,6 @@ public class CommunicationMovement extends Comms {
         MOVE_TOWARDS_ME,
         MOVE_AWAY_FROM_ME,
         SPOTTED_ENEMY_UNIT,
-        SPOTTED_ENEMY_SLANDERER,
         SEND_DEFENDING_POLITICIANS,
     }
 

@@ -1,7 +1,7 @@
-package teambot.battlecode2021.util;
+package teambot3.battlecode2021.util;
 
 import battlecode.common.*;
-import teambot.*;
+import teambot3.*;
 import java.util.*;
 
 public class Spawning {
@@ -14,7 +14,7 @@ public class Spawning {
 
     // Slanderers
 
-    public static int[] SLANDER_SPAWN_TABLE = new int[] {
+    private static int[] SLANDER_SPAWN_TABLE = new int[] {
         21, 41, 63, 85, 107, 130, 154, 178, 203, 228,
         255, 282, 310, 339, 368, 399, 431, 463, 497,
         532, 568, 605, 643, 683, 724, 766, 810, 855, 902,
