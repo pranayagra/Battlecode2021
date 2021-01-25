@@ -519,7 +519,6 @@ public class PoliticanBot implements RunnableBot {
     private static int[][] importantLocationsToKill = {{0, 2}, {1, 1}, {2, 0}, {1, -1}, {0, -2}, {-1, -1}, {-2, 0}, {-1, 1}};
     private static int[] health = new int[8];
     private static int[] distances = new int[8];
-    private static boolean[] poliType = new boolean[8];
     private static int[] myUnitDamages = new int[4]; // * 2 - 1, * 2, * 2 + 1
 
     private void updateImportantLocationsKills() throws GameActionException {
@@ -528,7 +527,6 @@ public class PoliticanBot implements RunnableBot {
             // the only ones that I add are the ones that I know I can do something about (kill)
             health[i] = 9999;
             distances[i] = 9999;
-            poliType[i] = false;
             MapLocation location = Cache.EC_INFO_LOCATION.translate(importantLocationsToKill[i][0], importantLocationsToKill[i][1]);
             int distanceFromMe = Cache.CURRENT_LOCATION.distanceSquaredTo(location);
             if (controller.canSenseLocation(location)) {
@@ -542,10 +540,7 @@ public class PoliticanBot implements RunnableBot {
                     if (robotInfo.team != Cache.OUR_TEAM) {
                         health[i] = robotInfo.conviction;
                         distances[i] = distanceFromMe;
-                        controller.setIndicatorDot(location, 0, 0, 255);
-                        if (robotInfo.type == RobotType.POLITICIAN) {
-                            poliType[i] = true;
-                        }
+//                        controller.setIndicatorDot(location, 0, 0, 255);
                     }
                 }
             }

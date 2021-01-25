@@ -489,7 +489,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         MapLocation locationToHarass = harassEnemySlandererLocation != null ? harassEnemySlandererLocation : harassEnemyECLocation;
         Debug.printInformation("harassEnemySlandererLocation: " + harassEnemySlandererLocation + ", harassEnemyECLocation: " + harassEnemyECLocation, controller.getRoundNum() - harassEnemySlandererLocationRoundSet);
 
-        if (harassEnemySlandererLocation != null) controller.setIndicatorDot(harassEnemySlandererLocation, 0, 255, 255);
+        if (harassEnemySlandererLocation != null) controller.setIndicatorDot(harassEnemySlandererLocation, 0, 255, 0);
         if (harassEnemyECLocation != null) controller.setIndicatorDot(harassEnemyECLocation, 255, 0, 0);
 
         if (controller.getRoundNum() % 70 == 0) {
@@ -511,7 +511,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         int totalCurrentDamageOnMap = processRobots.getPassivePoliticianAttackDamage();
 
         if (attackNeutralLocationHealth != 9999999) {
-            int amountOfMoreDamageNeeded = (int) (60 + (attackNeutralLocationHealth + 1) - totalCurrentDamageOnMap * controller.getEmpowerFactor(Cache.OUR_TEAM, 25));
+            int amountOfMoreDamageNeeded = (int) (10 + (attackNeutralLocationHealth + 1) - totalCurrentDamageOnMap * controller.getEmpowerFactor(Cache.OUR_TEAM, 25));
             if (amountOfMoreDamageNeeded <= 0) {
                 int flag = CommunicationECSpawnFlag.encodeSpawnInfo(Direction.NORTH, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, attackNeutralLocation);
                 Comms.checkAndAddFlag(flag);

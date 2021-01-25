@@ -226,18 +226,21 @@ public class SlandererBot implements RunnableBot {
         if (!foundEnemyMuckraker) {
             for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
                 if (robotInfo.getType() == RobotType.POLITICIAN || robotInfo.getType() == RobotType.MUCKRAKER) {
-                    int encodedFlag = controller.getFlag(robotInfo.ID);
-                    if (CommunicationMovement.decodeIsSchemaType(encodedFlag) &&
-                            CommunicationMovement.decodeIsDangerBit(encodedFlag)) {
 
-                        if (CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.PO
-                                || CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.MU) {
-                            //A POLITICIAN OR MUCKRAKER WHO SAYS HE IS IN DANGER (enemy muckraker nearby)
-                            CommunicationMovement.MOVEMENT_BOTS_DATA badArea = CommunicationMovement.decodeMyPreferredMovement(encodedFlag);
-                            int badIdx = CommunicationMovement.convert_MovementBotData_DirectionInt(badArea);
-                            Direction bestDirection = Constants.DIRECTIONS[badIdx].opposite();
-                            bestDirectionBasedOnPoliticianDangerIdx = bestDirection.ordinal();
-                            break;
+                    if (controller.canGetFlag(robotInfo.ID)) {
+                        int encodedFlag = controller.getFlag(robotInfo.ID);
+                        if (CommunicationMovement.decodeIsSchemaType(encodedFlag) &&
+                                CommunicationMovement.decodeIsDangerBit(encodedFlag)) {
+
+                            if (CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.PO
+                                    || CommunicationMovement.decodeMyUnitType(encodedFlag) == CommunicationMovement.MY_UNIT_TYPE.MU) {
+                                //A POLITICIAN OR MUCKRAKER WHO SAYS HE IS IN DANGER (enemy muckraker nearby)
+                                CommunicationMovement.MOVEMENT_BOTS_DATA badArea = CommunicationMovement.decodeMyPreferredMovement(encodedFlag);
+                                int badIdx = CommunicationMovement.convert_MovementBotData_DirectionInt(badArea);
+                                Direction bestDirection = Constants.DIRECTIONS[badIdx].opposite();
+                                bestDirectionBasedOnPoliticianDangerIdx = bestDirection.ordinal();
+                                break;
+                            }
                         }
                     }
                 }
