@@ -20,7 +20,7 @@ public class Util {
         // Scouting
         Cache.CURRENT_LOCATION = controller.getLocation(); //update location to avoid cache bugs in scouting
         Cache.ALL_NEARBY_ENEMY_ROBOTS = controller.senseNearbyRobots(-1, Cache.OPPONENT_TEAM);
-        if (!ECHasScoutedAlready) {
+        if (!ECHasScoutedAlready && controller.getType() != RobotType.SLANDERER) {
             Scout.scoutMapEdges();
             Scout.scoutSlanderers();
             Scout.scoutECs();

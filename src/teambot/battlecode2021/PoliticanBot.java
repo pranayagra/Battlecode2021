@@ -318,6 +318,7 @@ public class PoliticanBot implements RunnableBot {
         else {
             // Expensive politician
             // Greedily attack most expensive muckraker
+            controller.setIndicatorDot(controller.getLocation(), 255,165,0); //ORANGE EXPENSIVE DEF
             int target = 0;
             for (int i = 1; i < muckrakerSize; ++i) {
                 if (muckrakerConviction[i] > muckrakerConviction[target]) {
@@ -506,7 +507,7 @@ public class PoliticanBot implements RunnableBot {
     public boolean buildLattice() throws GameActionException {
 
         boolean isGoodSquare = checkIfGoodSquare(Cache.CURRENT_LOCATION);
-        Debug.printInformation("isGoodSquare ", isGoodSquare);
+//        Debug.printInformation("isGoodSquare ", isGoodSquare);
         if (isGoodSquare) {
             executeGoodSquare();
         } else {
@@ -561,7 +562,7 @@ public class PoliticanBot implements RunnableBot {
             i += 1;
         }
 
-        Debug.printInformation("myUnitDamages: " + Arrays.toString(myUnitDamages) + ", health: " + Arrays.toString(health) + ", distances: " + Arrays.toString(distances), " STORING INFORMATION FOR LATER");
+//        Debug.printInformation("myUnitDamages: " + Arrays.toString(myUnitDamages) + ", health: " + Arrays.toString(health) + ", distances: " + Arrays.toString(distances), " STORING INFORMATION FOR LATER");
 
     }
 
@@ -656,10 +657,10 @@ public class PoliticanBot implements RunnableBot {
             int convictionImprovement = convictionPerBot_PrimeBot_After - convictionPerBot_PrimeBot_Before;
             totalECDamageImprovementsOfPrimeBots += convictionImprovement;
 
-            Debug.printInformation("For EC bomb on side " + i + ", numUnitsBeforeExplosion (max): " + numUnitsBeforeExplosion + ", numUnitsAfterExplosion (max): " + numUnitsAfterExplosion + ", convictionPerBot_PrimeBot_After: " + convictionPerBot_PrimeBot_After + ", convictionImprovement: " + convictionImprovement, " EC DAMAGE FOR POSITION " + i);
+//            Debug.printInformation("For EC bomb on side " + i + ", numUnitsBeforeExplosion (max): " + numUnitsBeforeExplosion + ", numUnitsAfterExplosion (max): " + numUnitsAfterExplosion + ", convictionPerBot_PrimeBot_After: " + convictionPerBot_PrimeBot_After + ", convictionImprovement: " + convictionImprovement, " EC DAMAGE FOR POSITION " + i);
         }
 
-        Debug.printInformation("totalECDamageFromPrimeBots: " + totalECDamageFromPrimeBots + ", totalECDamageImprovementsOfPrimeBots: " + totalECDamageImprovementsOfPrimeBots + ", myDamageToEC: " + myDamageToEC, " INFO IF I EXPLODE ");
+//        Debug.printInformation("totalECDamageFromPrimeBots: " + totalECDamageFromPrimeBots + ", totalECDamageImprovementsOfPrimeBots: " + totalECDamageImprovementsOfPrimeBots + ", myDamageToEC: " + myDamageToEC, " INFO IF I EXPLODE ");
 
         double score = unitsKilled * 3;
 
@@ -678,8 +679,8 @@ public class PoliticanBot implements RunnableBot {
             score -= 1;
         }
 
-        Debug.printInformation("EMPOWER DISTANCE " + empowerDistanceSquared + ": [unitsKilled: " + unitsKilled + ", totalECImprovedDamageOverall: " + totalECImprovedDamageOverall + ", effectiveness: " + effectiveness + "] => SCORE ", score);
-        System.out.println("\n");
+//        Debug.printInformation("EMPOWER DISTANCE " + empowerDistanceSquared + ": [unitsKilled: " + unitsKilled + ", totalECImprovedDamageOverall: " + totalECImprovedDamageOverall + ", effectiveness: " + effectiveness + "] => SCORE ", score);
+//        System.out.println("\n");
         return score;
     }
 
@@ -703,6 +704,7 @@ public class PoliticanBot implements RunnableBot {
         } else if (distanceFromECToAttack <= 20) { //TODO: not sure if this number 20 is best value
             decreaseScoreThresholdAmount++;
             updateImportantLocationsKills();
+
             if (decreaseScoreThresholdAmount <= 10) {
                 updateExplosionScores(-999);
             } else {
@@ -725,8 +727,7 @@ public class PoliticanBot implements RunnableBot {
                     return;
                 }
             }
-
-            if (circleEnemyEC()) return;
+            circleEnemyEC();
 
         } else {
             //move closer. If we have not gained distance in ~20 rounds AND ~4 potential moves, then we should consider exploding & decreasing the threshold as time goes on.
@@ -812,7 +813,7 @@ public class PoliticanBot implements RunnableBot {
 
         RobotInfo enemyECInfo = controller.senseRobotAtLocation(Cache.EC_INFO_LOCATION);
 
-        Debug.printInformation("minDamage: " + minDamage + ", maxDamage: " + maxDamage + ", average: " + averageDamage, enemyECInfo.conviction);
+//        Debug.printInformation("minDamage: " + minDamage + ", maxDamage: " + maxDamage + ", average: " + averageDamage, enemyECInfo.conviction);
 
         boolean toEmpower = false;
         if (enemyECInfo.team == Cache.OUR_TEAM) {
@@ -881,12 +882,12 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        Debug.printInformation("leaveSpot: " + leaveSpot, strongestRobot);
+//        Debug.printInformation("leaveSpot: " + leaveSpot, strongestRobot);
 
 
         if (leaveSpot) {
             Direction directionToMoveIn = Pathfinding.randomValidDirection();
-            Debug.printInformation("Direction to move in: " + directionToMoveIn, " LEAVE PRIME SPOT ");
+//            Debug.printInformation("Direction to move in: " + directionToMoveIn, " LEAVE PRIME SPOT ");
             if (directionToMoveIn != null && controller.canMove(directionToMoveIn)) {
                 controller.move(directionToMoveIn);
                 return true;
@@ -907,6 +908,7 @@ public class PoliticanBot implements RunnableBot {
 
         MapLocation closestSquare = null;
         int distance = 9999999;
+        int numEmptySquares = 0;
 
         for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
             MapLocation candidateLocation = Cache.EC_INFO_LOCATION.add(direction);
@@ -916,11 +918,13 @@ public class PoliticanBot implements RunnableBot {
                     closestSquare = candidateLocation;
                     distance = travelDistance;
                 }
+                ++numEmptySquares;
             }
         }
 
         /* MAYBE INSTEAD OF CACHE.ALL_NEARBY_FRIENDLY_ROBOTS  WE DO ALL POLITICIAN SENSE RADIUS CENTERED AROUND CLOSESTSQUARE */
         boolean moveTowardsEmptySpot = true;
+        int numStrongerAttackers = 0;
         if (closestSquare != null) {
             // iterate through all politicians
             int myTravelDistance = Pathfinding.travelDistance(Cache.CURRENT_LOCATION, closestSquare);
@@ -932,7 +936,8 @@ public class PoliticanBot implements RunnableBot {
                         /* A bot not on the 4 desired squares that is stronger than me -> other bot is better than me */
                         if (robotInfo.conviction > controller.getConviction()) {
                             moveTowardsEmptySpot = false;
-                            break;
+                            numStrongerAttackers++;
+//                            break;
                         }
 
                         if (robotInfo.conviction == controller.getConviction()) {
@@ -941,13 +946,15 @@ public class PoliticanBot implements RunnableBot {
                             /* A bot with the same health who is closer than me -> other bot is better than me */
                             if (myTravelDistance > candidateTravelDistance) {
                                 moveTowardsEmptySpot = false;
-                                break;
+                                numStrongerAttackers++;
+//                                break;
                             }
 
                             /* A bot with the same health and travel distance who has a higher ID than me -> other bot is better than me */
                             if (myTravelDistance == candidateTravelDistance && robotInfo.ID > Cache.ID) {
                                 moveTowardsEmptySpot = false;
-                                break;
+                                numStrongerAttackers++;
+//                                break;
                             }
                         }
                     }
@@ -955,9 +962,9 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        Debug.printInformation("closestSquare: " + closestSquare + ", moveTowardsEmptySpot: " + moveTowardsEmptySpot, " MOVE TO PRIME ATTACK SPOT ");
+//        System.out.println("closestSquare: " + closestSquare + ", moveTowardsEmptySpot: " + moveTowardsEmptySpot + ", numEmptySquares: " + numEmptySquares + ", numStrongerAttackers: " + numStrongerAttackers);
 
-        if (closestSquare != null && moveTowardsEmptySpot) {
+        if (closestSquare != null && numEmptySquares > numStrongerAttackers) {
             //TODO (IMP): add some stuck parameter in case the closestSquare is inaccessible that returns false
             //TODO: move() is bugged sometimes where we go between the two same places?
             Pathfinding.move(closestSquare);
@@ -967,7 +974,7 @@ public class PoliticanBot implements RunnableBot {
         return false;
     }
 
-    private static int[] empowerValues = {1, 2, 4, 5, 8, 9};
+    private static int[] empowerValues = {9, 5, 2, 1, 4, 8};
     public void updateExplosionScores(int thresholdDecrease) {
 
         bestScore = -1;
@@ -985,18 +992,22 @@ public class PoliticanBot implements RunnableBot {
 
         bestExplosionRadius = -1;
 
-        int bytecode = Clock.getBytecodeNum();
+        int maxBC = 0;
 
         for (int i = 0; i < empowerValues.length; ++i) {
+            int beforeBC = Clock.getBytecodeNum();
             double currentScore = calculateScore(empowerValues[i]);
             if (currentScore > bestScore) {
                 bestScore = currentScore;
                 bestExplosionRadius = empowerValues[i];
             }
+            maxBC = Math.max(maxBC, Clock.getBytecodeNum() - beforeBC);
+//            System.out.println(i +  ": " + Clock.getBytecodeNum());
+            if (Clock.getBytecodesLeft() < maxBC + 2500) break; //save at least 2k bytecode for rest of the program...
         }
 
-        Debug.printByteCode("attackECLocation() BYTECODE USED: " + (Clock.getBytecodeNum() - bytecode));
-        Debug.printInformation("[bestScore: " + bestScore + ", bestExplosionRadius: " + bestExplosionRadius + ", scoreThreshold: " + scoreThreshold + "]", " BEST EXPLOSION ");
+//        Debug.printByteCode("attackECLocation() BYTECODE USED: " + (Clock.getBytecodeNum() - bytecode));
+//        System.out.println("[maxBC: " + maxBC + ", bestScore: " + bestScore + ", bestExplosionRadius: " + bestExplosionRadius + ", scoreThreshold: " + scoreThreshold + "]");
 
         //TODO: IF exploding at this distance means my distance==1 polis can capture better, do it also
 
@@ -1013,7 +1024,7 @@ public class PoliticanBot implements RunnableBot {
             // move away
             Direction awayECDir = Pathfinding.toMovePreferredDirection(Cache.EC_INFO_LOCATION.directionTo(Cache.CURRENT_LOCATION), 1);
             if (awayECDir != null) {
-                Debug.printInformation("circling too close: " + awayECDir, " LEAVING EC RANGE ");
+//                Debug.printInformation("circling too close: " + awayECDir, " LEAVING EC RANGE ");
                 controller.move(awayECDir);
             }
         }
@@ -1063,7 +1074,7 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        Debug.printInformation("preferredDirection: " + preferredDirection + ", preferredDistance: " + preferredDistance + " circleDirectionClockwise: " + circleDirectionClockwise, " STAY IN CIRCLE RADIUS ");
+//        Debug.printInformation("preferredDirection: " + preferredDirection + ", preferredDistance: " + preferredDistance + " circleDirectionClockwise: " + circleDirectionClockwise, " STAY IN CIRCLE RADIUS ");
 
         if (preferredDirection != null) {
             controller.move(preferredDirection);
@@ -1115,8 +1126,5 @@ public class PoliticanBot implements RunnableBot {
             }
         }
     }
-
-
-
 
 }

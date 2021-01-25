@@ -117,7 +117,9 @@ public class MuckrakerBot implements RunnableBot {
         if (controller.canSenseLocation(Cache.myECLocation) && distance <= 2) {
             RobotInfo ECInfo = controller.senseRobotAtLocation(Cache.myECLocation);
 
-            Debug.printInformation("ECInfo: " + ECInfo + " myECLocation: " + Cache.myECLocation, " WTF? ");
+            if (ECInfo == null || ECInfo.team != Cache.OUR_TEAM) return false;
+
+//            Debug.printInformation("ECInfo: " + ECInfo + " myECLocation: " + Cache.myECLocation, " WTF? ");
 
             int ECHealth = ECInfo.conviction;
             if (ECHealth <= totalEnemyNearby + 20) {

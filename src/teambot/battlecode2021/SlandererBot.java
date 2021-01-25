@@ -11,7 +11,6 @@ public class SlandererBot implements RunnableBot {
     private int[] canMoveIndices;
     private MapLocation[] moveLocs;
     private double[] moveRewards;
-    private int distanceFromMyEC;
 
     //TODO: CHECK AND SET FLAG IF WALL IS MISSING AROUND US? and probably set flag based on it
 
@@ -24,7 +23,6 @@ public class SlandererBot implements RunnableBot {
     public void init() throws GameActionException {
         this.pathfinding = new Pathfinding();
         pathfinding.init(controller);
-        distanceFromMyEC = 1;
         moveLocs = new MapLocation[9];
         moveRewards = new double[9];
         canMoveIndices = new int[9];
