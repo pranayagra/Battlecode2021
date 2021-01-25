@@ -174,10 +174,10 @@ public class SlandererBot implements RunnableBot {
 
         int canMoveIndicesSize = 0;
         int idx = 0;
-        for (Direction dir : RobotPlayer.directions) {
+        for (Direction direction : Constants.DIRECTIONS) {
             moveRewards[idx] = 9998;
-            moveLocs[idx] = Cache.CURRENT_LOCATION.add(dir);
-            if (controller.canMove(dir)) {
+            moveLocs[idx] = Cache.CURRENT_LOCATION.add(direction);
+            if (controller.canMove(direction)) {
                 canMoveIndices[canMoveIndicesSize++] = idx;
             }
             ++idx;

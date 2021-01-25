@@ -61,8 +61,6 @@ public class Scout {
             }
         }
 
-
-
         /*
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
             if (robotInfo.type == RobotType.SLANDERER) {
