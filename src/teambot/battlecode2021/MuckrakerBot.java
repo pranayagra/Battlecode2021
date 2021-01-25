@@ -223,7 +223,6 @@ public class MuckrakerBot implements RunnableBot {
                     break;
                 case ENEMY_EC_LOCATION:
                     Cache.FOUND_ECS.put(locationData, CommunicationLocation.FLAG_LOCATION_TYPES.ENEMY_EC_LOCATION);
-                    Cache.FOUND_ECS_AGE.put(locationData, controller.getRoundNum());
                     // Stream mucks to enemy EC
                     Debug.printInformation("Recieved enemy EC location", locationData);
                     if (Cache.MAP_LEFT > 0 && Cache.MAP_RIGHT > 0 && Cache.MAP_TOP > 0 && Cache.MAP_BOTTOM > 0) {
