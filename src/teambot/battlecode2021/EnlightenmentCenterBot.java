@@ -80,7 +80,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int timeSinceLastSlandererSpawn = 999999;
     private static int timeSinceLastDefendingPoliticianSpawn = 999999;
     private static int timeSinceLastSeenMuckraker = 999999;
-    private static int timeSinceLastLargeMuckraker = -100;
+    private static int timeSinceLastLargeMuckraker = -50;
 
     /* Do we have one guide broadcasting information to newly created units */
     private static int GUIDE_ID = 0;
@@ -456,6 +456,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
         Direction safeDirection = checkSpawnSlanderers();
         Direction dangerDirection = checkSpawnDefenders();
 
+        boolean largeEnemyMuckraker = false;
+
         //Spawning influence
         int totalEnemyNearby = 0;
         for (RobotInfo  info : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
@@ -464,6 +466,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
             }
             else if (info.type == RobotType.MUCKRAKER) {
                 timeSinceLastSeenMuckraker = 0;
+                if (info.conviction > 25) {
+                    largeEnemyMuckraker = true;
+                }
             }
         }
         totalEnemyNearby *= controller.getEmpowerFactor(Cache.OPPONENT_TEAM, 0);
@@ -624,7 +629,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
         */
 
-        System.out.println((timeSinceLastSeenMuckraker > 2 && slandererInfluence > 0 && timeSinceLastSlandererSpawn > 6));
+        
         if (SCOUT_MUCKRAKER_SZ < 8) {
             MapLocation targetLocation = Cache.START_LOCATION.translate(SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].x, SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].y);
             Direction preferredDirection = Cache.START_LOCATION.directionTo(targetLocation);
@@ -640,6 +645,11 @@ public class EnlightenmentCenterBot implements RunnableBot {
             spawnLatticeSlanderer(slandererInfluence, dir);
             return;
         }
+        else if (slandererExists && largeEnemyMuckraker & Cache.INFLUENCE > 70) {
+            Direction dir = randomValidDirection();
+            if (dangerDirection != null) dir = dangerDirection;
+            spawnDefendingPolitician(61, dir, null);
+        }
         else if (
             Cache.INFLUENCE > 20 &&
             ((randomInt < 4 && POLITICIAN_DEFENDING_SLANDERER_SZ < SLANDERER_IDs.getSize()) ||
@@ -653,9 +663,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 3), null);
             return;
         }
-        
         if (timeSinceLastLargeMuckraker > 100 && Cache.INFLUENCE > 300) {
-            if (spawnScoutMuckraker(100, randomValidDirection(), harassEnemyLocation)) {
+            if (spawnScoutMuckraker(70, randomValidDirection(), harassEnemyLocation)) {
                 timeSinceLastLargeMuckraker = 0;
                 return;
             }
@@ -802,6 +811,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //Debug.printInformation("TRYING TO CREATE " + influence + " POLI AT " + direction + " ATTACKING LOCATION " + location + " ??", " TRYME");
         if (location == null) location = spawnLocationNull();
         if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence)) {
+            if (influence == 61) {
+                influence = 60;
+            }
             //Debug.printInformation("CREATED " + influence + " POLI AT " + direction + " ATTACKING LOCATION " + location, " VALID");
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
             setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location);
@@ -827,7 +839,6 @@ public class EnlightenmentCenterBot implements RunnableBot {
                     if (spawnScoutMuckraker(1, spawnDirection, harassEnemyLocation)) {
                         return true;
                     }
-
                 }
             }
         }
