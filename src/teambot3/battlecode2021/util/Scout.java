@@ -1,4 +1,4 @@
-package teambot.battlecode2021.util;
+package teambot3.battlecode2021.util;
 import battlecode.common.*;
 
 public class Scout {
@@ -6,9 +6,6 @@ public class Scout {
     public static RobotController controller;
     private static int hasScoutedEnemyNums;
     private static int scoutCooldown;
-
-    private static int hasScoutedEnemySlandererNums;
-    private static int slandererCooldown;
 
     public static void init(RobotController controller) {
         Scout.controller = controller;
@@ -32,102 +29,6 @@ public class Scout {
         
     }
 
-    public static void scoutSlanderers() throws GameActionException {
-        int flag = 0;
-        if (!Comms.hasSetFlag && Comms.getCommsSize() == 0 && controller.getFlag(controller.getID()) != 0) {
-            controller.setFlag(flag);
-        }
-
-        int slandererLikeliness = 0;
-
-        if (hasScoutedEnemySlandererNums >= 5) {
-            hasScoutedEnemySlandererNums--;
-            slandererCooldown = 25;
-            return;
-        }
-        if (slandererCooldown > 0) {
-            --slandererCooldown;
-            return;
-        }
-
-        MapLocation location = null;
-
-        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
-            if (robotInfo.type == RobotType.SLANDERER) {
-                // a muck found a slanderer
-                slandererLikeliness = 2;
-                location = robotInfo.location;
-                break;
-            }
-        }
-
-
-
-        /*
-        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
-            if (robotInfo.type == RobotType.SLANDERER) {
-                // a muck found a slanderer
-                slandererLikeliness += 2;
-                location = robotInfo.location;
-            }
-            else if (robotInfo.type == RobotType.POLITICIAN) {
-                // a non-muck unit found an enemy politician or slanderer? let us guess which one...
-                switch (robotInfo.influence) {
-                    case 21:
-                    case 41:
-                    case 63:
-                    case 85:
-                    case 107:
-                    case 130:
-                    case 154:
-                    case 178:
-                    case 203:
-                    case 228:
-                    case 255:
-                    case 282:
-                    case 310:
-                    case 339:
-                    case 368:
-                    case 399:
-                    case 431:
-                    case 463:
-                    case 497:
-                    case 532:
-                    case 568:
-                    case 605:
-                    case 643:
-                    case 683:
-                    case 724:
-                    case 766:
-                    case 810:
-                    case 855:
-                    case 902:
-                    case 949:
-                        slandererLikeliness++;
-                        location = robotInfo.location;
-                        break;
-                }
-            }
-        }*/
-
-        if (slandererLikeliness > 0) {
-            flag = CommunicationLocation.encodeLOCATION(true, true, CommunicationLocation.FLAG_LOCATION_TYPES.SLANDERER_LOCATION, location);
-
-            if (controller.canSetFlag(flag)) {
-
-                hasScoutedEnemySlandererNums++;
-                slandererCooldown = 10;
-
-                if (!Comms.hasSetFlag) {
-                    controller.setFlag(flag);
-                    Comms.hasSetFlag = true;
-                } else {
-                    Comms.checkAndAddFlag(flag);
-                }
-            }
-        }
-    }
-
     public static void scoutEnemies() throws GameActionException {
         int flag = 0;
         if (!Comms.hasSetFlag && Comms.getCommsSize() == 0 && controller.getFlag(controller.getID()) != 0) {
@@ -140,13 +41,8 @@ public class Scout {
         }
         MapLocation currentLocation = controller.getLocation();
         int distance = Pathfinding.travelDistance(currentLocation, Cache.myECLocation);
-
-        //TODO: if scout is close to EC & sees a expensive muck, communicate it! note we gonna need a muck-class defensive unit that is very sparse just to communicate this info!
-        // do not add here, make a new role/method for these type of units! (probably just need 3 or so moving around)
-
-        int numEnemies = Cache.ALL_NEARBY_ENEMY_ROBOTS.length;
-
-        int cost = (int) ((1 + (2.0 / ((distance + 4) / 5))) * numEnemies);
+        int numEnemies = controller.senseNearbyRobots(-1, Cache.OPPONENT_TEAM).length;
+        int cost = (int)((1 + (15.0/distance)) * numEnemies);
         if (numEnemies > 0) {
             int dangerDirection = Cache.myECLocation.directionTo(currentLocation).ordinal();
             flag = CommunicationMovement.encodeMovement(true, true,
@@ -225,6 +121,7 @@ public class Scout {
                         Comms.checkAndAddFlag(flag);
                         flag = CommunicationRobotID.encodeRobotID(false, true, CommunicationRobotID.COMMUNICATION_UNIT_TYPE.EC, CommunicationRobotID.COMMUNICATION_UNIT_TEAM.MY, info.ID);
                         Comms.checkAndAddFlag(flag);
+                        Debug.printInformation("OUR EC FOUND " + info.location, "VALID");
                     }
 
                 } else { //Otherwise communicate the team (enemy or neutral), health, and location.
@@ -238,12 +135,12 @@ public class Scout {
                         moveAwayFromMe = true;
                     }
 
-//                    Debug.printInformation("OTHER EC FOUND", "VALID");
+                    Debug.printInformation("OTHER EC FOUND", "VALID");
 
                     int flag = CommunicationECDataSmall.encodeECHealthLocation(moveAwayFromMe, isNeutralTeam, info.conviction, info.location);
                     if (moveAwayFromMe && !Comms.hasSetFlag && controller.canSetFlag(flag)) {
                         controller.setFlag(flag);
-//                        Debug.printInformation("SETTING FLAG WITH HIGH PRIO FOR ATTACKING POLI -- GET AWAY FROM ME ", flag);
+                        Debug.printInformation("SETTING FLAG WITH HIGH PRIO FOR ATTACKING POLI -- GET AWAY FROM ME ", flag);
                         Comms.hasSetFlag = true;
                     } else {
                         Comms.checkAndAddFlag(flag);

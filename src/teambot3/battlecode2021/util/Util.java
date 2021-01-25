@@ -1,4 +1,4 @@
-package teambot.battlecode2021.util;
+package teambot3.battlecode2021.util;
 
 import battlecode.common.*;
 
@@ -19,10 +19,9 @@ public class Util {
     public static void postLoop() throws GameActionException {
         // Scouting
         Cache.CURRENT_LOCATION = controller.getLocation(); //update location to avoid cache bugs in scouting
-        Cache.ALL_NEARBY_ENEMY_ROBOTS = controller.senseNearbyRobots(-1, Cache.OPPONENT_TEAM);
+
         if (!ECHasScoutedAlready) {
             Scout.scoutMapEdges();
-            Scout.scoutSlanderers();
             Scout.scoutECs();
             Scout.scoutEnemies();
         }
