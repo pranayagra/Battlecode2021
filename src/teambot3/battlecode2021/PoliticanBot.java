@@ -453,32 +453,62 @@ public class PoliticanBot implements RunnableBot {
     }
 
 
-    //poli attack
-    // IF I THINK SLANDERER HERE, COMMUNICATE TO EC -->
-    // IF I THINK GOOD SCORE TO EXPLODE --> ATTACK
-    // OTHERWISE MOVE CLOSER TO EC?
 
-    //SCORE function --> if killed EC=> number of units killed + EC damage / 10 + % of EC damage - poli-health
 
-    // kills 2 units and 10 dmg (5%), kills 0 units and 50 dmg (25%), kills 3 units and 0 damage
-
-    //IF >=50% health
-
-    // my influence => attack (we want to attack pretty quickly)
     //
+    private static int[][] importantLocationsToKill = {{0, 2}, {1, 1}, {2, 0}, {1, -1}, {0, -2}, {-1, -1}, {-2, 0}, {-1, 1}};
+    private static int[] health = new int[8];
+    private static int[] distances = new int[8];
+    private static int[] myUnitDamages = new int[4]; // * 2 - 1, * 2, * 2 + 1
 
-    //some score function based on : my conviction (maybe not), number of units killed (scaled with my conviction wasted or something), % and value EC damage (% / 5), captured EC (+1000)
-    //for units: %of damage (decimal) + 2 (if killed)
+    private void updateImportantLocationsKills() throws GameActionException {
+
+        for (int i = 0; i < 8; ++i) {
+            // the only ones that I add are the ones that I know I can do something about (kill)
+            health[i] = 9999;
+            distances[i] = 9999;
+            MapLocation location = Cache.EC_INFO_LOCATION.translate(importantLocationsToKill[i][0], importantLocationsToKill[i][1]);
+            int distanceFromMe = Cache.CURRENT_LOCATION.distanceSquaredTo(location);
+            if (controller.canSenseLocation(location)) {
+                RobotInfo robotInfo = controller.senseRobotAtLocation(location);
+
+                // can't sense location (assume strong enemy), the location is empty (free damage), friendly unit (assume strong enemy), enemy unit (set values)
+                if (robotInfo == null) {
+                    health[i] = -1;
+                    distances[i] = 0;
+                } else {
+                    if (robotInfo.team != Cache.OUR_TEAM) {
+                        health[i] = robotInfo.conviction;
+                        distances[i] = distanceFromMe;
+//                        controller.setIndicatorDot(location, 0, 0, 255);
+                    }
+                }
+            }
+        }
+
+        int i = 0;
+        for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
+            myUnitDamages[i] = 0;
+            MapLocation location = Cache.EC_INFO_LOCATION.add(direction);
+            if (controller.canSenseLocation(location)) {
+                RobotInfo robotInfo = controller.senseRobotAtLocation(location);
+                if (robotInfo != null && robotInfo.type == RobotType.POLITICIAN && robotInfo.team == Cache.OUR_TEAM) {
+                    myUnitDamages[i] = Math.max(0, robotInfo.conviction - 10);
+                }
+            }
+            i += 1;
+        }
+
+        Debug.printInformation("myUnitDamages: " + Arrays.toString(myUnitDamages) + ", health: " + Arrays.toString(health) + ", distances: " + Arrays.toString(distances), " STORING INFORMATION FOR LATER");
+
+    }
 
     public double calculateScore(int empowerDistanceSquared) {
-
-//        int[] numberOfUnits = new int[25];
-        //int ECDistance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
-
+        int myDamageToEC = 0;
+        int ECHealth = 9999999;
         int numUnits = 0;
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_ROBOTS) {
             int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(robotInfo.location);
-//            ++numberOfUnits[distance];
             if (distance <= empowerDistanceSquared) {
                 ++numUnits;
             }
@@ -486,15 +516,14 @@ public class PoliticanBot implements RunnableBot {
 
         if (numUnits == 0) return -9999;
 
-        int damage = (int) ((Math.max(0, controller.getConviction() - 10) / numUnits) * controller.getEmpowerFactor(Cache.OUR_TEAM,0));
+        //(int) ((((double)(conviction - 10)) / numBots) * buff)
 
-        if (damage == 0) return -9999;
+        double convictionToGive = Math.max(0, controller.getConviction() - 10);
+        int convictionPerBot = (int) ((convictionToGive / numUnits) * controller.getEmpowerFactor(Cache.OUR_TEAM,0));
+
+        if (convictionPerBot == 0) return -9999;
 
         int unitsKilled = 0;
-        int totalDamage = 0;
-        int ECDamage = 0;
-        double ECHealth = 9999999;
-        boolean ECCaptured = false;
 
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_ROBOTS) {
 
@@ -504,46 +533,91 @@ public class PoliticanBot implements RunnableBot {
             if (distance <= empowerDistanceSquared) {
                 if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER) {
                     ECHealth = robotInfo.conviction;
-                    ECDamage = damage;
-                    if (ECDamage >= ECHealth) ECCaptured = true;
+                    myDamageToEC = convictionPerBot;
                 }
 
-                if (robotInfo.conviction <= damage) {
+                if (robotInfo.conviction < convictionPerBot) {
                     ++unitsKilled;
-                    Debug.printInformation("KILLING " + robotInfo.location, " KILLED ");
                 }
-                totalDamage += Math.min(robotInfo.conviction, damage);
             }
         }
 
-        /*
-        double score = unitsKilled * 2; //1 killed unit => +2 score (max realistically 12)
-        score += ((ECDamage / ECHealth) * 20); //5% health => +1 score (max 20)
-        score += ECDamage / 10; //10 health => +1 score (max 40)
-        score += (ECCaptured ? 100000 : 0); //killed EC => +10000 score
-        score += totalDamage / (controller.getConviction() - 10) * unitsKilled * 5; // damage_decimal * unitsKilled * 5
+        //calculate 3-location, see how many will survive, and do damage / (1 + surival)
+        int totalECDamageFromPrimeBots = 0;
+        int totalECDamageImprovementsOfPrimeBots = 0;
+        int totalECDamageBeforePrimeBots = 0;
+        for (int i = 0; i < 4; ++i) {
+            int leftSide = (i * 2 + 7) % 8;
+            int centerSide = (i * 2);
+            int rightSide = (i * 2 + 1) % 8;
 
-        int damagedWasted = (controller.getConviction() - 10) - totalDamage;
+            double convictionToGive_PrimeBot = myUnitDamages[i];
+            if (convictionToGive_PrimeBot == 0) continue; //not a unit capable of attacking
 
-        if (unitsKilled == 0) {
-            score += ECDamage / 5; //5 health => +1 score
+            int numUnitsBeforeExplosion = 4;
+            int numUnitsAfterExplosion = 4;
+
+            if (health[leftSide] == -1) {
+                --numUnitsBeforeExplosion;
+            }
+            if (health[centerSide] == -1) {
+                --numUnitsBeforeExplosion;
+            }
+            if (health[rightSide] == -1) {
+                --numUnitsBeforeExplosion;
+            }
+
+            if (distances[leftSide] <= empowerDistanceSquared) { //will impact explosion
+                if (health[leftSide] < convictionPerBot) {
+                    --numUnitsAfterExplosion;
+                }
+            }
+
+            if (distances[centerSide] <= empowerDistanceSquared) {
+                if (health[centerSide] < convictionPerBot) {
+                    --numUnitsAfterExplosion;
+                }
+            }
+
+            if (distances[rightSide] <= empowerDistanceSquared) {
+                if (health[rightSide] < convictionPerBot) {
+                    --numUnitsAfterExplosion;
+                }
+            }
+
+            int convictionPerBot_PrimeBot_Before = (int) ((convictionToGive_PrimeBot / numUnitsBeforeExplosion) * controller.getEmpowerFactor(Cache.OUR_TEAM,2));
+            int convictionPerBot_PrimeBot_After = (int) ((convictionToGive_PrimeBot / numUnitsAfterExplosion) * controller.getEmpowerFactor(Cache.OUR_TEAM,2));
+
+            totalECDamageBeforePrimeBots += convictionPerBot_PrimeBot_Before;
+            totalECDamageFromPrimeBots += convictionPerBot_PrimeBot_After;
+
+            int convictionImprovement = convictionPerBot_PrimeBot_After - convictionPerBot_PrimeBot_Before;
+            totalECDamageImprovementsOfPrimeBots += convictionImprovement;
+
+            Debug.printInformation("For EC bomb on side " + i + ", numUnitsBeforeExplosion (max): " + numUnitsBeforeExplosion + ", numUnitsAfterExplosion (max): " + numUnitsAfterExplosion + ", convictionPerBot_PrimeBot_After: " + convictionPerBot_PrimeBot_After + ", convictionImprovement: " + convictionImprovement, " EC DAMAGE FOR POSITION " + i);
         }
-         */
 
-        double score = unitsKilled * 2;
-        score += ECDamage / 10.0;
-        score += (ECCaptured ? 100000: 0);
+        Debug.printInformation("totalECDamageFromPrimeBots: " + totalECDamageFromPrimeBots + ", totalECDamageImprovementsOfPrimeBots: " + totalECDamageImprovementsOfPrimeBots + ", myDamageToEC: " + myDamageToEC, " INFO IF I EXPLODE ");
 
+        double score = unitsKilled * 3;
+
+        // IFF EXPLODE WITH OTHERS THEN CAPTURES THE EC!
+        if ( (totalECDamageFromPrimeBots + myDamageToEC) > ECHealth && totalECDamageBeforePrimeBots <= ECHealth) {
+            score += 99999;
+        }
+
+        /* If I boost the damage by more than my damage */
+        double totalECImprovedDamageOverall = totalECDamageImprovementsOfPrimeBots + myDamageToEC;
+        double effectiveness = totalECImprovedDamageOverall / (controller.getConviction() + 1);
+        score += (controller.getConviction() * Math.max(0, (effectiveness - 0.4)));
+
+        /* We rather these units we univerally helpful in getting rid of clutter*/
         if (unitsKilled == 0) {
             score -= 1;
         }
 
-        if (ECCaptured) {
-            score += ECDamage / 4.0;
-        }
-
-        Debug.printInformation("EMPOWER DISTANCE " + empowerDistanceSquared + ": [unitsKilled: " + unitsKilled + ", totalDamage: " + totalDamage + ", ECDamage: " + ECDamage + ", ECCaptured: " + ECCaptured + "] => SCORE ", score);
-
+        Debug.printInformation("EMPOWER DISTANCE " + empowerDistanceSquared + ": [unitsKilled: " + unitsKilled + ", totalECImprovedDamageOverall: " + totalECImprovedDamageOverall + ", effectiveness: " + effectiveness + "] => SCORE ", score);
+        System.out.println("\n");
         return score;
     }
 
@@ -563,21 +637,25 @@ public class PoliticanBot implements RunnableBot {
         if (distanceFromECToAttack == 1) {
             decreaseScoreThresholdAmount = 0;
             if (worthExplodingEC()) return; //TODO: we should wait but also not wait forever...
-            if (leaveSpot()) return;
+            if (leaveSpot()) return; //TODO (IMP): maybe instead of leaving it's worth to just explode first?
         } else if (distanceFromECToAttack <= 20) { //TODO: not sure if this number 20 is best value
             decreaseScoreThresholdAmount++;
-            //TODO: first determine if exploding right now will capture EC -> if so do it
+            updateImportantLocationsKills();
+            if (decreaseScoreThresholdAmount <= 10) {
+                updateExplosionScores(-999);
+            } else {
+                updateExplosionScores((decreaseScoreThresholdAmount - 10)); //sets bestScore and returns best radius
+            }
 
-            updateExplosionScores((decreaseScoreThresholdAmount - 3) / 2); //sets bestScore and returns best radius
-
-            if (bestScore >= 50000) {
+            /* PERFORM EARLY ATTACK IFF WE KILL EC AND IT IS A SINGLE UNIT IN RANGE */
+            if (bestScore >= 50000 && controller.senseNearbyRobots(distanceFromECToAttack).length == 1) {
                 if (controller.canEmpower(bestExplosionRadius)) {
                     controller.empower(bestExplosionRadius);
                     return;
                 }
             }
 
-            if (moveToEmptySpot()) return; //TODO: not complete method yet (may get stuck for long time) -- do it based on process too
+            if (moveToEmptySpot()) return; //TODO: not complete method yet (may get stuck for long time) -- do it based on process too -- not likely for bug to occur for long many rounds
 
             if (bestScore >= scoreThreshold && bestScore >= 1) {
                 if (controller.canEmpower(bestExplosionRadius)) {
@@ -589,7 +667,7 @@ public class PoliticanBot implements RunnableBot {
             if (circleEnemyEC()) return;
 
         } else {
-            //TODO: move closer. If we have not gained distance in ~20 rounds AND ~4 potential moves, then we should consider exploding & decreasing the threshold as time goes on.
+            //move closer. If we have not gained distance in ~20 rounds AND ~4 potential moves, then we should consider exploding & decreasing the threshold as time goes on.
             // IF NOT STUCK => DO NOT EXPLODE
             decreaseScoreThresholdAmount = 0;
             if (bestDistanceOnAttack > distanceFromECToAttack) {
@@ -613,6 +691,7 @@ public class PoliticanBot implements RunnableBot {
 
             /* We have tried moving towards the target but have not made any progress in the last 20 rounds AND 4 cooldown moves. Let us start trying to explode and slowly decrease the threshold */
             if (isStuck) {
+                updateImportantLocationsKills();
                 updateExplosionScores((numRoundsTaken - 20) / 4);
                 if (bestScore >= scoreThreshold && bestScore >= 1) {
                     if (controller.canEmpower(bestExplosionRadius)) {
@@ -640,31 +719,32 @@ public class PoliticanBot implements RunnableBot {
         int minDamage = 0;
         int maxDamage = 0;
 
+        int myUnits = 0;
+
+        double empowerFactor = controller.getEmpowerFactor(Cache.OUR_TEAM, 0);;
+
         for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
             MapLocation checkStrongPoliticianLocation = Cache.EC_INFO_LOCATION.add(direction);
 
             if (checkStrongPoliticianLocation.equals(Cache.CURRENT_LOCATION)) {
-                int currentTotalDamage = Math.max(0, controller.getConviction() - 10);
+                double currentTotalDamage = Math.max(0, controller.getConviction() - 10);
                 int currentUnitsNear = controller.senseNearbyRobots(1).length;
-                int damagePerUnit = currentTotalDamage / currentUnitsNear;
+                int damagePerUnit = (int) ((currentTotalDamage / currentUnitsNear) * empowerFactor);
                 minDamage += damagePerUnit;
                 maxDamage += damagePerUnit; //NOT a typo (maxDamage += damagePerUnit)
+                myUnits = currentUnitsNear;
             } else if (controller.canSenseLocation(checkStrongPoliticianLocation)) {
                 RobotInfo robotInfo = controller.senseRobotAtLocation(checkStrongPoliticianLocation);
                 if (robotInfo != null && robotInfo.type == RobotType.POLITICIAN && robotInfo.team == Cache.OUR_TEAM) {
-                    int currentTotalDamage = Math.max(0, robotInfo.conviction - 10);
+                    double currentTotalDamage = Math.max(0, robotInfo.conviction - 10);
                     //NOTE -> this method below gets the robot itself as well, so subtract 1
                     int currentUnitsNear = controller.detectNearbyRobots(robotInfo.location, 1).length - 1;
-                    int damagePerUnit = currentTotalDamage / currentUnitsNear;
+                    int damagePerUnit = (int) ((currentTotalDamage / currentUnitsNear) * empowerFactor);
                     minDamage += damagePerUnit;
-                    maxDamage += currentTotalDamage;
+                    maxDamage += (currentTotalDamage * empowerFactor);
                 }
             }
         }
-
-        minDamage *= controller.getEmpowerFactor(Cache.OUR_TEAM, 0);
-        maxDamage *= controller.getEmpowerFactor(Cache.OUR_TEAM, 0);
-
 
         int averageDamage = (minDamage + maxDamage) / 2;
 
@@ -672,8 +752,21 @@ public class PoliticanBot implements RunnableBot {
 
         Debug.printInformation("minDamage: " + minDamage + ", maxDamage: " + maxDamage + ", average: " + averageDamage, enemyECInfo.conviction);
 
-        if (averageDamage >= enemyECInfo.conviction) {
-            //EXPLODE!!!
+        boolean toEmpower = false;
+        if (enemyECInfo.team == Cache.OUR_TEAM) {
+            if (enemyECInfo.influence <= 50) {
+                if (myUnits <= 2) {
+                    toEmpower = true;
+                }
+            }
+        }
+
+        if (averageDamage >= enemyECInfo.conviction && enemyECInfo.team != Cache.OUR_TEAM) {
+            toEmpower = true;
+        }
+
+        //EXPLODE!!!?
+        if (toEmpower) {
             if (controller.canEmpower(1)) {
                 controller.empower(1);
                 return true;
@@ -701,7 +794,6 @@ public class PoliticanBot implements RunnableBot {
         }
 
         // only leave if I am the weakest bot & it's in range of the strongest robot <-- chose this algo
-        //only leave if I am the closest bot weakest bot
 
         if (leaveSpot && strongestRobot != null) {
             // find weakest robot (or null space) among the 4 spots
@@ -721,7 +813,6 @@ public class PoliticanBot implements RunnableBot {
                             leaveSpot = false;
                             break;
                         }
-
                     }
                 }
 
@@ -807,7 +898,6 @@ public class PoliticanBot implements RunnableBot {
         if (closestSquare != null && moveTowardsEmptySpot) {
             //TODO (IMP): add some stuck parameter in case the closestSquare is inaccessible that returns false
             //TODO: move() is bugged sometimes where we go between the two same places?
-            //TODO: extend distance mucks from politicians
             Pathfinding.move(closestSquare);
             return true;
         }
@@ -816,12 +906,14 @@ public class PoliticanBot implements RunnableBot {
     }
 
     private static int[] empowerValues = {1, 2, 4, 5, 8, 9};
-    public void updateExplosionScores(int thresholdDecrease) throws GameActionException {
+    public void updateExplosionScores(int thresholdDecrease) {
 
         bestScore = -1;
 
         scoreThreshold = 1 + (controller.getConviction() - 10) * 0.2;
         scoreThreshold = scoreThreshold - Math.max(0, thresholdDecrease);
+
+        if (thresholdDecrease == -999) scoreThreshold = 1 + (controller.getConviction() - 10) * 0.5;
 
         //TODO: if score has reached negative, then just go defend or something
         if (scoreThreshold < 1) {
@@ -844,15 +936,7 @@ public class PoliticanBot implements RunnableBot {
         Debug.printByteCode("attackECLocation() BYTECODE USED: " + (Clock.getBytecodeNum() - bytecode));
         Debug.printInformation("[bestScore: " + bestScore + ", bestExplosionRadius: " + bestExplosionRadius + ", scoreThreshold: " + scoreThreshold + "]", " BEST EXPLOSION ");
 
-//        if (bestScore >= scoreThreshold) {
-//            Debug.printInformation("EXPLODING WITH " + bestExplosionRadius + " SINCE (bestScore) " + bestScore + " >= (scoreThreshold) " + scoreThreshold, Clock.getBytecodesLeft());
-//
-//
-//            if (controller.canEmpower(empowerValue)) {
-//                controller.empower(empowerValue);
-//                return empowerValue;
-//            }
-//        }
+        //TODO: IF exploding at this distance means my distance==1 polis can capture better, do it also
 
     }
 
@@ -862,6 +946,15 @@ public class PoliticanBot implements RunnableBot {
         /* MOVE IN CIRCLE MOTION */
         Direction preferredDirection = null;
         int preferredDistance = 9999999;
+
+        if (Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION) < 5) {
+            // move away
+            Direction awayECDir = Pathfinding.toMovePreferredDirection(Cache.EC_INFO_LOCATION.directionTo(Cache.CURRENT_LOCATION), 1);
+            if (awayECDir != null) {
+                Debug.printInformation("circling too close: " + awayECDir, " LEAVING EC RANGE ");
+                controller.move(awayECDir);
+            }
+        }
 
         Direction towardsECDir = Cache.CURRENT_LOCATION.directionTo(Cache.EC_INFO_LOCATION);
 
@@ -908,7 +1001,7 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        Debug.printInformation("preferredDirection: " + towardsECDir + ", preferredDistance: " + preferredDirection + " circleDirectionClockwise: " + circleDirectionClockwise, " STAY IN CIRCLE RADIUS ");
+        Debug.printInformation("preferredDirection: " + preferredDirection + ", preferredDistance: " + preferredDistance + " circleDirectionClockwise: " + circleDirectionClockwise, " STAY IN CIRCLE RADIUS ");
 
         if (preferredDirection != null) {
             controller.move(preferredDirection);
@@ -919,6 +1012,476 @@ public class PoliticanBot implements RunnableBot {
 
         return false;
     }
+
+
+
+
+    //poli attack
+    // IF I THINK SLANDERER HERE, COMMUNICATE TO EC -->
+    // IF I THINK GOOD SCORE TO EXPLODE --> ATTACK
+    // OTHERWISE MOVE CLOSER TO EC?
+
+    //SCORE function --> if killed EC=> number of units killed + EC damage / 10 + % of EC damage - poli-health
+
+    // kills 2 units and 10 dmg (5%), kills 0 units and 50 dmg (25%), kills 3 units and 0 damage
+
+    //IF >=50% health
+
+    // my influence => attack (we want to attack pretty quickly)
+    //
+
+    //some score function based on : my conviction (maybe not), number of units killed (scaled with my conviction wasted or something), % and value EC damage (% / 5), captured EC (+1000)
+    //for units: %of damage (decimal) + 2 (if killed)
+
+//    public double calculateScore(int empowerDistanceSquared) {
+//
+////        int[] numberOfUnits = new int[25];
+//        //int ECDistance = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
+//
+//        int numUnits = 0;
+//        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ROBOTS) {
+//            int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(robotInfo.location);
+////            ++numberOfUnits[distance];
+//            if (distance <= empowerDistanceSquared) {
+//                ++numUnits;
+//            }
+//        }
+//
+//        if (numUnits == 0) return -9999;
+//
+//        int damage = (int) ((Math.max(0, controller.getConviction() - 10) / numUnits) * controller.getEmpowerFactor(Cache.OUR_TEAM,0));
+//
+//        if (damage == 0) return -9999;
+//
+//        int unitsKilled = 0;
+//        int totalDamage = 0;
+//        int ECDamage = 0;
+//        double ECHealth = 9999999;
+//        boolean ECCaptured = false;
+//
+//        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ROBOTS) {
+//
+//            if (robotInfo.team == Cache.OUR_TEAM) continue;
+//
+//            int distance = Cache.CURRENT_LOCATION.distanceSquaredTo(robotInfo.location);
+//            if (distance <= empowerDistanceSquared) {
+//                if (robotInfo.type == RobotType.ENLIGHTENMENT_CENTER) {
+//                    ECHealth = robotInfo.conviction;
+//                    ECDamage = damage;
+//                    if (ECDamage >= ECHealth) ECCaptured = true;
+//                }
+//
+//                if (robotInfo.conviction <= damage) {
+//                    ++unitsKilled;
+//                    Debug.printInformation("KILLING " + robotInfo.location, " KILLED ");
+//                }
+//                totalDamage += Math.min(robotInfo.conviction, damage);
+//            }
+//        }
+//
+//        /*
+//        double score = unitsKilled * 2; //1 killed unit => +2 score (max realistically 12)
+//        score += ((ECDamage / ECHealth) * 20); //5% health => +1 score (max 20)
+//        score += ECDamage / 10; //10 health => +1 score (max 40)
+//        score += (ECCaptured ? 100000 : 0); //killed EC => +10000 score
+//        score += totalDamage / (controller.getConviction() - 10) * unitsKilled * 5; // damage_decimal * unitsKilled * 5
+//
+//        int damagedWasted = (controller.getConviction() - 10) - totalDamage;
+//
+//        if (unitsKilled == 0) {
+//            score += ECDamage / 5; //5 health => +1 score
+//        }
+//         */
+//
+//        double score = unitsKilled * 2;
+//        score += ECDamage / 10.0;
+//        score += (ECCaptured ? 100000: 0);
+//
+//        if (unitsKilled == 0) {
+//            score -= 1;
+//        }
+//
+//        if (ECCaptured) {
+//            score += ECDamage / 4.0;
+//        }
+//
+//        Debug.printInformation("EMPOWER DISTANCE " + empowerDistanceSquared + ": [unitsKilled: " + unitsKilled + ", totalDamage: " + totalDamage + ", ECDamage: " + ECDamage + ", ECCaptured: " + ECCaptured + "] => SCORE ", score);
+//
+//        return score;
+//    }
+//
+//
+//    /* ATTACKING CODE 1/24 (more for enemy EC) */
+//
+//    //TODO: bug --> unit thinks for 1 turn that EC is still enemies -- maybe idk, not a huge deal I think tho?
+//
+//    private static double bestScore;
+//    private static double scoreThreshold;
+//    private static int bestExplosionRadius;
+//    public void attackECProtocol() throws GameActionException {
+//        int distanceFromECToAttack = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
+//
+//        if (!controller.isReady()) return;
+//
+//        if (distanceFromECToAttack == 1) {
+//            decreaseScoreThresholdAmount = 0;
+//            if (worthExplodingEC()) return; //TODO: we should wait but also not wait forever...
+//            if (leaveSpot()) return;
+//        } else if (distanceFromECToAttack <= 20) { //TODO: not sure if this number 20 is best value
+//            decreaseScoreThresholdAmount++;
+//            //TODO: first determine if exploding right now will capture EC -> if so do it
+//
+//            updateExplosionScores((decreaseScoreThresholdAmount - 3) / 2); //sets bestScore and returns best radius
+//
+//            if (bestScore >= 50000) {
+//                if (controller.canEmpower(bestExplosionRadius)) {
+//                    controller.empower(bestExplosionRadius);
+//                    return;
+//                }
+//            }
+//
+//            if (moveToEmptySpot()) return; //TODO: not complete method yet (may get stuck for long time) -- do it based on process too
+//
+//            if (bestScore >= scoreThreshold && bestScore >= 1) {
+//                if (controller.canEmpower(bestExplosionRadius)) {
+//                    controller.empower(bestExplosionRadius);
+//                    return;
+//                }
+//            }
+//
+//            if (circleEnemyEC()) return;
+//
+//        } else {
+//            //TODO: move closer. If we have not gained distance in ~20 rounds AND ~4 potential moves, then we should consider exploding & decreasing the threshold as time goes on.
+//            // IF NOT STUCK => DO NOT EXPLODE
+//            decreaseScoreThresholdAmount = 0;
+//            if (bestDistanceOnAttack > distanceFromECToAttack) {
+//                bestDistanceOnAttack = distanceFromECToAttack;
+//                numActionTurnsTaken = 0;
+//                numRoundsTaken = 0;
+//            } else {
+//                numRoundsTaken++;
+//                if (controller.isReady()) numActionTurnsTaken++;
+//            }
+//
+//            boolean isStuck = false;
+//            if (numRoundsTaken >= 20 && numActionTurnsTaken >= 4) {
+//                isStuck = true;
+//            }
+//
+//            /* If we have made progress towards our target in the last 20 rounds AND 4 cooldown moves, then we are not stuck and continue moving towards the target. */
+//            if (!isStuck) {
+//                pathfinding.move(Cache.EC_INFO_LOCATION); return;
+//            }
+//
+//            /* We have tried moving towards the target but have not made any progress in the last 20 rounds AND 4 cooldown moves. Let us start trying to explode and slowly decrease the threshold */
+//            if (isStuck) {
+//                updateExplosionScores((numRoundsTaken - 20) / 4);
+//                if (bestScore >= scoreThreshold && bestScore >= 1) {
+//                    if (controller.canEmpower(bestExplosionRadius)) {
+//                        controller.empower(bestExplosionRadius);
+//                        return;
+//                    }
+//                }
+//            }
+//
+//            /* We did not cross the threshold on explosion. Just try moving again */
+//            pathfinding.move(Cache.EC_INFO_LOCATION); return;
+//        }
+//
+//    }
+//
+//    //change muck behavior --> if close to non-friendly EC + strong poli near it, go away from EC
+//    //change flag urgency in scout on poli --> add as extra bit for health (and remove urgency)
+//    //change / add a new flag that indicates if a slanderer has been found by poli or scout? more urgency as a tick?
+//    //make mucks target ECs iff no slanderer
+//
+//    public boolean worthExplodingEC() throws GameActionException {
+//        //check 4 spots N W S E of location to attack --> calculate damage --> see if to explode (check cooldown maybe + buff)
+//
+//        //TODO (not as important): improvements --> add some type of cooldown checker (a simple implimentation will be to use the cooldown of the newly entered bot
+//        int minDamage = 0;
+//        int maxDamage = 0;
+//
+//        for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
+//            MapLocation checkStrongPoliticianLocation = Cache.EC_INFO_LOCATION.add(direction);
+//
+//            if (checkStrongPoliticianLocation.equals(Cache.CURRENT_LOCATION)) {
+//                int currentTotalDamage = Math.max(0, controller.getConviction() - 10);
+//                int currentUnitsNear = controller.senseNearbyRobots(1).length;
+//                int damagePerUnit = currentTotalDamage / currentUnitsNear;
+//                minDamage += damagePerUnit;
+//                maxDamage += damagePerUnit; //NOT a typo (maxDamage += damagePerUnit)
+//            } else if (controller.canSenseLocation(checkStrongPoliticianLocation)) {
+//                RobotInfo robotInfo = controller.senseRobotAtLocation(checkStrongPoliticianLocation);
+//                if (robotInfo != null && robotInfo.type == RobotType.POLITICIAN && robotInfo.team == Cache.OUR_TEAM) {
+//                    int currentTotalDamage = Math.max(0, robotInfo.conviction - 10);
+//                    //NOTE -> this method below gets the robot itself as well, so subtract 1
+//                    int currentUnitsNear = controller.detectNearbyRobots(robotInfo.location, 1).length - 1;
+//                    int damagePerUnit = currentTotalDamage / currentUnitsNear;
+//                    minDamage += damagePerUnit;
+//                    maxDamage += currentTotalDamage;
+//                }
+//            }
+//        }
+//
+//        minDamage *= controller.getEmpowerFactor(Cache.OUR_TEAM, 0);
+//        maxDamage *= controller.getEmpowerFactor(Cache.OUR_TEAM, 0);
+//
+//
+//        int averageDamage = (minDamage + maxDamage) / 2;
+//
+//        RobotInfo enemyECInfo = controller.senseRobotAtLocation(Cache.EC_INFO_LOCATION);
+//
+//        Debug.printInformation("minDamage: " + minDamage + ", maxDamage: " + maxDamage + ", average: " + averageDamage, enemyECInfo.conviction);
+//
+//        if (averageDamage >= enemyECInfo.conviction) {
+//            //EXPLODE!!!
+//            if (controller.canEmpower(1)) {
+//                controller.empower(1);
+//                return true;
+//            }
+//        }
+//
+//        return false;
+//    }
+//
+//    public boolean leaveSpot() throws GameActionException {
+//        //TODO: check in sensor range if there is a different politician who is not next to the EC if they have more damage than I do, and if so, forfeit spot.
+//
+//        boolean leaveSpot = false;
+//
+//        MapLocation strongestRobot = null;
+//
+//        for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+//            if (robotInfo.type == RobotType.POLITICIAN && robotInfo.team == Cache.OUR_TEAM && robotInfo.conviction > controller.getConviction()) {
+//                if (robotInfo.location.distanceSquaredTo(Cache.EC_INFO_LOCATION) > 1) {
+//                    strongestRobot = robotInfo.location;
+//                    leaveSpot = true;
+//                    break;
+//                }
+//            }
+//        }
+//
+//        // only leave if I am the weakest bot & it's in range of the strongest robot <-- chose this algo
+//        //only leave if I am the closest bot weakest bot
+//
+//        if (leaveSpot && strongestRobot != null) {
+//            // find weakest robot (or null space) among the 4 spots
+//            for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
+//                MapLocation candidateLocation = Cache.EC_INFO_LOCATION.add(direction);
+//
+//                if (controller.canSenseLocation(candidateLocation)) {
+//                    //exists
+//                    RobotInfo candidateRobot = controller.senseRobotAtLocation(candidateLocation);
+//                    int distanceCandidateToStrongest = candidateLocation.distanceSquaredTo(candidateLocation);
+//
+//                    if (distanceCandidateToStrongest <= RobotType.POLITICIAN.sensorRadiusSquared) {
+//
+//                        /* If there is an open spot or a weaker robot who is within range of the strongestRobot, let them move instead.
+//                        In event of tie in health, I think this algorithm should still work just as well */
+//                        if (candidateRobot == null || candidateRobot.conviction < controller.getConviction()) {
+//                            leaveSpot = false;
+//                            break;
+//                        }
+//
+//                    }
+//                }
+//
+//            }
+//        }
+//
+//        Debug.printInformation("leaveSpot: " + leaveSpot, strongestRobot);
+//
+//
+//        if (leaveSpot) {
+//            Direction directionToMoveIn = Pathfinding.randomValidDirection();
+//            Debug.printInformation("Direction to move in: " + directionToMoveIn, " LEAVE PRIME SPOT ");
+//            if (directionToMoveIn != null && controller.canMove(directionToMoveIn)) {
+//                controller.move(directionToMoveIn);
+//                return true;
+//            }
+//        }
+//
+//        return false;
+//    }
+//
+//
+//    public boolean moveToEmptySpot() throws GameActionException {
+//        //TODO: check if any of the 4 spots are empty, and if so,
+//        // go towards it if and only if there is no better politician health-wise who can take it
+//        // (if tie take closest to attacking location by travelDistance, then squaredDistance, then ID)
+//
+//        //TODO: bug -- if they are all full by enemy units, do we return false? <-- I think so
+//        //TODO: bug -- make sure to still leave a gap of 3 from EC and me
+//
+//        MapLocation closestSquare = null;
+//        int distance = 9999999;
+//
+//        for (Direction direction : Constants.CARDINAL_DIRECTIONS) {
+//            MapLocation candidateLocation = Cache.EC_INFO_LOCATION.add(direction);
+//            if (controller.canSenseLocation(candidateLocation) && controller.senseRobotAtLocation(candidateLocation) == null) {
+//                int travelDistance = Pathfinding.travelDistance(Cache.CURRENT_LOCATION, candidateLocation);
+//                if (travelDistance < distance) {
+//                    closestSquare = candidateLocation;
+//                    distance = travelDistance;
+//                }
+//            }
+//        }
+//
+//        /* MAYBE INSTEAD OF CACHE.ALL_NEARBY_FRIENDLY_ROBOTS  WE DO ALL POLITICIAN SENSE RADIUS CENTERED AROUND CLOSESTSQUARE */
+//        boolean moveTowardsEmptySpot = true;
+//        if (closestSquare != null) {
+//            // iterate through all politicians
+//            int myTravelDistance = Pathfinding.travelDistance(Cache.CURRENT_LOCATION, closestSquare);
+//
+//            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+//                if (robotInfo.type == RobotType.POLITICIAN && robotInfo.team == Cache.OUR_TEAM) {
+//                    if (robotInfo.location.distanceSquaredTo(Cache.EC_INFO_LOCATION) > 1) {
+//
+//                        /* A bot not on the 4 desired squares that is stronger than me -> other bot is better than me */
+//                        if (robotInfo.conviction > controller.getConviction()) {
+//                            moveTowardsEmptySpot = false;
+//                            break;
+//                        }
+//
+//                        if (robotInfo.conviction == controller.getConviction()) {
+//                            int candidateTravelDistance = Pathfinding.travelDistance(robotInfo.location, closestSquare);
+//
+//                            /* A bot with the same health who is closer than me -> other bot is better than me */
+//                            if (myTravelDistance > candidateTravelDistance) {
+//                                moveTowardsEmptySpot = false;
+//                                break;
+//                            }
+//
+//                            /* A bot with the same health and travel distance who has a higher ID than me -> other bot is better than me */
+//                            if (myTravelDistance == candidateTravelDistance && robotInfo.ID > Cache.ID) {
+//                                moveTowardsEmptySpot = false;
+//                                break;
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//
+//        Debug.printInformation("closestSquare: " + closestSquare + ", moveTowardsEmptySpot: " + moveTowardsEmptySpot, " MOVE TO PRIME ATTACK SPOT ");
+//
+//        if (closestSquare != null && moveTowardsEmptySpot) {
+//            //TODO (IMP): add some stuck parameter in case the closestSquare is inaccessible that returns false
+//            //TODO: move() is bugged sometimes where we go between the two same places?
+//            //TODO: extend distance mucks from politicians
+//            Pathfinding.move(closestSquare);
+//            return true;
+//        }
+//
+//        return false;
+//    }
+//
+//    private static int[] empowerValues = {1, 2, 4, 5, 8, 9};
+//    public void updateExplosionScores(int thresholdDecrease) throws GameActionException {
+//
+//        bestScore = -1;
+//
+//        scoreThreshold = 1 + (controller.getConviction() - 10) * 0.2;
+//        scoreThreshold = scoreThreshold - Math.max(0, thresholdDecrease);
+//
+//        //TODO: if score has reached negative, then just go defend or something
+//        if (scoreThreshold < 1) {
+//            defendType = true;
+//            return;
+//        }
+//
+//        bestExplosionRadius = -1;
+//
+//        int bytecode = Clock.getBytecodeNum();
+//
+//        for (int i = 0; i < empowerValues.length; ++i) {
+//            double currentScore = calculateScore(empowerValues[i]);
+//            if (currentScore > bestScore) {
+//                bestScore = currentScore;
+//                bestExplosionRadius = empowerValues[i];
+//            }
+//        }
+//
+//        Debug.printByteCode("attackECLocation() BYTECODE USED: " + (Clock.getBytecodeNum() - bytecode));
+//        Debug.printInformation("[bestScore: " + bestScore + ", bestExplosionRadius: " + bestExplosionRadius + ", scoreThreshold: " + scoreThreshold + "]", " BEST EXPLOSION ");
+//
+////        if (bestScore >= scoreThreshold) {
+////            Debug.printInformation("EXPLODING WITH " + bestExplosionRadius + " SINCE (bestScore) " + bestScore + " >= (scoreThreshold) " + scoreThreshold, Clock.getBytecodesLeft());
+////
+////
+////            if (controller.canEmpower(empowerValue)) {
+////                controller.empower(empowerValue);
+////                return empowerValue;
+////            }
+////        }
+//
+//    }
+//
+//    public boolean circleEnemyEC() throws GameActionException {
+//        //TODO: circle around the EC as close as possible but >= 5 distance. Use scoring function to determine if to explode
+//
+//        /* MOVE IN CIRCLE MOTION */
+//        Direction preferredDirection = null;
+//        int preferredDistance = 9999999;
+//
+//        Direction towardsECDir = Cache.CURRENT_LOCATION.directionTo(Cache.EC_INFO_LOCATION);
+//
+//        if (controller.canMove(towardsECDir)) {
+//            MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(towardsECDir);
+//            int candidateDistance = candidateLocation.distanceSquaredTo(Cache.EC_INFO_LOCATION);
+//            if (candidateDistance >= 5) {
+//                preferredDirection = towardsECDir;
+//                preferredDistance = candidateDistance;
+//            }
+//        }
+//
+//        if (circleDirectionClockwise) {
+//            towardsECDir = towardsECDir.rotateRight();
+//            MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(towardsECDir);
+//            int candidateDistance = candidateLocation.distanceSquaredTo(Cache.EC_INFO_LOCATION);
+//            if (controller.canMove(towardsECDir) && candidateDistance >= 5 && candidateDistance <= preferredDistance) {
+//                preferredDirection = towardsECDir;
+//                preferredDistance = candidateDistance;
+//            }
+//
+//            towardsECDir = towardsECDir.rotateRight();
+//            candidateLocation = Cache.CURRENT_LOCATION.add(towardsECDir);
+//            candidateDistance = candidateLocation.distanceSquaredTo(Cache.EC_INFO_LOCATION);
+//            if (controller.canMove(towardsECDir) && candidateDistance >= 5 && candidateDistance <= preferredDistance) {
+//                preferredDirection = towardsECDir;
+//                preferredDistance = candidateDistance;
+//            }
+//        } else {
+//            towardsECDir = towardsECDir.rotateLeft();
+//            MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(towardsECDir);
+//            int candidateDistance = candidateLocation.distanceSquaredTo(Cache.EC_INFO_LOCATION);
+//            if (controller.canMove(towardsECDir) && candidateDistance >= 5 && candidateDistance <= preferredDistance) {
+//                preferredDirection = towardsECDir;
+//                preferredDistance = candidateDistance;
+//            }
+//
+//            towardsECDir = towardsECDir.rotateLeft();
+//            candidateLocation = Cache.CURRENT_LOCATION.add(towardsECDir);
+//            candidateDistance = candidateLocation.distanceSquaredTo(Cache.EC_INFO_LOCATION);
+//            if (controller.canMove(towardsECDir) && candidateDistance >= 5 && candidateDistance <= preferredDistance) {
+//                preferredDirection = towardsECDir;
+//                preferredDistance = candidateDistance;
+//            }
+//        }
+//
+//        Debug.printInformation("preferredDirection: " + towardsECDir + ", preferredDistance: " + preferredDirection + " circleDirectionClockwise: " + circleDirectionClockwise, " STAY IN CIRCLE RADIUS ");
+//
+//        if (preferredDirection != null) {
+//            controller.move(preferredDirection);
+//            return true;
+//        } else {
+//            circleDirectionClockwise = !circleDirectionClockwise;
+//        }
+//
+//        return false;
+//    }
 
     /* ATTACKING CODE 1/24 */
 
