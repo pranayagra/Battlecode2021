@@ -52,16 +52,16 @@ public strictfp class RobotPlayer {
                 while (true) {
                     if (errored) {
                         // WHITE
+                        Debug.printByteCode("ERROR --> THREW AN EXCEPTION OR SOMETHING (WHITE) " + controller.getLocation());
                         controller.setIndicatorDot(controller.getLocation(),255,255,255);
                     }
                     if (bytecodeError) {
                         // MAGENTA
+                        Debug.printByteCode("ERROR --> BYTECODE RAN OUT (MAGENTA) " + controller.getLocation());
                         controller.setIndicatorDot(controller.getLocation(),255,0,255);
                     }
                     int currentTurn = controller.getRoundNum(); //starts at round 1
 
-//                    Debug.resignGame(600);
-                   // if (controller.getRoundNum() == 1000) controller.resign();
                     if (Cache.ROBOT_TYPE != controller.getType()) {
                         bot = new PoliticanBot(controller);
                         Cache.ROBOT_TYPE = controller.getType();

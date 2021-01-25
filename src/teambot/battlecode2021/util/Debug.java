@@ -5,8 +5,11 @@ import battlecode.common.*;
 import java.util.Arrays;
 
 public class Debug {
-    public static boolean debug = true;
+    public static boolean debug = false;
     public static boolean debug2 = false;
+
+    public static boolean debugByteCode = true;
+
     public static RobotController controller;
 
     public static void init(RobotController controller) {
@@ -61,7 +64,7 @@ public class Debug {
     }
 
     public static void printByteCode(String msg) {
-        if (debug) {
+        if (debugByteCode) {
            System.out.println(msg + ": " + robotType() + " at " + robotLocation() + " has " + Clock.getBytecodesLeft() + " ByteCode Left");
         }
     }
