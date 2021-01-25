@@ -41,6 +41,10 @@ public class MuckrakerBot implements RunnableBot {
         if (Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.SCOUT_LOCATION) {
             scoutTarget = Cache.EC_INFO_LOCATION;
         }
+        else if (Cache.EC_INFO_ACTION == null) {
+            Cache.EC_INFO_ACTION = CommunicationECSpawnFlag.ACTION.SCOUT_LOCATION;
+            scoutTarget = Pathfinding.randomLocation();
+        }
     }
 
     @Override

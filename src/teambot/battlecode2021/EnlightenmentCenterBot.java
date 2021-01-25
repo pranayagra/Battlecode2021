@@ -355,6 +355,11 @@ public class EnlightenmentCenterBot implements RunnableBot {
         processRobots.resetIterator();
 
         for (int i = 0; i < processRobots.currentSize() + 50; ++i) {
+
+            if (Clock.getBytecodeNum() > 16000)  {
+                break;
+            }
+
             if (!processRobots.nextIdxExists()) break;
             /*
                 -1 => return
@@ -426,9 +431,13 @@ public class EnlightenmentCenterBot implements RunnableBot {
     // ================================================================================ //
 
     public void defaultTurn() throws GameActionException {
+        //System.out.println("======");
         slanderersToPoliticians();
+        //System.out.println(Clock.getBytecodeNum());
         iterateAllUnitIDs();
+        //System.out.println(Clock.getBytecodeNum());
         processAllECInformation();
+        //System.out.println(Clock.getBytecodeNum());
 
         if (!tickWallUpdate) {
             updateWallDistance();
@@ -487,7 +496,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
 
         MapLocation locationToHarass = harassEnemySlandererLocation != null ? harassEnemySlandererLocation : harassEnemyECLocation;
-        Debug.printInformation("harassEnemySlandererLocation: " + harassEnemySlandererLocation + ", harassEnemyECLocation: " + harassEnemyECLocation, controller.getRoundNum() - harassEnemySlandererLocationRoundSet);
+        //Debug.printInformation("harassEnemySlandererLocation: " + harassEnemySlandererLocation + ", harassEnemyECLocation: " + harassEnemyECLocation, controller.getRoundNum() - harassEnemySlandererLocationRoundSet);
 
         if (harassEnemySlandererLocation != null) controller.setIndicatorDot(harassEnemySlandererLocation, 0, 255, 255);
         if (harassEnemyECLocation != null) controller.setIndicatorDot(harassEnemyECLocation, 255, 0, 0);
