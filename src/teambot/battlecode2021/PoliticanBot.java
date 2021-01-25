@@ -31,7 +31,6 @@ public class PoliticanBot implements RunnableBot {
     private boolean circleDirectionClockwise;
     private int decreaseScoreThresholdAmount;
 
-    private int triedCloserCnt;
     private int bestDistanceOnAttack;
     private int numActionTurnsTaken;
     private int numRoundsTaken;
@@ -110,9 +109,8 @@ public class PoliticanBot implements RunnableBot {
 
     @Override
     public void turn() throws GameActionException {
-
         executeTurn();
-        Debug.printByteCode("END TURN POLI BYTECODE CHECK? => ");
+        Debug.printByteCode("END => ");
     }
 
     public void executeTurn() throws GameActionException {
@@ -174,7 +172,7 @@ public class PoliticanBot implements RunnableBot {
 
                 switchToAttack &= (random.nextInt(2) == 1);
 
-                Debug.printInformation("SWITCH TO ATTACK?: " + switchToAttack, Cache.EC_INFO_LOCATION);
+//                Debug.printInformation("SWITCH TO ATTACK?: " + switchToAttack, Cache.EC_INFO_LOCATION);
                 if (switchToAttack && hasDefenseBehind) {
                     defendType = false;
                     Cache.EC_INFO_LOCATION = null;
@@ -187,14 +185,23 @@ public class PoliticanBot implements RunnableBot {
 
         } else {
             // attack poli/EC type
-            if (Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) == null) {
-                attackECProtocol();
-//                moveAndDestroyEC();
-            } else if (Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) != CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
-                attackECProtocol();
-//                moveAndDestroyEC();
-            } else {
 
+            boolean attackEC = true;
+            if (Cache.EC_INFO_LOCATION != null) {
+                if (controller.canSenseLocation(Cache.EC_INFO_LOCATION)) {
+                    RobotInfo robotInfo = controller.senseRobotAtLocation(Cache.EC_INFO_LOCATION);
+                    if (robotInfo.team == Cache.OUR_TEAM) {
+                        // the attacking location is now on our team
+                        attackEC = false;
+                    }
+                }
+            }
+
+            if (attackEC && Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) == null) {
+                attackECProtocol();
+            } else if (attackEC && Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) != CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
+                attackECProtocol();
+            } else {
                 //read EC flag attack to change attack location
                 if (controller.canGetFlag(Cache.myECID)) {
                     int ECFlag = controller.getFlag(Cache.myECID);
@@ -204,7 +211,6 @@ public class PoliticanBot implements RunnableBot {
                             Cache.EC_INFO_LOCATION = CommunicationECSpawnFlag.decodeLocationData(ECFlag);
                             Cache.EC_INFO_ACTION = action;
                             Cache.FOUND_ECS.remove(Cache.EC_INFO_LOCATION); // remove the location from my cache (something has changed since!)
-                            Debug.printInformation("PASSIVE POLITICIAN GIVEN PURPOSE TO ATTACK! ", Cache.EC_INFO_LOCATION);
                             bestDistanceOnAttack = 999999999;
                             numActionTurnsTaken = 0;
                             numRoundsTaken = 0;
@@ -221,7 +227,6 @@ public class PoliticanBot implements RunnableBot {
                         controller.setFlag(flag);
                         tickUpdateToPassiveAttacking = true;
                         Comms.hasSetFlag = true;
-                        Debug.printInformation("SENDING URGENT PASSIVE TICK TO EC ", flag);
                     } else {
                         Comms.checkAndAddFlag(flag);
                     }
@@ -229,7 +234,7 @@ public class PoliticanBot implements RunnableBot {
 
 
                 if (controller.getConviction() <= HEALTH_DEFEND_UNIT) {
-                    Debug.printInformation("ATTACKING UNIT PRETENDING TO DEFEND", " VALID ");
+//                    Debug.printInformation("ATTACKING UNIT PRETENDING TO DEFEND", " VALID ");
                     setFlagToIndicateDangerToSlanderer();
                     if (chaseMuckraker()) return;
                     if (buildLattice()) return;
@@ -452,7 +457,7 @@ public class PoliticanBot implements RunnableBot {
                     }
                 }
                 if (targetWhenStuck == null) targetWhenStuck = Pathfinding.randomLocation();
-                Debug.printInformation("STUCK DEFENDER. MOVING TOWARDS " + targetWhenStuck, " VALID ");
+//                Debug.printInformation("STUCK DEFENDER. MOVING TOWARDS " + targetWhenStuck, " VALID ");
             }
         }
 
@@ -666,7 +671,7 @@ public class PoliticanBot implements RunnableBot {
             if (decreaseScoreThresholdAmount <= 10) {
                 updateExplosionScores(-999);
             } else {
-                updateExplosionScores((decreaseScoreThresholdAmount - 10) ); //sets bestScore and returns best radius
+                updateExplosionScores((decreaseScoreThresholdAmount - 10)); //sets bestScore and returns best radius
             }
 
             /* PERFORM EARLY ATTACK IFF WE KILL EC AND IT IS A SINGLE UNIT IN RANGE */
@@ -677,7 +682,7 @@ public class PoliticanBot implements RunnableBot {
                 }
             }
 
-            if (moveToEmptySpot()) return; //TODO: not complete method yet (may get stuck for long time) -- do it based on process too
+            if (moveToEmptySpot()) return; //TODO: not complete method yet (may get stuck for long time) -- do it based on process too -- not likely for bug to occur for long many rounds
 
             if (bestScore >= scoreThreshold && bestScore >= 1) {
                 if (controller.canEmpower(bestExplosionRadius)) {
@@ -689,7 +694,7 @@ public class PoliticanBot implements RunnableBot {
             if (circleEnemyEC()) return;
 
         } else {
-            //TODO: move closer. If we have not gained distance in ~20 rounds AND ~4 potential moves, then we should consider exploding & decreasing the threshold as time goes on.
+            //move closer. If we have not gained distance in ~20 rounds AND ~4 potential moves, then we should consider exploding & decreasing the threshold as time goes on.
             // IF NOT STUCK => DO NOT EXPLODE
             decreaseScoreThresholdAmount = 0;
             if (bestDistanceOnAttack > distanceFromECToAttack) {
@@ -816,7 +821,6 @@ public class PoliticanBot implements RunnableBot {
         }
 
         // only leave if I am the weakest bot & it's in range of the strongest robot <-- chose this algo
-        //only leave if I am the closest bot weakest bot
 
         if (leaveSpot && strongestRobot != null) {
             // find weakest robot (or null space) among the 4 spots
@@ -921,7 +925,6 @@ public class PoliticanBot implements RunnableBot {
         if (closestSquare != null && moveTowardsEmptySpot) {
             //TODO (IMP): add some stuck parameter in case the closestSquare is inaccessible that returns false
             //TODO: move() is bugged sometimes where we go between the two same places?
-            //TODO: extend distance mucks from politicians
             Pathfinding.move(closestSquare);
             return true;
         }
@@ -1040,7 +1043,7 @@ public class PoliticanBot implements RunnableBot {
     /* ATTACKING CODE 1/24 */
 
 
-    //
+
     // set flag if muckraker and slanderer in range
     public void setFlagToIndicateDangerToSlanderer() throws GameActionException {
 
@@ -1073,7 +1076,7 @@ public class PoliticanBot implements RunnableBot {
         } else {
             if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
                 controller.setFlag(flag);
-                Comms.hasSetFlag = false; // NOTE: FALSE HERE IS BY FUNCTION (not a bug). We want to change the flag only to change its state from the previous one. If it is set to a different state/overridden, that is OKAY
+                // NOTE: NOT SETTING "Comms.hasSetFlag = true" IS BY FUNCTION (not a bug). We want to change the flag only to change its state from the previous one. If it is set to a different state/overridden, that is OKAY
             }
         }
     }

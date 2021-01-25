@@ -12,7 +12,6 @@ public class SlandererBot implements RunnableBot {
     private MapLocation[] moveLocs;
     private double[] moveRewards;
     private int distanceFromMyEC;
-    PoliticanBot politicanBot;
 
     //TODO: CHECK AND SET FLAG IF WALL IS MISSING AROUND US? and probably set flag based on it
 
@@ -34,7 +33,7 @@ public class SlandererBot implements RunnableBot {
     @Override
     public void turn() throws GameActionException {
         spawnInLattice();
-        //Debug.printByteCode("after lattice ");
+        Debug.printByteCode("END => ");
     }
 
     /* Behavior =>
@@ -114,9 +113,6 @@ public class SlandererBot implements RunnableBot {
             controller.move(goodSquareMinimizedDirection);
         } else if (badSquareMaximizedDirection != null) {
             controller.move(badSquareMaximizedDirection);
-        } else {
-            // stuck, forfeit turn
-            //Debug.printInformation("SLANDERER STUCK ON BAD SQUARE ",  " NO VALID GOOD SQUARE OR FURTHER BAD SQUARE");
         }
 
     }
@@ -126,7 +122,7 @@ public class SlandererBot implements RunnableBot {
     *           perform a moving action to square if and only if the square is a good square AND it is closer to the EC AND if we are ready
     *           else: do nothing
     * */
-    //TODO: check why sometimes we have a bug with the units not moving closer to EC?
+    //TODO: check why sometimes we have a bug with the units not moving closer to EC? -- not that big of a deal I think
     public void currentSquareIsGoodExecute() throws GameActionException {
         // try to move towards EC with any ordinal directions that decreases distance (NE, SE, SW, NW)
 
@@ -172,10 +168,9 @@ public class SlandererBot implements RunnableBot {
     public int runFromMuckrakerMove() throws GameActionException {
 
         //flag indicates best direction to move, not direction I am moving...
-//        Debug.printByteCode("runFromMuckrakerMove() => before run " + controller.getCooldownTurns());
 
         boolean foundEnemyMuckraker = false;
-        double rewardOfStaying = 9999; //if valStaying > max(dirs), don't move
+        double rewardOfStaying = 9999;
 
         int canMoveIndicesSize = 0;
         int idx = 0;
@@ -199,10 +194,6 @@ public class SlandererBot implements RunnableBot {
                 }
             }
         }
-
-
-//        //Debug.printInformation("my location reward is ", rewardOfStaying);
-//        //Debug.printInformation("location rewards surrounding me is ", Arrays.toString(moveRewards));
 
         int flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.SL, CommunicationMovement.MOVEMENT_BOTS_DATA.NOT_MOVING, CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, false, 0);
         int bestValidDirection = -1;
@@ -230,10 +221,7 @@ public class SlandererBot implements RunnableBot {
             }
         }
 
-        //TODO: THINK -> if a politician or slanderer has both a muckraker and slanderer in range, then
-        // 1) should this slanderer just RUN away opposite of the danger direction |OR| <-- I think this one
-        // 2) should this slanderer SET its flag to danger (so neighboring slanderers will also run) and then RUN away towards EC?
-        // 3) this slanderer SET its flag to danger (so neighboring slanderers will also run) and then RUN away from POLI direction
+        // if a politician or slanderer has both a muckraker and slanderer in range, then run away opposite of the danger direction
         int bestDirectionBasedOnPoliticianDangerIdx = -1;
         if (!foundEnemyMuckraker) {
             for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {

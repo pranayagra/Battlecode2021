@@ -8,7 +8,6 @@ import java.util.Queue;
 
 public abstract class Comms {
 
-    private static int SEED = 2193121;
     public static RobotController controller;
     public static void init(RobotController controller) {
         Comms.controller = controller;
@@ -47,7 +46,7 @@ public abstract class Comms {
 
     public static void checkAndAddFlag(int flag) throws GameActionException {
         if (controller.canSetFlag(flag)) {
-            communicationQueue.add(flag /*^ SEED*/);
+            communicationQueue.add(flag);
         }
     }
 
@@ -56,7 +55,7 @@ public abstract class Comms {
     }
 
     public static int getFlag(int robotID) throws GameActionException {
-        return controller.getFlag(robotID) /*^ SEED*/;
+        return controller.getFlag(robotID);
     }
 
     private static Queue<Integer> communicationQueue = new LinkedList<Integer>();
@@ -65,7 +64,6 @@ public abstract class Comms {
     /* Set all flags here */
 
     public static void loop() throws GameActionException {
-//        if (Debug.debug2) System.out.println(controller.getLocation() + " has queue " + communicationQueue.size());
         int flag = schedule[controller.getRoundNum()];
         if (flag != 0) {
             if (controller.canSetFlag(flag)) {

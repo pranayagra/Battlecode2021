@@ -7,7 +7,7 @@ public class CommunicationRobotID extends Comms {
     public static final int FLAG_CODE = 0b010;
 
     /* 2 bits max */
-    public static enum COMMUNICATION_UNIT_TYPE {
+    public enum COMMUNICATION_UNIT_TYPE {
         EC,
         MU,
         PO,
@@ -15,7 +15,7 @@ public class CommunicationRobotID extends Comms {
     }
 
     /* 2 bits max */
-    public static enum COMMUNICATION_UNIT_TEAM {
+    public enum COMMUNICATION_UNIT_TEAM {
         NOOP,
         MY,
         ENEMY,

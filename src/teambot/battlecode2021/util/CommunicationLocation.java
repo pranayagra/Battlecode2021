@@ -13,7 +13,7 @@ public class CommunicationLocation extends Comms {
     public static final int LOCATION_DATA_BITMASK = (1 << LOCATION_DATA_NBITS) - 1;
 
     /* 3 bits max */
-    public static enum FLAG_LOCATION_TYPES {
+    public enum FLAG_LOCATION_TYPES {
         SLANDERER_LOCATION,
         MY_EC_LOCATION,
         ENEMY_EC_LOCATION,
@@ -25,7 +25,7 @@ public class CommunicationLocation extends Comms {
     }
 
     /*2 bits max */
-    public static enum MY_UNIT_TYPE {
+    public enum MY_UNIT_TYPE {
         EC,
         MU,
         PO,

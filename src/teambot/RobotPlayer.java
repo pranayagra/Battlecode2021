@@ -110,8 +110,6 @@ public strictfp class RobotPlayer {
 
         if (controller.getType() == RobotType.ENLIGHTENMENT_CENTER || !controller.isReady()) return;
 
-        //(1/20 DONE): changed this function so that the politician with the lowest health (break health ties by ID) is used to attack first (does not execute moveAwayFromLocation)
-
         //find the closest poli to avoid
         MapLocation robotToAvoid = null;
         int robotToAvoidDistance = 9999999;
@@ -159,8 +157,6 @@ public strictfp class RobotPlayer {
             }
         }
 
-//        Debug.printInformation("robotToAvoid " + robotToAvoid, " ? ");
-
         if (robotToAvoid == null || Cache.CURRENT_LOCATION.distanceSquaredTo(robotToAvoid) >= RobotType.POLITICIAN.actionRadiusSquared) {
             return;
         }
@@ -170,18 +166,6 @@ public strictfp class RobotPlayer {
             return;
         }
 
-        /* Check if I am an attacking politician better off to avoid */
-//        if (Cache.ROBOT_TYPE == RobotType.POLITICIAN && Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION) {
-//            if (robotToAvoidHealth < Cache.CONVICTION) {
-//                //I have more health than the best politician, so I will move out of the way
-//                moveAwayFromLocation(robotToAvoid, ecLocationGuess);
-//                return;
-//            }
-//            if (robotToAvoidHealth == Cache.CONVICTION && Cache.ID > robotToAvoidID) {
-//                moveAwayFromLocation(robotToAvoid, ecLocationGuess);
-//                return;
-//            }
-//        }
     }
 
 
@@ -204,7 +188,6 @@ public strictfp class RobotPlayer {
             if (controller.canMove(direction)) {
                 MapLocation candidateLocation = Cache.CURRENT_LOCATION.add(direction);
                 int candidateDistance = addedLocationDistance(candidateLocation, avoidLocation);
-//                Debug.printInformation("candidateLocation: " + candidateLocation + ", candidateDistance: " + candidateDistance + ", ecToAvoid: " + ecToAvoid, maximizedDistance);
                 if (candidateDistance > maximizedDistance) {
                     maximizedDistance = candidateDistance;
                     maximizedDirection = direction;
@@ -212,7 +195,6 @@ public strictfp class RobotPlayer {
                 } else if (candidateDistance == maximizedDistance && ecToAvoid != null) {
                     int candidateDistToEC = candidateLocation.distanceSquaredTo(ecToAvoid);
                     int currentBestDistToEC = maximizedLocation.distanceSquaredTo(ecToAvoid);
-//                    Debug.printInformation("DEBUG MOVE AWAY -> candidate distance " + candidateDistToEC + ", current distance " + currentBestDistToEC + " ", " VERIFY? ");
                     if (candidateDistToEC > currentBestDistToEC) {
                         maximizedDistance = candidateDistance;
                         maximizedDirection = direction;

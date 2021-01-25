@@ -213,7 +213,7 @@ public class Scout {
         for (RobotInfo info : nearbyRobots) { 
             if (info.type == RobotType.ENLIGHTENMENT_CENTER) {
 
-                if (Cache.OUR_TEAM == info.team) { // COMMUNICATE EC location + ID iff I own the EC
+                if (Cache.OUR_TEAM == info.team) {
 
                     if (!controller.canGetFlag(Cache.myECID)) {
                         Cache.myECLocation = info.location;
@@ -238,12 +238,9 @@ public class Scout {
                         moveAwayFromMe = true;
                     }
 
-//                    Debug.printInformation("OTHER EC FOUND", "VALID");
-
                     int flag = CommunicationECDataSmall.encodeECHealthLocation(moveAwayFromMe, isNeutralTeam, info.conviction, info.location);
                     if (moveAwayFromMe && !Comms.hasSetFlag && controller.canSetFlag(flag)) {
                         controller.setFlag(flag);
-//                        Debug.printInformation("SETTING FLAG WITH HIGH PRIO FOR ATTACKING POLI -- GET AWAY FROM ME ", flag);
                         Comms.hasSetFlag = true;
                     } else {
                         Comms.checkAndAddFlag(flag);
@@ -266,23 +263,4 @@ public class Scout {
         }
     }
 
-//    private static CommunicationHealth.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForECInfo(Team ECTeam) {
-//        if (ECTeam.equals(Cache.OUR_TEAM)) {
-//            return CommunicationHealth.COMMUNICATION_UNIT_TEAM.MY;
-//        } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
-//            return CommunicationHealth.COMMUNICATION_UNIT_TEAM.ENEMY;
-//        } else {
-//            return CommunicationHealth.COMMUNICATION_UNIT_TEAM.NEUTRAL;
-//        }
-//    }
-//
-//    private static CommunicationRobotID.COMMUNICATION_UNIT_TEAM getCommunicatedUnitTeamForRobotID(Team ECTeam) {
-//        if (ECTeam.equals(Cache.OUR_TEAM)) {
-//            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.MY;
-//        } else if (ECTeam.equals(Cache.OPPONENT_TEAM)) {
-//            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.ENEMY;
-//        } else {
-//            return CommunicationRobotID.COMMUNICATION_UNIT_TEAM.NEUTRAL;
-//        }
-//    }
 }

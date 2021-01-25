@@ -7,7 +7,7 @@ public class CommunicationHealth extends Comms {
     public static final int FLAG_CODE = 0b100;
 
     /* 2 bits max */
-    public static enum COMMUNICATION_UNIT_TEAM {
+    public enum COMMUNICATION_UNIT_TEAM {
         ENEMY_BUTNOTEC, //useful for sending how strong the opponents units are to guide our spawn (BE CAREFUL USING/CHECKING THIS ELSEWHERE)
         CONVERTING_TO_PASSIVE_POLITICIAN,
         ENEMY,

@@ -67,7 +67,6 @@ public class FastProcessIDs {
 
     public void updatePassivePoliticianAttackDamage(int robotIDX) {
         if (typeForRobotID[robotIDX] == TYPE.PASSIVE_ATTACKING_POLITICIAN) {
-            Debug.printInformation("PASSIVE POLI ", robotIDs[robotIDX]);
             totalPassivePoliticianAttackDamage += Math.max(0, healthForRobotID[robotIDX] - 10);
         }
     }
