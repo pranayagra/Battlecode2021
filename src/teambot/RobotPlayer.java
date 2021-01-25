@@ -52,8 +52,8 @@ public strictfp class RobotPlayer {
                 while (true) {
                     if (errored) {
                         // WHITE
-                        Debug.printByteCode("ERROR --> THREW AN EXCEPTION OR SOMETHING (WHITE) " + controller.getLocation());
-                        controller.setIndicatorDot(controller.getLocation(),255,255,255);
+                        Debug.printByteCode("ERROR --> THREW AN EXCEPTION OR SOMETHING (BLACK) " + controller.getLocation());
+                        controller.setIndicatorDot(controller.getLocation(),0, 0,0);
                     }
                     if (bytecodeError) {
                         // MAGENTA
