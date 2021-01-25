@@ -46,20 +46,13 @@ public strictfp class RobotPlayer {
         }
 
         boolean errored = false;
-        boolean bytecodeError = false;
-        int bytecodeErrorCount = 0;
         while (true) {
             try {
                 while (true) {
                     if (errored) {
                         // WHITE
-                        Debug.printByteCode("ERROR --> THREW AN EXCEPTION OR SOMETHING (BLACK) " + controller.getLocation());
+//                        Debug.printByteCode("ERROR --> THREW AN EXCEPTION OR SOMETHING (BLACK) " + controller.getLocation());
                         controller.setIndicatorDot(controller.getLocation(),0, 0,0);
-                    }
-                    if (bytecodeError) {
-                        // MAGENTA
-                        Debug.printByteCode("ERROR --> BYTECODE RAN OUT (MAGENTA) " + controller.getLocation() + " HAS HAPPENED " + bytecodeErrorCount + " TIMES ");
-                        controller.setIndicatorDot(controller.getLocation(),255,0,255);
                     }
                     int currentTurn = controller.getRoundNum(); //starts at round 1
 
@@ -74,9 +67,7 @@ public strictfp class RobotPlayer {
 
                     if (controller.getRoundNum() != currentTurn) {
                         //Ran out of bytecodes - MAGENTA color debug
-                        bytecodeErrorCount++;
                         controller.setIndicatorDot(controller.getLocation(),255,0,255);
-                        bytecodeError = true;
                     }
                     Clock.yield();
                 }

@@ -8,7 +8,7 @@ public class Debug {
     public static boolean debug = false;
     public static boolean debug2 = false;
 
-    public static boolean debugByteCode = true;
+    public static boolean debugByteCode = false;
 
     public static RobotController controller;
 

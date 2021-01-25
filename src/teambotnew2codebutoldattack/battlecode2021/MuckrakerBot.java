@@ -63,9 +63,9 @@ public class MuckrakerBot implements RunnableBot {
     }
 
     public void muckExecute() throws GameActionException {
-        if (Cache.CONVICTION > 1) {
-            controller.setIndicatorDot(Cache.CURRENT_LOCATION, 255, 255, 255);
-        }
+//        if (Cache.CONVICTION > 1) {
+//            controller.setIndicatorDot(Cache.CURRENT_LOCATION, 255, 255, 255);
+//        }
 
         muckrakerComms();
 
@@ -176,7 +176,7 @@ public class MuckrakerBot implements RunnableBot {
                     CommunicationMovement.MY_UNIT_TYPE.MU, CommunicationMovement.convert_DirectionInt_MovementBotsData(dangerDirection.ordinal()),
                     CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.NOOP, false, true, 0);
             if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
-                Debug.printInformation("Setting flag to warn friendly slanderers of enemy muckraker nearby --> priority --> ", flag);
+//                Debug.printInformation("Setting flag to warn friendly slanderers of enemy muckraker nearby --> priority --> ", flag);
                 controller.setFlag(flag);
                 Comms.hasSetFlag = true;
             }
@@ -230,7 +230,7 @@ public class MuckrakerBot implements RunnableBot {
                 case ENEMY_EC_LOCATION:
                     Cache.FOUND_ECS.put(locationData, CommunicationLocation.FLAG_LOCATION_TYPES.ENEMY_EC_LOCATION);
                     // Stream mucks to enemy EC
-                    Debug.printInformation("Recieved enemy EC location", locationData);
+//                    Debug.printInformation("Recieved enemy EC location", locationData);
                     if (Cache.MAP_LEFT > 0 && Cache.MAP_RIGHT > 0 && Cache.MAP_TOP > 0 && Cache.MAP_BOTTOM > 0) {
                         if (Cache.ID % 5 < 4) {
                             scoutTarget = locationData;

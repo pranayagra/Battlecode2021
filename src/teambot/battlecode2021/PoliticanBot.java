@@ -112,7 +112,7 @@ public class PoliticanBot implements RunnableBot {
     @Override
     public void turn() throws GameActionException {
         executeTurn();
-        Debug.printByteCode("END => ");
+//        Debug.printByteCode("END => ");
     }
 
     public void executeTurn() throws GameActionException {

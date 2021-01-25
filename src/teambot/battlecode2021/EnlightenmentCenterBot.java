@@ -168,7 +168,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //TODO (1/20): sum up attacking politicans influence (and other ECs) and determine if EC should attack -- not enough time
 
         lastRoundInfluence = controller.getInfluence();
-        Debug.printByteCode("END => ");
+//        Debug.printByteCode("END => ");
 
     }
 
@@ -235,7 +235,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             case SLANDERER_LOCATION:
                 harassEnemySlandererLocation = locationData;
                 harassEnemySlandererLocationRoundSet = controller.getRoundNum();
-                Debug.printInformation("enemy slanderers exist at " + locationData + ", send attack soon", harassEnemySlandererLocation);
+//                Debug.printInformation("enemy slanderers exist at " + locationData + ", send attack soon", harassEnemySlandererLocation);
                 break;
         }
 

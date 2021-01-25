@@ -168,7 +168,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //TODO (1/20): sum up attacking politicans influence (and other ECs) and determine if EC should attack -- not enough time
 
         lastRoundInfluence = controller.getInfluence();
-        Debug.printByteCode("END => ");
+//        Debug.printByteCode("END => ");
 
     }
 
@@ -235,7 +235,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             case SLANDERER_LOCATION:
                 harassEnemySlandererLocation = locationData;
                 harassEnemySlandererLocationRoundSet = controller.getRoundNum();
-                Debug.printInformation("enemy slanderers exist at " + locationData + ", send attack soon", harassEnemySlandererLocation);
+//                Debug.printInformation("enemy slanderers exist at " + locationData + ", send attack soon", harassEnemySlandererLocation);
                 break;
         }
 
@@ -496,9 +496,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         MapLocation locationToHarass = harassEnemySlandererLocation != null ? harassEnemySlandererLocation : harassEnemyECLocation;
         //Debug.printInformation("harassEnemySlandererLocation: " + harassEnemySlandererLocation + ", harassEnemyECLocation: " + harassEnemyECLocation, controller.getRoundNum() - harassEnemySlandererLocationRoundSet);
-        System.out.println(harassEnemyECLocation + " " + harassEnemySlandererLocation + " " + (controller.getRoundNum() % 70));
-        if (harassEnemySlandererLocation != null) controller.setIndicatorDot(harassEnemySlandererLocation, 0, 255, 0);
-        if (harassEnemyECLocation != null) controller.setIndicatorDot(harassEnemyECLocation, 255, 0, 0);
+//        System.out.println(harassEnemyECLocation + " " + harassEnemySlandererLocation + " " + (controller.getRoundNum() % 70));
+//        if (harassEnemySlandererLocation != null) controller.setIndicatorDot(harassEnemySlandererLocation, 0, 255, 0);
+//        if (harassEnemyECLocation != null) controller.setIndicatorDot(harassEnemyECLocation, 255, 0, 0);
 
         if (controller.getRoundNum() % 70 == 0) {
             if (locationToHarass != null) {

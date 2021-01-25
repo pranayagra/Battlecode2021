@@ -5,8 +5,8 @@ import battlecode.common.*;
 import java.util.Arrays;
 
 public class Debug {
-    public static boolean debug = false;
-    public static boolean debug2 = false;
+    public static boolean debug = true;
+    public static boolean debug2 = true;
 
     public static boolean debugByteCode = true;
 

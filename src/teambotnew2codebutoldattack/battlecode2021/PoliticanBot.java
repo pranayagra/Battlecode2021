@@ -112,7 +112,7 @@ public class PoliticanBot implements RunnableBot {
     @Override
     public void turn() throws GameActionException {
         executeTurn();
-        Debug.printByteCode("END => ");
+//        Debug.printByteCode("END => ");
     }
 
     public void executeTurn() throws GameActionException {
@@ -318,7 +318,7 @@ public class PoliticanBot implements RunnableBot {
         else {
             // Expensive politician
             // Greedily attack most expensive muckraker
-            controller.setIndicatorDot(controller.getLocation(), 255,165,0); //ORANGE EXPENSIVE DEF
+//            controller.setIndicatorDot(controller.getLocation(), 255,165,0); //ORANGE EXPENSIVE DEF
             int target = 0;
             for (int i = 1; i < muckrakerSize; ++i) {
                 if (muckrakerConviction[i] > muckrakerConviction[target]) {
@@ -737,9 +737,9 @@ public class PoliticanBot implements RunnableBot {
 
         RobotInfo enemyECInfo = controller.senseRobotAtLocation(Cache.EC_INFO_LOCATION);
 
-        //Debug.printInformation("minDamage: " + minDamage + ", maxDamage: " + maxDamage + ", average: " + averageDamage, enemyECInfo.conviction);
+//        Debug.printInformation("minDamage: " + minDamage + ", maxDamage: " + maxDamage + ", average: " + averageDamage, enemyECInfo.conviction);
 
-        if (averageDamage >= enemyECInfo.conviction) {
+        if (enemyECInfo != null && averageDamage > enemyECInfo.conviction) {
             //EXPLODE!!!
             if (controller.canEmpower(1)) {
                 controller.empower(1);

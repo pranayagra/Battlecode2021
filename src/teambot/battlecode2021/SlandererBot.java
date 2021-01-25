@@ -31,7 +31,7 @@ public class SlandererBot implements RunnableBot {
     @Override
     public void turn() throws GameActionException {
         spawnInLattice();
-        Debug.printByteCode("END => ");
+//        Debug.printByteCode("END => ");
     }
 
     /* Behavior =>
