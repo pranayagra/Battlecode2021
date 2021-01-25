@@ -1,7 +1,6 @@
 package teambot.battlecode2021.util;
 
 import battlecode.common.*;
-import teambot.battlecode2021.EnlightenmentCenterBot;
 
 import java.util.Arrays;
 
@@ -28,10 +27,6 @@ public class Debug {
 
     private static int robotConviction() {
         return Cache.CONVICTION;
-    }
-
-    private static double robotCooldown() {
-        return Cache.COOLDOWN;
     }
 
     private static int mapWidth() {
@@ -63,7 +58,6 @@ public class Debug {
         assert robotLocation() == controller.getLocation();
         assert robotInfluence() == controller.getInfluence();
         assert robotConviction() == controller.getConviction();
-        assert robotCooldown() == controller.getCooldownTurns();
     }
 
     public static void printByteCode(String msg) {

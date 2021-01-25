@@ -1,7 +1,6 @@
 package teambot.battlecode2021.util;
 
 import battlecode.common.MapLocation;
-import battlecode.common.RobotType;
 
 public class CommunicationLocation extends Comms {
 

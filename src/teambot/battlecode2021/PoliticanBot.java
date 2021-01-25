@@ -4,7 +4,6 @@ import battlecode.common.*;
 import teambot.RunnableBot;
 import teambot.battlecode2021.util.*;
 
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 

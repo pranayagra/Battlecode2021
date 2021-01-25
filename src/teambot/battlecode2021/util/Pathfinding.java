@@ -1,7 +1,6 @@
 package teambot.battlecode2021.util;
 
 import battlecode.common.*;
-import teambot.*;
 import java.util.*;
 
 public class Pathfinding {

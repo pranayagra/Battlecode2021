@@ -9,25 +9,6 @@ import teambot.battlecode2021.util.*;
 public strictfp class RobotPlayer {
     public static RobotController controller;
 
-    public static final RobotType[] spawnableRobot = {
-        RobotType.POLITICIAN,
-        RobotType.SLANDERER,
-        RobotType.MUCKRAKER,
-    };
-
-    public static final Direction[] directions = {
-        Direction.NORTH,
-        Direction.NORTHEAST,
-        Direction.EAST,
-        Direction.SOUTHEAST,
-        Direction.SOUTH,
-        Direction.SOUTHWEST,
-        Direction.WEST,
-        Direction.NORTHWEST,
-    };
-
-    public static int turnCount;
-
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
      * If this method returns, the robot dies!
