@@ -1,8 +1,8 @@
-package teambot3.battlecode2021;
+package teambot3oldframeworkbutnewattack.battlecode2021;
 
 import battlecode.common.*;
-import teambot3.RunnableBot;
-import teambot3.battlecode2021.util.*;
+import teambot3oldframeworkbutnewattack.RunnableBot;
+import teambot3oldframeworkbutnewattack.battlecode2021.util.*;
 
 import java.util.Arrays;
 import java.util.Random;

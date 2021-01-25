@@ -1,8 +1,8 @@
-package teambot.battlecode2021;
+package teambotnewframeworkbutoldattack.battlecode2021;
 
 import battlecode.common.*;
-import teambot.*;
-import teambot.battlecode2021.util.*;
+import teambotnewframeworkbutoldattack.*;
+import teambotnewframeworkbutoldattack.battlecode2021.util.*;
 
 import java.util.*;
 
@@ -80,7 +80,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int timeSinceLastSlandererSpawn = 999999;
     private static int timeSinceLastDefendingPoliticianSpawn = 999999;
     private static int timeSinceLastSeenMuckraker = 999999;
-    private static int timeSinceLastLargeMuckraker = -80;
+    private static int timeSinceLastLargeMuckraker = -100;
     private static int bigAttackRound = 50;
 
     /* Do we have one guide broadcasting information to newly created units */
@@ -233,9 +233,10 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 }
                 break;
             case SLANDERER_LOCATION:
-                harassEnemySlandererLocation = locationData;
-                harassEnemySlandererLocationRoundSet = controller.getRoundNum();
-                Debug.printInformation("enemy slanderers exist at " + locationData + ", send attack soon", harassEnemySlandererLocation);
+//                boolean isUrgentAKANotThereAnymore =
+//                harassEnemySlandererLocation = locationData;
+//                harassEnemySlandererLocationRoundSet = controller.getRoundNum();
+                Debug.printInformation("enemy slanderers exist at " + locationData + ", attack?", harassEnemySlandererLocation);
                 break;
         }
 
@@ -354,11 +355,6 @@ public class EnlightenmentCenterBot implements RunnableBot {
         processRobots.resetIterator();
 
         for (int i = 0; i < processRobots.currentSize() + 50; ++i) {
-
-            if (Clock.getBytecodeNum() > 16000)  {
-                break;
-            }
-
             if (!processRobots.nextIdxExists()) break;
             /*
                 -1 => return
@@ -430,13 +426,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
     // ================================================================================ //
 
     public void defaultTurn() throws GameActionException {
-        //System.out.println("======");
         slanderersToPoliticians();
-        //System.out.println(Clock.getBytecodeNum());
         iterateAllUnitIDs();
-        //System.out.println(Clock.getBytecodeNum());
         processAllECInformation();
-        //System.out.println(Clock.getBytecodeNum());
 
         if (!tickWallUpdate) {
             updateWallDistance();
@@ -495,7 +487,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
 
         MapLocation locationToHarass = harassEnemySlandererLocation != null ? harassEnemySlandererLocation : harassEnemyECLocation;
-        //Debug.printInformation("harassEnemySlandererLocation: " + harassEnemySlandererLocation + ", harassEnemyECLocation: " + harassEnemyECLocation, controller.getRoundNum() - harassEnemySlandererLocationRoundSet);
+        Debug.printInformation("harassEnemySlandererLocation: " + harassEnemySlandererLocation + ", harassEnemyECLocation: " + harassEnemyECLocation, controller.getRoundNum() - harassEnemySlandererLocationRoundSet);
 
         if (harassEnemySlandererLocation != null) controller.setIndicatorDot(harassEnemySlandererLocation, 0, 255, 0);
         if (harassEnemyECLocation != null) controller.setIndicatorDot(harassEnemyECLocation, 255, 0, 0);
@@ -519,7 +511,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         int totalCurrentDamageOnMap = processRobots.getPassivePoliticianAttackDamage();
 
         if (attackNeutralLocationHealth != 9999999) {
-            int amountOfMoreDamageNeeded = (int) (40 + (attackNeutralLocationHealth + 1) - totalCurrentDamageOnMap * controller.getEmpowerFactor(Cache.OUR_TEAM, 25));
+            int amountOfMoreDamageNeeded = (int) (10 + (attackNeutralLocationHealth + 1) - totalCurrentDamageOnMap * controller.getEmpowerFactor(Cache.OUR_TEAM, 25));
             if (amountOfMoreDamageNeeded <= 0) {
                 int flag = CommunicationECSpawnFlag.encodeSpawnInfo(Direction.NORTH, CommunicationECSpawnFlag.ACTION.ATTACK_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, attackNeutralLocation);
                 Comms.checkAndAddFlag(flag);
@@ -668,7 +660,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 3), null);
             return;
         }
-        if (timeSinceLastLargeMuckraker > 100 && Cache.INFLUENCE > 200) {
+        if (timeSinceLastLargeMuckraker > 100 && Cache.INFLUENCE > 300) {
             if (spawnScoutMuckraker(70, randomValidDirection(), locationToHarass)) {
                 timeSinceLastLargeMuckraker = 0;
                 return;
