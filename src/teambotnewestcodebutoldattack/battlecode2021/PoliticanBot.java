@@ -1,8 +1,8 @@
-package teambot3.battlecode2021;
+package teambotnewestcodebutoldattack.battlecode2021;
 
 import battlecode.common.*;
-import teambot3.RunnableBot;
-import teambot3.battlecode2021.util.*;
+import teambotnewestcodebutoldattack.RunnableBot;
+import teambotnewestcodebutoldattack.battlecode2021.util.*;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -14,6 +14,7 @@ public class PoliticanBot implements RunnableBot {
 
     private MapLocation[] muckrakerLocations;
     private int[] muckrakerDistances;
+    private int[] muckrakerConviction;
 
     private MapLocation[] slanderLocations;
     private int slanderSize;
@@ -30,7 +31,6 @@ public class PoliticanBot implements RunnableBot {
     private boolean circleDirectionClockwise;
     private int decreaseScoreThresholdAmount;
 
-    private int triedCloserCnt;
     private int bestDistanceOnAttack;
     private int numActionTurnsTaken;
     private int numRoundsTaken;
@@ -61,10 +61,12 @@ public class PoliticanBot implements RunnableBot {
 
         muckrakerLocations = new MapLocation[30];
         muckrakerDistances = new int[30];
+        muckrakerConviction = new int[30];
 
         slanderLocations = new MapLocation[50];
 
         if (controller.getConviction() <= HEALTH_DEFEND_UNIT) defendType = true;
+        if (controller.getConviction() == 61) defendType = true;
 
         tickUpdateToPassiveAttacking = false;
         bestDistanceOnAttack = 999999999;
@@ -109,6 +111,25 @@ public class PoliticanBot implements RunnableBot {
 
     @Override
     public void turn() throws GameActionException {
+        executeTurn();
+        Debug.printByteCode("END => ");
+    }
+
+    public void executeTurn() throws GameActionException {
+
+        if (controller.getRoundNum() >= 1490) {
+            // we are losing on votes potentially
+            if (controller.getTeamVotes() < 750) {
+                if (Cache.ALL_NEARBY_ENEMY_ROBOTS.length > 0) {
+                    if (controller.canEmpower(RobotType.POLITICIAN.actionRadiusSquared)) {
+                        controller.empower(RobotType.POLITICIAN.actionRadiusSquared);
+                    }
+                } else {
+                    Pathfinding.move(Pathfinding.randomLocation());
+                }
+                return;
+            }
+        }
 
         if (controller.getRoundNum() <= 175) noEnemiesSeenCnt = 0;
         if (Cache.NUM_ROUNDS_SINCE_SPAWN <= 50) noEnemiesSeenCnt = 0;
@@ -153,7 +174,7 @@ public class PoliticanBot implements RunnableBot {
 
                 switchToAttack &= (random.nextInt(2) == 1);
 
-                Debug.printInformation("SWITCH TO ATTACK?: " + switchToAttack, Cache.EC_INFO_LOCATION);
+//                Debug.printInformation("SWITCH TO ATTACK?: " + switchToAttack, Cache.EC_INFO_LOCATION);
                 if (switchToAttack && hasDefenseBehind) {
                     defendType = false;
                     Cache.EC_INFO_LOCATION = null;
@@ -166,14 +187,23 @@ public class PoliticanBot implements RunnableBot {
 
         } else {
             // attack poli/EC type
-            if (Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) == null) {
-                attackECProtocol();
-//                moveAndDestroyEC();
-            } else if (Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) != CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
-                attackECProtocol();
-//                moveAndDestroyEC();
-            } else {
 
+            boolean attackEC = true;
+            if (Cache.EC_INFO_LOCATION != null) {
+                if (controller.canSenseLocation(Cache.EC_INFO_LOCATION)) {
+                    RobotInfo robotInfo = controller.senseRobotAtLocation(Cache.EC_INFO_LOCATION);
+                    if (robotInfo.team == Cache.OUR_TEAM) {
+                        // the attacking location is now on our team
+                        attackEC = false;
+                    }
+                }
+            }
+
+            if (attackEC && Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) == null) {
+                attackECProtocol();
+            } else if (attackEC && Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) != CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
+                attackECProtocol();
+            } else {
                 //read EC flag attack to change attack location
                 if (controller.canGetFlag(Cache.myECID)) {
                     int ECFlag = controller.getFlag(Cache.myECID);
@@ -183,7 +213,6 @@ public class PoliticanBot implements RunnableBot {
                             Cache.EC_INFO_LOCATION = CommunicationECSpawnFlag.decodeLocationData(ECFlag);
                             Cache.EC_INFO_ACTION = action;
                             Cache.FOUND_ECS.remove(Cache.EC_INFO_LOCATION); // remove the location from my cache (something has changed since!)
-                            Debug.printInformation("PASSIVE POLITICIAN GIVEN PURPOSE TO ATTACK! ", Cache.EC_INFO_LOCATION);
                             bestDistanceOnAttack = 999999999;
                             numActionTurnsTaken = 0;
                             numRoundsTaken = 0;
@@ -200,7 +229,6 @@ public class PoliticanBot implements RunnableBot {
                         controller.setFlag(flag);
                         tickUpdateToPassiveAttacking = true;
                         Comms.hasSetFlag = true;
-                        Debug.printInformation("SENDING URGENT PASSIVE TICK TO EC ", flag);
                     } else {
                         Comms.checkAndAddFlag(flag);
                     }
@@ -208,7 +236,7 @@ public class PoliticanBot implements RunnableBot {
 
 
                 if (controller.getConviction() <= HEALTH_DEFEND_UNIT) {
-                    Debug.printInformation("ATTACKING UNIT PRETENDING TO DEFEND", " VALID ");
+//                    Debug.printInformation("ATTACKING UNIT PRETENDING TO DEFEND", " VALID ");
                     setFlagToIndicateDangerToSlanderer();
                     if (chaseMuckraker()) return;
                     if (buildLattice()) return;
@@ -219,68 +247,103 @@ public class PoliticanBot implements RunnableBot {
             }
         }
 
-        Debug.printByteCode("END TURN POLI BYTECODE CHECK? => ");
     }
 
     //for all muckrakers in my range, see which ones im closest too when compared to all polis =>
     // then calculate a threat level for all of them =>
     // approach closest such that you are directly in front of it (NWSE, closest to closest slanderer)
     public boolean chaseMuckraker() throws GameActionException {
-        int muckrakerSize = 0;
 
+        MapLocation targetLocation;
+        int muckrakerSize = 0;
         //quickly find closest one to you
         //get list of muckraker locations + distance to them (travelDistance)
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
             if (robotInfo.type == RobotType.MUCKRAKER) {
                 muckrakerLocations[muckrakerSize] = robotInfo.location;
+                muckrakerConviction[muckrakerSize] = robotInfo.conviction;
                 muckrakerDistances[muckrakerSize++] = Pathfinding.travelDistance(robotInfo.location, Cache.CURRENT_LOCATION);
             }
         }
 
         if (muckrakerSize == 0) return false;
 
-        //for each politican in range, go through list and prune locations that are further away
-        for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
-            if (robotInfo.type == RobotType.POLITICIAN && robotInfo.conviction >= 11 && robotInfo.conviction <= HEALTH_DEFEND_UNIT && controller.canGetFlag(robotInfo.ID)) {
-                int flag = controller.getFlag(robotInfo.ID);
-                if (CommunicationMovement.decodeIsSchemaType(flag) &&
-                        CommunicationMovement.decodeMyUnitType(flag) == CommunicationMovement.MY_UNIT_TYPE.SL) continue;
+        if (Cache.CONVICTION <= HEALTH_DEFEND_UNIT) {
 
-                //Debug.printInformation("MUCKRAKER LOCATIONS BEF " + muckrakerSize, Arrays.toString(muckrakerLocations));
-                //Debug.printInformation("MUCKRAKER DISTANCES BEF " + muckrakerSize, Arrays.toString(muckrakerDistances));
+            //TODO: This section seems bugged? what if first enemy is closer to friendly but all others are not.
+            // Seems to work in practice though so low priority
+            //for each politican in range, go through list and prune locations that are further away
+            for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+                if (robotInfo.type == RobotType.POLITICIAN && robotInfo.conviction >= 11 && robotInfo.conviction <= HEALTH_DEFEND_UNIT && controller.canGetFlag(robotInfo.ID)) {
+                    int flag = controller.getFlag(robotInfo.ID);
+                    if (CommunicationMovement.decodeIsSchemaType(flag) &&
+                            CommunicationMovement.decodeMyUnitType(flag) == CommunicationMovement.MY_UNIT_TYPE.SL) continue;
 
-                for (int i = 0; i < muckrakerSize; ++i) {
-                    int distance = Pathfinding.travelDistance(robotInfo.location, muckrakerLocations[i]);
-                    if (distance < muckrakerDistances[i] || (distance == muckrakerDistances[i] && Cache.ID < robotInfo.ID)) {
-                        while (--muckrakerSize >= i + 1) {
-                            int newDistance = Pathfinding.travelDistance(robotInfo.location, muckrakerLocations[muckrakerSize]);
-                            //If I am closer or if we are the same distance but my ID is higher
-                            if (muckrakerDistances[muckrakerSize] < newDistance || (muckrakerDistances[muckrakerSize] == newDistance && Cache.ID > robotInfo.ID)) {
-                                muckrakerLocations[i] = muckrakerLocations[muckrakerSize];
-                                muckrakerDistances[i] = muckrakerDistances[muckrakerSize];
-                                break;
+                    //Debug.printInformation("MUCKRAKER LOCATIONS BEF " + muckrakerSize, Arrays.toString(muckrakerLocations));
+                    //Debug.printInformation("MUCKRAKER DISTANCES BEF " + muckrakerSize, Arrays.toString(muckrakerDistances));
+                    
+                    for (int i = 0; i < muckrakerSize; ++i) {
+                        int distance = Pathfinding.travelDistance(robotInfo.location, muckrakerLocations[i]);
+                        if (distance < muckrakerDistances[i] || (distance == muckrakerDistances[i] && Cache.ID < robotInfo.ID)) {
+                            while (--muckrakerSize >= i + 1) {
+                                int newDistance = Pathfinding.travelDistance(robotInfo.location, muckrakerLocations[muckrakerSize]);
+                                //If I am closer or if we are the same distance but my ID is higher
+                                if (muckrakerDistances[muckrakerSize] < newDistance || (muckrakerDistances[muckrakerSize] == newDistance && Cache.ID > robotInfo.ID)) {
+                                    muckrakerLocations[i] = muckrakerLocations[muckrakerSize];
+                                    muckrakerDistances[i] = muckrakerDistances[muckrakerSize];
+                                    break;
+                                }
                             }
                         }
                     }
+                    //Debug.printInformation("MUCKRAKER LOCATIONS AFT " + muckrakerSize, Arrays.toString(muckrakerLocations));
+                    //Debug.printInformation("MUCKRAKER DISTANCES AFT " + muckrakerSize, Arrays.toString(muckrakerDistances));
                 }
-                //Debug.printInformation("MUCKRAKER LOCATIONS AFT " + muckrakerSize, Arrays.toString(muckrakerLocations));
-                //Debug.printInformation("MUCKRAKER DISTANCES AFT " + muckrakerSize, Arrays.toString(muckrakerDistances));
             }
+
+            //Debug.printInformation("MUCKRAKER LOCATIONS DONE " + muckrakerSize, Arrays.toString(muckrakerLocations));
+            //Debug.printInformation("MUCKRAKER DISTANCES DONE " + muckrakerSize, Arrays.toString(muckrakerDistances));
+
+            if (muckrakerSize == 0) return false;
+
+            int target = 0; //target closest one to me
+            for (int i = 1; i < muckrakerSize; ++i) {
+                if (muckrakerDistances[target] > muckrakerDistances[i]) {
+                    target = i;
+                }
+            }
+
+            targetLocation = muckrakerLocations[target];
+        }
+        else {
+            // Expensive politician
+            // Greedily attack most expensive muckraker
+            int target = 0;
+            for (int i = 1; i < muckrakerSize; ++i) {
+                if (muckrakerConviction[i] > muckrakerConviction[target]) {
+                    target = i;
+                }
+            }
+
+
+            // Don't attack if nearby friendly cheap politician
+            if (muckrakerConviction[target] <= 2) {
+                for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) { 
+                    if (robotInfo.type == RobotType.POLITICIAN && robotInfo.conviction >= 11 && robotInfo.conviction <= HEALTH_DEFEND_UNIT && controller.canGetFlag(robotInfo.ID)) {
+                        int flag = controller.getFlag(robotInfo.ID);
+                        if (CommunicationMovement.decodeIsSchemaType(flag) &&
+                                CommunicationMovement.decodeMyUnitType(flag) == CommunicationMovement.MY_UNIT_TYPE.SL) continue;
+                        int distance = Pathfinding.travelDistance(robotInfo.location, muckrakerLocations[target]);
+                        if (distance <= 25) {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            targetLocation = muckrakerLocations[target];
         }
 
-        //Debug.printInformation("MUCKRAKER LOCATIONS DONE " + muckrakerSize, Arrays.toString(muckrakerLocations));
-        //Debug.printInformation("MUCKRAKER DISTANCES DONE " + muckrakerSize, Arrays.toString(muckrakerDistances));
-
-        if (muckrakerSize == 0) return false;
-
-        int target = 0; //target closest one to me
-        for (int i = 1; i < muckrakerSize; ++i) {
-            if (muckrakerDistances[target] > muckrakerDistances[i]) {
-                target = i;
-            }
-        }
-
-        MapLocation targetLocation = muckrakerLocations[target];
         //Debug.printInformation("target is " + target + " with location " + targetLocation + " and distance " + muckrakerDistances[target], " TARGET MUCKRAKER");
 
         if (!controller.isReady()) return false;
@@ -303,10 +366,10 @@ public class PoliticanBot implements RunnableBot {
         Direction validDir = Pathfinding.toMovePreferredDirection(toMove, 2);
 
         if (controller.isReady()) {
-            int minExplosionRadius = Cache.CURRENT_LOCATION.distanceSquaredTo(muckrakerLocations[target]);
+            int minExplosionRadius = Cache.CURRENT_LOCATION.distanceSquaredTo(targetLocation);
             int friendlySize = controller.senseNearbyRobots(minExplosionRadius, Cache.OUR_TEAM).length;
             //Debug.printInformation("FRIENDLY SIZE IS " + friendlySize + " IN RANGE " + minExplosionRadius, " VALID?");
-            if (friendlySize >= 3 || !controller.canEmpower(minExplosionRadius)) {
+            if ((friendlySize >= 3 || friendlySize >= 1 && Cache.INFLUENCE >= 61 || !controller.canEmpower(minExplosionRadius))) {
                 int flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE, CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME, false, false, 0);
                 Comms.checkAndAddFlag(flag);
                 //Debug.printInformation("MOVE " + validDir, " VALID?");
@@ -314,11 +377,13 @@ public class PoliticanBot implements RunnableBot {
                 else Pathfinding.move(bestLocation);
                 return true;
             } else {
-                for (int i = RobotType.POLITICIAN.actionRadiusSquared; i >= minExplosionRadius; i -= 2) {
-                    if (controller.senseNearbyRobots(i, Cache.OUR_TEAM).length <= 3) {
-                        //Debug.printInformation("EXPLODING ", i);
-                        controller.empower(i);
-                        return true;
+                if (Cache.INFLUENCE <= HEALTH_DEFEND_UNIT){
+                    for (int i = RobotType.POLITICIAN.actionRadiusSquared; i >= minExplosionRadius; i -= 2) {
+                        if (controller.senseNearbyRobots(i, Cache.OUR_TEAM).length <= 3) {
+                            //Debug.printInformation("EXPLODING ", i);
+                            controller.empower(i);
+                            return true;
+                        }
                     }
                 }
                 controller.empower(minExplosionRadius);
@@ -432,7 +497,7 @@ public class PoliticanBot implements RunnableBot {
                     }
                 }
                 if (targetWhenStuck == null) targetWhenStuck = Pathfinding.randomLocation();
-                Debug.printInformation("STUCK DEFENDER. MOVING TOWARDS " + targetWhenStuck, " VALID ");
+//                Debug.printInformation("STUCK DEFENDER. MOVING TOWARDS " + targetWhenStuck, " VALID ");
             }
         }
 
@@ -920,10 +985,11 @@ public class PoliticanBot implements RunnableBot {
         return false;
     }
 
+
     /* ATTACKING CODE 1/24 */
 
 
-    //
+
     // set flag if muckraker and slanderer in range
     public void setFlagToIndicateDangerToSlanderer() throws GameActionException {
 
@@ -956,7 +1022,7 @@ public class PoliticanBot implements RunnableBot {
         } else {
             if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
                 controller.setFlag(flag);
-                Comms.hasSetFlag = false; // NOTE: FALSE HERE IS BY FUNCTION (not a bug). We want to change the flag only to change its state from the previous one. If it is set to a different state/overridden, that is OKAY
+                // NOTE: NOT SETTING "Comms.hasSetFlag = true" IS BY FUNCTION (not a bug). We want to change the flag only to change its state from the previous one. If it is set to a different state/overridden, that is OKAY
             }
         }
     }
