@@ -80,7 +80,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int timeSinceLastSlandererSpawn = 999999;
     private static int timeSinceLastDefendingPoliticianSpawn = 999999;
     private static int timeSinceLastSeenMuckraker = 999999;
-    private static int timeSinceLastLargeMuckraker = -100;
+    private static int timeSinceLastLargeMuckraker = -80;
     private static int bigAttackRound = 50;
 
     /* Do we have one guide broadcasting information to newly created units */
@@ -669,7 +669,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             spawnDefendingPolitician(influenceSpend, toBuildDirection(dir, 3), null);
             return;
         }
-        if (timeSinceLastLargeMuckraker > 100 && Cache.INFLUENCE > 300) {
+        if (timeSinceLastLargeMuckraker > 100 && Cache.INFLUENCE > 200) {
             if (spawnScoutMuckraker(70, randomValidDirection(), locationToHarass)) {
                 timeSinceLastLargeMuckraker = 0;
                 return;

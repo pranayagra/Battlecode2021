@@ -369,7 +369,7 @@ public class PoliticanBot implements RunnableBot {
             int minExplosionRadius = Cache.CURRENT_LOCATION.distanceSquaredTo(targetLocation);
             int friendlySize = controller.senseNearbyRobots(minExplosionRadius, Cache.OUR_TEAM).length;
             //Debug.printInformation("FRIENDLY SIZE IS " + friendlySize + " IN RANGE " + minExplosionRadius, " VALID?");
-            if (friendlySize >= 3 || !controller.canEmpower(minExplosionRadius)) {
+            if ((friendlySize >= 3 || friendlySize >= 1 && Cache.INFLUENCE >= 61 || !controller.canEmpower(minExplosionRadius))) {
                 int flag = CommunicationMovement.encodeMovement(true, true, CommunicationMovement.MY_UNIT_TYPE.PO, CommunicationMovement.MOVEMENT_BOTS_DATA.IN_DANGER_MOVE, CommunicationMovement.COMMUNICATION_TO_OTHER_BOTS.MOVE_AWAY_FROM_ME, false, false, 0);
                 Comms.checkAndAddFlag(flag);
                 //Debug.printInformation("MOVE " + validDir, " VALID?");
@@ -377,11 +377,13 @@ public class PoliticanBot implements RunnableBot {
                 else Pathfinding.move(bestLocation);
                 return true;
             } else {
-                for (int i = RobotType.POLITICIAN.actionRadiusSquared; i >= minExplosionRadius; i -= 2) {
-                    if (controller.senseNearbyRobots(i, Cache.OUR_TEAM).length <= 3) {
-                        //Debug.printInformation("EXPLODING ", i);
-                        controller.empower(i);
-                        return true;
+                if (Cache.INFLUENCE <= HEALTH_DEFEND_UNIT){
+                    for (int i = RobotType.POLITICIAN.actionRadiusSquared; i >= minExplosionRadius; i -= 2) {
+                        if (controller.senseNearbyRobots(i, Cache.OUR_TEAM).length <= 3) {
+                            //Debug.printInformation("EXPLODING ", i);
+                            controller.empower(i);
+                            return true;
+                        }
                     }
                 }
                 controller.empower(minExplosionRadius);
