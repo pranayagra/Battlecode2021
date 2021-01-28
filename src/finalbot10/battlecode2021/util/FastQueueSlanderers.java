@@ -10,7 +10,7 @@ public class FastQueueSlanderers {
     }
 
     public void push(int ID, int creationRound) {
-        array[(front + (size++)) % array.length][0] = ID;
+        array[(front + (size)) % array.length][0] = ID;
         array[(front + (size++)) % array.length][1] = creationRound;
     }
 
@@ -36,6 +36,14 @@ public class FastQueueSlanderers {
 
     public int getFrontCreationTime() {
         return array[front % array.length][1];
+    }
+
+    public int getIDAtIDX(int idx) {
+        return array[(front + idx) % array.length][0];
+    }
+
+    public int getCreationTimeAtIDX(int idx) {
+        return array[(front + idx) % array.length][1];
     }
 
 }

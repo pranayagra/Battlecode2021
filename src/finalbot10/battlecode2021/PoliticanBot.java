@@ -4,6 +4,7 @@ import battlecode.common.*;
 import finalbot10.RunnableBot;
 import finalbot10.battlecode2021.util.*;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -68,7 +69,10 @@ public class PoliticanBot implements RunnableBot {
 
         slanderLocations = new MapLocation[50];
 
-        if (controller.getInfluence() == 1) scoutType = true;
+        if (controller.getInfluence() == 1) {
+            scoutType = true;
+            scoutTarget = Cache.EC_INFO_LOCATION;
+        }
 
         if (controller.getInfluence() >= 10 && controller.getConviction() <= HEALTH_DEFEND_UNIT) defendType = true;
         if (Cache.EC_INFO_ACTION == CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION || controller.getConviction() == 61) defendType = true;
@@ -118,6 +122,7 @@ public class PoliticanBot implements RunnableBot {
     public void turn() throws GameActionException {
         executeTurn();
 //        Debug.printByteCode("END => ");
+
     }
 
     public void executeTurn() throws GameActionException {
@@ -212,12 +217,14 @@ public class PoliticanBot implements RunnableBot {
                 }
             }
 
+//            Debug.printInformation("WHAT TO DO. attackEC: " + attackEC + ", EC_INFO_LOC " + Cache.EC_INFO_LOCATION + ", map(EC_INFO_LOC): " + Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION), Cache.myECID);
+
             if (attackEC && Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) == null) {
                 attackECProtocol();
             } else if (attackEC && Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) != CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
                 attackECProtocol();
             } else {
-//                Debug.printInformation("UNSCHEDULED. attackEC: " + attackEC + ", EC_INFO_LOC " + Cache.EC_INFO_LOCATION + ", map(EC_INFO_LOC): " + Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION), " LOST PURPOSE");
+//                Debug.printInformation("UNSCHEDULED", Cache.myECID);
                 //read EC flag attack to change attack location
                 if (controller.canGetFlag(Cache.myECID)) {
                     int ECFlag = controller.getFlag(Cache.myECID);
@@ -270,6 +277,9 @@ public class PoliticanBot implements RunnableBot {
 
         MapLocation targetLocation;
         int muckrakerSize = 0;
+
+        MapLocation locBiggestMuck = null;
+        int biggestMuck = 0;
         //quickly find closest one to you
         //get list of muckraker locations + distance to them (travelDistance)
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
@@ -277,10 +287,22 @@ public class PoliticanBot implements RunnableBot {
                 muckrakerLocations[muckrakerSize] = robotInfo.location;
                 muckrakerConviction[muckrakerSize] = robotInfo.conviction;
                 muckrakerDistances[muckrakerSize++] = Pathfinding.travelDistance(robotInfo.location, Cache.CURRENT_LOCATION);
+                if (robotInfo.conviction > 8) {
+                    biggestMuck = Math.max(biggestMuck, robotInfo.conviction);
+                    locBiggestMuck = robotInfo.location;
+                }
             }
         }
 
         if (muckrakerSize == 0) return false;
+
+        if (biggestMuck > 8 && slanderSize > 1) {
+            int flag = CommunicationMuckNearEC.encodeMUCKNearSlanderers(true, true, biggestMuck, locBiggestMuck);
+            if (!Comms.hasSetFlag && controller.canSetFlag(flag)) {
+                Comms.hasSetFlag = true;
+                controller.setFlag(flag);
+            }
+        }
 
         if (Cache.CONVICTION <= HEALTH_DEFEND_UNIT) {
 
@@ -636,6 +658,9 @@ public class PoliticanBot implements RunnableBot {
     private static double bestScore;
     private static double scoreThreshold;
     private static int bestExplosionRadius;
+
+    private static int dosketchmove;
+
     public void attackECProtocol() throws GameActionException {
         int distanceFromECToAttack = Cache.CURRENT_LOCATION.distanceSquaredTo(Cache.EC_INFO_LOCATION);
 
@@ -687,9 +712,20 @@ public class PoliticanBot implements RunnableBot {
                 isStuck = true;
             }
 
+//            Debug.printInformation("I am moving closer to attack. stuck: " + isStuck , Cache.EC_INFO_LOCATION);
+
             /* If we have made progress towards our target in the last 20 rounds AND 4 cooldown moves, then we are not stuck and continue moving towards the target. */
             if (!isStuck) {
-                pathfinding.move(Cache.EC_INFO_LOCATION); return;
+                int m = pathfinding.move(Cache.EC_INFO_LOCATION);
+                if (m == 0 && controller.isReady() && dosketchmove < 2) {
+                    Direction toMov = Cache.CURRENT_LOCATION.directionTo(Cache.EC_INFO_LOCATION);
+                    toMov = Pathfinding.toMovePreferredDirection(toMov, 1);
+                    if (toMov != null) {
+                        controller.move(toMov);
+                        ++dosketchmove;
+                    }
+                }
+                return;
             }
 
             /* We have tried moving towards the target but have not made any progress in the last 20 rounds AND 4 cooldown moves. Let us start trying to explode and slowly decrease the threshold */
@@ -1142,15 +1178,19 @@ public class PoliticanBot implements RunnableBot {
         // Check if target is viable
         boolean switchTarget = false;
         int moveRes = Pathfinding.move(scoutTarget);
+//        System.out.println(moveRes);
         if (moveRes >= 2 || moveRes == 0) {
             switchTarget = true;
+//            System.out.println("switching target1... ");
         }
 
         if (Cache.FOUND_ECS.containsKey(scoutTarget) && Cache.FOUND_ECS.get(scoutTarget) == CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
             switchTarget = true;
+//            System.out.println("switching target2... ");
         }
 
         if (switchTarget) {
+//            System.out.println("switched target");
             Cache.CURRENT_LOCATION = controller.getLocation();
             //TODO: Adjust so muckracker chooses a side thats likely to be close
             if (Cache.MAP_TOP == 0) {

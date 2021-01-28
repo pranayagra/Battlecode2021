@@ -97,6 +97,10 @@ public class EnlightenmentCenterBot implements RunnableBot {
     //Behavior: if does not exist, add to map. If exists, check type (neutral, friendly, enemy) and replace it
     private static Map <MapLocation, EC_Information> foundECs;
 
+    private static MapLocation muckLocation;
+    private static int muckHealth;
+    private static int muckDealCD;
+
     private static MapLocation attackNeutralLocation;
     private static int attackNeutralLocationHealth;
 
@@ -116,6 +120,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
     private static int previousBid = 0;
     private static int previousTeamVote = 0;
     private static boolean previousWon = false;
+
+
+    private static boolean bigMuckrakerInQueue;
 
     public EnlightenmentCenterBot(RobotController controller) throws GameActionException {
         this.controller = controller;
@@ -179,7 +186,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
     *  */
     public void slanderersToPoliticians() {
         if (!SLANDERER_IDs.isEmpty()) {
-            if (controller.getRoundNum() - SLANDERER_IDs.getFrontCreationTime() >= 300) { //need to retire slanderer as 1) it got killed or 2) converted
+            if (controller.getRoundNum() - SLANDERER_IDs.getFrontCreationTime() >= 301) { //need to retire slanderer as 1) it got killed or 2) converted
                 int robotID = SLANDERER_IDs.getFrontID();
                 SLANDERER_IDs.removeFront();
                 if (controller.canGetFlag(robotID)) {
@@ -241,6 +248,14 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 break;
         }
 
+        return true;
+    }
+
+    private boolean parseCommsMuckNear(int encoding) {
+        int health = CommunicationMuckNearEC.decodeHealth(encoding);
+        MapLocation location = CommunicationMuckNearEC.decodeLocationData(encoding);
+        muckLocation = location;
+        muckHealth = health;
         return true;
     }
 
@@ -321,6 +336,8 @@ public class EnlightenmentCenterBot implements RunnableBot {
             parseCommsHealth(encoding, attackingPoliticianIDX);
         }  else if (CommunicationECDataSmall.decodeIsSchemaType(encoding)) {
             parseCommsECDataSmall(encoding);
+        } else if (CommunicationMuckNearEC.decodeIsSchemaType(encoding)) {
+            parseCommsMuckNear(encoding);
         }
     }
 
@@ -423,6 +440,15 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         int largestEnemyMuckraker = 0;
 
+        if (muckLocation != null && muckHealth > 8 && muckDealCD > 15 && controller.isReady()) {
+
+            if (spawnDefendingPolitician(muckHealth + 20, randomValidDirection(), muckLocation)) {
+                muckLocation = null;
+                muckHealth = 0;
+                muckDealCD = 0;
+            }
+        }
+
         //Spawning influence
         int totalEnemyNearby = 0;
         for (RobotInfo  info : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
@@ -451,6 +477,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         timeSinceLastDefendingPoliticianSpawn += 1;
         timeSinceLastSeenMuckraker += 1;
         timeSinceLastLargeMuckraker += 1;
+        muckDealCD += 1;
 
         boolean slandererExists = false;
         for (RobotInfo robotInfo : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
@@ -467,16 +494,25 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
 
         MapLocation locationToHarass = harassEnemySlandererLocation != null ? harassEnemySlandererLocation : harassEnemyECLocation;
-        Debug.printInformation("harassEnemySlandererLocation: " + harassEnemySlandererLocation + ", harassEnemyECLocation: " + harassEnemyECLocation, controller.getRoundNum() - harassEnemySlandererLocationRoundSet);
-        System.out.println(harassEnemyECLocation + " " + harassEnemySlandererLocation + " " + (controller.getRoundNum() % 70));
-        if (harassEnemySlandererLocation != null) controller.setIndicatorDot(harassEnemySlandererLocation, 0, 255, 0);
-        if (harassEnemyECLocation != null) controller.setIndicatorDot(harassEnemyECLocation, 255, 0, 0);
+//        Debug.printInformation("harassEnemySlandererLocation: " + harassEnemySlandererLocation + ", harassEnemyECLocation: " + harassEnemyECLocation, controller.getRoundNum() - harassEnemySlandererLocationRoundSet);
+//        System.out.println(harassEnemyECLocation + " " + harassEnemySlandererLocation + " " + (controller.getRoundNum() % 70));
+//        if (harassEnemySlandererLocation != null) controller.setIndicatorDot(harassEnemySlandererLocation, 0, 255, 0);
+//        if (harassEnemyECLocation != null) controller.setIndicatorDot(harassEnemyECLocation, 255, 0, 0);
 
         if (controller.getRoundNum() % 70 == 0) {
             if (locationToHarass != null) {
                 int flag = CommunicationLocation.encodeLOCATION(
                         false, true, CommunicationLocation.FLAG_LOCATION_TYPES.ENEMY_EC_LOCATION, locationToHarass);
                 Comms.checkAndAddFlag(flag);
+            }
+            if (harassEnemySlandererLocation != null) bigMuckrakerInQueue = true;
+        }
+
+        if (bigMuckrakerInQueue && timeSinceLastLargeMuckraker > 40 && harassEnemySlandererLocation != null && Cache.INFLUENCE > 250) {
+            if (spawnScoutMuckraker(90, randomValidDirection(), harassEnemySlandererLocation)) {
+                timeSinceLastLargeMuckraker = 0;
+                bigMuckrakerInQueue = false;
+                return;
             }
         }
 
@@ -489,7 +525,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         //ATTACK NEUTRAL EC
         attackingLocationFlagSet = false;
         int totalCurrentDamageOnMap = processRobots.getPassivePoliticianAttackDamage();
-
+//        Debug.printInformation("totalCurrentDamageOnMap: " + totalCurrentDamageOnMap, " attack? ");
         if (attackNeutralLocationHealth != 9999999) {
             int amountOfMoreDamageNeeded = (int) (10 + (attackNeutralLocationHealth + Pathfinding.travelDistance(attackNeutralLocation, Cache.CURRENT_LOCATION)) - totalCurrentDamageOnMap * controller.getEmpowerFactor(Cache.OUR_TEAM, 25));
             if (amountOfMoreDamageNeeded <= 0) {
@@ -548,7 +584,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
             return;
         }
 
-        if (SCOUT_MUCKRAKER_SZ < 4) {
+        if (SCOUT_MUCKRAKER_SZ < 4 && controller.isReady()) {
             MapLocation targetLocation = Cache.START_LOCATION.translate(SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].x, SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].y);
             Direction preferredDirection = Cache.START_LOCATION.directionTo(targetLocation);
             if (spawnScoutMuckraker(1, toBuildDirection(preferredDirection,4), targetLocation)) {
@@ -556,9 +592,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
                 return;
                 //Debug.printInformation("Spawned Scout => ", targetLocation);
             }
-        }
-
-        if (SCOUT_MUCKRAKER_SZ < 8) {
+        } else if (SCOUT_MUCKRAKER_SZ < 8 && controller.isReady()) {
             MapLocation targetLocation = Cache.START_LOCATION.translate(SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].x, SCOUT_LOCATIONS[SCOUT_LOCATIONS_CURRENT].y);
             Direction preferredDirection = Cache.START_LOCATION.directionTo(targetLocation);
             if (spawnScoutPolitician(1, toBuildDirection(preferredDirection,4), targetLocation)) {
@@ -742,16 +776,16 @@ public class EnlightenmentCenterBot implements RunnableBot {
         }
     }
 
-    private void spawnDefendingPolitician(int influence, Direction direction, MapLocation location) throws GameActionException {
+    private boolean spawnDefendingPolitician(int influence, Direction direction, MapLocation location) throws GameActionException {
         if (location == null) location = spawnLocationNull();
         direction = toBuildDirection(direction, 3);
         if (direction != null && controller.canBuildRobot(RobotType.POLITICIAN, direction, influence) && setFlagForSpawnedUnit(direction, CommunicationECSpawnFlag.ACTION.DEFEND_LOCATION, CommunicationECSpawnFlag.SAFE_QUADRANT.NORTH_EAST, location)) {
             timeSinceLastDefendingPoliticianSpawn = 0;
             controller.buildRobot(RobotType.POLITICIAN, direction, influence);
             processRobots.addItem(controller.senseRobotAtLocation(Cache.CURRENT_LOCATION.add(direction)).ID, FastProcessIDs.TYPE.DEFENDING_POLITICIAN, influence);
-            /* DO NOT KEEP TRACK OF DEFENDING POLITICIANS FOR NOW */
+            return true;
         }
-
+        return false;
     }
 
     private boolean spawnAttackingPolitician(int influence, Direction direction, MapLocation location, Team team) throws GameActionException {
