@@ -217,6 +217,7 @@ public class PoliticanBot implements RunnableBot {
             } else if (attackEC && Cache.EC_INFO_LOCATION != null && Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION) != CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
                 attackECProtocol();
             } else {
+//                Debug.printInformation("UNSCHEDULED. attackEC: " + attackEC + ", EC_INFO_LOC " + Cache.EC_INFO_LOCATION + ", map(EC_INFO_LOC): " + Cache.FOUND_ECS.get(Cache.EC_INFO_LOCATION), " LOST PURPOSE");
                 //read EC flag attack to change attack location
                 if (controller.canGetFlag(Cache.myECID)) {
                     int ECFlag = controller.getFlag(Cache.myECID);
@@ -911,6 +912,7 @@ public class PoliticanBot implements RunnableBot {
 
         //TODO: if score has reached negative, then just go defend or something
         if (scoreThreshold < 1) {
+            Debug.printInformation("CONVERTING TO DEFEND TYPE ", thresholdDecrease);
             defendType = true;
             return;
         }

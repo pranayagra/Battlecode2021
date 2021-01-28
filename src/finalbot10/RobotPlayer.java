@@ -15,7 +15,7 @@ public strictfp class RobotPlayer {
      **/
     @SuppressWarnings("unused")
     public static void run(RobotController controller) throws GameActionException {
-
+        System.out.println("Version finalbot10 --> added features, old attack");
         // This is the RobotController object. You use it to perform actions from this robot,
         // and to get information on its current status.
         RobotPlayer.controller = controller;
@@ -136,6 +136,15 @@ public strictfp class RobotPlayer {
         }
 
         if (Cache.ROBOT_TYPE != RobotType.POLITICIAN || controller.getInfluence() == 1) {
+            if (Cache.ROBOT_TYPE == RobotType.MUCKRAKER) {
+                //enemy EC found, check if I am a muck and this is my "location"
+                if (ecLocationGuess == null) return;
+                for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+                    if (robotInfo.type == RobotType.SLANDERER && robotInfo.team == Cache.OPPONENT_TEAM) {
+                        return;
+                    }
+                }
+            }
             moveAwayFromLocation(robotToAvoid, ecLocationGuess);
             return;
         }

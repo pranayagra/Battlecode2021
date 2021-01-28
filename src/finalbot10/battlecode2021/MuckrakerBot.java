@@ -13,7 +13,7 @@ public class MuckrakerBot implements RunnableBot {
     private Pathfinding pathfinding;
     private static Random random;
 
-    private MapLocation scoutTarget;
+    public static MapLocation scoutTarget;
 
     boolean listenToECInstruction;
 
@@ -63,9 +63,9 @@ public class MuckrakerBot implements RunnableBot {
     }
 
     public void muckExecute() throws GameActionException {
-//        if (Cache.CONVICTION > 1) {
-//            controller.setIndicatorDot(Cache.CURRENT_LOCATION, 255, 255, 255);
-//        }
+        if (Cache.CONVICTION > 1) {
+            controller.setIndicatorDot(Cache.CURRENT_LOCATION, 255, 255, 255);
+        }
 
         muckrakerComms();
 
