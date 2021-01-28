@@ -14,12 +14,14 @@ class EC_Information {
     Team team;
     int roundFound;
     CommunicationLocation.FLAG_LOCATION_TYPES locationFlagType;
+    boolean alreadyAttacked;
 
     public EC_Information(MapLocation location, int health, int robotID, int currentRound, CommunicationLocation.FLAG_LOCATION_TYPES locationFlagType) {
         this.location = location;
         this.health = health;
         this.robotID = robotID;
         this.roundFound = currentRound;
+        alreadyAttacked = false;
         setTeam(locationFlagType);
     }
 
@@ -691,6 +693,9 @@ public class EnlightenmentCenterBot implements RunnableBot {
 
         boolean won = controller.getTeamVotes() > previousTeamVote ? true : false;
         int bid = previousBid;
+        if (!won && !previousWon) {
+            bid += (incomeGeneration / 10);
+        }
         if (!won) {
             bid += 1;
         } 
@@ -704,8 +709,7 @@ public class EnlightenmentCenterBot implements RunnableBot {
         if (controller.getRoundNum() >= 250 && controller.canBid(bid)){
             controller.bid(bid);
         }
-        else if (controller.getRoundNum() > 50 && controller.canBid(1)) {
-            //System.out.println("BID 1");
+        else if (controller.getRoundNum() > 75 && controller.canBid(1)) {
             bid = 1;
             controller.bid(bid);
         }

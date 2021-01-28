@@ -22,7 +22,7 @@ public class Util {
         Cache.ALL_NEARBY_ENEMY_ROBOTS = controller.senseNearbyRobots(-1, Cache.OPPONENT_TEAM);
         if (!ECHasScoutedAlready && controller.getType() != RobotType.SLANDERER) {
             Scout.scoutMapEdges();
-//            Scout.scoutSlanderers();
+            Scout.scoutSlanderers();
             Scout.scoutECs();
             Scout.scoutEnemies();
         }

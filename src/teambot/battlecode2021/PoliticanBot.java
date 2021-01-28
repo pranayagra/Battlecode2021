@@ -21,6 +21,10 @@ public class PoliticanBot implements RunnableBot {
 
     private boolean defendType;
 
+    private boolean scoutType;
+    private MapLocation scoutTarget;
+
+
     /* DEFENSIVE Variables */
     private int numRoundsStuckOnBadSquare;
     public static final int HEALTH_DEFEND_UNIT = 18;
@@ -65,7 +69,9 @@ public class PoliticanBot implements RunnableBot {
 
         slanderLocations = new MapLocation[50];
 
-        if (controller.getConviction() <= HEALTH_DEFEND_UNIT) defendType = true;
+        if (controller.getInfluence() == 1) scoutType = true;
+
+        if (controller.getInfluence() >= 10 && controller.getConviction() <= HEALTH_DEFEND_UNIT) defendType = true;
         if (controller.getConviction() == 61) defendType = true;
 
         tickUpdateToPassiveAttacking = false;
@@ -116,6 +122,14 @@ public class PoliticanBot implements RunnableBot {
     }
 
     public void executeTurn() throws GameActionException {
+
+        if (scoutType) {
+            if (simpleAttack()) {
+                return;
+            }
+            scoutRoutine();
+            return;
+        }
 
         if (controller.getRoundNum() >= 1490) {
             // we are losing on votes potentially
@@ -1125,5 +1139,143 @@ public class PoliticanBot implements RunnableBot {
             }
         }
     }
+
+
+
+
+
+
+    /* POLI SCOUT TYPE */
+
+
+    private void politicianComms() throws GameActionException {
+        // Check EC
+        if (controller.canGetFlag(Cache.myECID)) {
+            int encoding = controller.getFlag(Cache.myECID);
+
+            processValidFlag(encoding);
+        }
+        // Check other bots in sight
+        for (RobotInfo info : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+            if (controller.canGetFlag(info.ID)) {
+                int encoding = controller.getFlag(info.ID);
+                processValidFlag(encoding);
+            }
+        }
+    }
+
+    private void processValidFlag(int encoding) throws GameActionException {
+        if (CommunicationLocation.decodeIsSchemaType(encoding)) {
+            CommunicationLocation.FLAG_LOCATION_TYPES locationType = CommunicationLocation.decodeLocationType(encoding);
+            MapLocation locationData = CommunicationLocation.decodeLocationData(encoding);
+            //Debug.printInformation("Recieving location data", locationData);
+            switch (locationType) {
+                case NORTH_MAP_LOCATION:
+                    Cache.MAP_TOP = locationData.y;
+                    break;
+                case SOUTH_MAP_LOCATION:
+                    Cache.MAP_BOTTOM = locationData.y;
+                    break;
+                case EAST_MAP_LOCATION:
+                    Cache.MAP_RIGHT = locationData.x;
+                    break;
+                case WEST_MAP_LOCATION:
+                    Cache.MAP_LEFT = locationData.x;
+                    break;
+                case MY_EC_LOCATION:
+                    break;
+                case ENEMY_EC_LOCATION:
+                    Cache.FOUND_ECS.put(locationData, CommunicationLocation.FLAG_LOCATION_TYPES.ENEMY_EC_LOCATION);
+                    break;
+                case NEUTRAL_EC_LOCATION:
+                    break;
+                default:
+                    break;
+            }
+        }
+        // Other flags add here
+    }
+
+    // made attack better (attack strongest unit. if none, walk towards strongest unit)
+    public boolean simpleAttack() throws GameActionException {
+        Team enemy = Cache.OPPONENT_TEAM;
+        int actionRadius = controller.getType().actionRadiusSquared;
+
+        MapLocation bestSlandererToExpose = null;
+        int slandererInfluence = 0;
+
+        MapLocation bestSlandererOutOfReachToExpose = null;
+        int bestSlandererOutOfReachToExposeInfluence = 0;
+
+        if (bestSlandererToExpose != null) {
+            controller.expose(bestSlandererToExpose);
+            return true;
+        }
+
+        if (bestSlandererOutOfReachToExpose != null) {
+            Pathfinding.move(bestSlandererOutOfReachToExpose);
+            return true;
+        }
+
+        return false;
+    }
+
+    public boolean scoutRoutine() throws GameActionException {
+        scoutMovement();
+        return true;
+    }
+
+    private boolean scoutMovement() throws GameActionException {
+        //controller.setIndicatorLine(Cache.CURRENT_LOCATION, scoutTarget, 255, 0, 0);
+        if (!controller.isReady()) {
+            return false;
+        }
+
+        // Check if target is viable
+        boolean switchTarget = false;
+        int moveRes = Pathfinding.move(scoutTarget);
+        if (moveRes >= 2 || moveRes == 0) {
+            switchTarget = true;
+        }
+
+        if (Cache.FOUND_ECS.containsKey(scoutTarget) && Cache.FOUND_ECS.get(scoutTarget) == CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION) {
+            switchTarget = true;
+        }
+
+        if (switchTarget) {
+            Cache.CURRENT_LOCATION = controller.getLocation();
+            //TODO: Adjust so muckracker chooses a side thats likely to be close
+            if (Cache.MAP_TOP == 0) {
+                scoutTarget = Cache.CURRENT_LOCATION.translate(0,64);
+            }
+            else if (Cache.MAP_RIGHT == 0) {
+                scoutTarget = Cache.CURRENT_LOCATION.translate(64,0);
+            }
+            else if (Cache.MAP_BOTTOM == 0) {
+                scoutTarget = Cache.CURRENT_LOCATION.translate(0,-64);
+            }
+            else if (Cache.MAP_LEFT == 0) {
+                scoutTarget = Cache.CURRENT_LOCATION.translate(-64,0);
+            }
+            else{
+                /*
+                int[] directionScores = new int[8];
+                for (RobotInfo info : Cache.ALL_NEARBY_FRIENDLY_ROBOTS) {
+                    if (info.type == RobotType.MUCKRAKER) {
+                        Direction dir = Cache.CURRENT_LOCATION.directionTo(info.location);
+                    }
+                }
+                // Unfinished
+                */
+                scoutTarget = Pathfinding.randomLocation();
+            }
+        }
+
+        return false;
+    }
+
+
+
+
 
 }

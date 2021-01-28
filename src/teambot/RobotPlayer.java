@@ -144,7 +144,7 @@ public strictfp class RobotPlayer {
             return;
         }
 
-        if (Cache.ROBOT_TYPE != RobotType.POLITICIAN) {
+        if (Cache.ROBOT_TYPE != RobotType.POLITICIAN || controller.getInfluence() == 1) {
             moveAwayFromLocation(robotToAvoid, ecLocationGuess);
             return;
         }
