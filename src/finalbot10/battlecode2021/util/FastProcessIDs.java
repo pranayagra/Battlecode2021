@@ -8,17 +8,16 @@ public class FastProcessIDs {
     public static enum TYPE {
         ACTIVE_ATTACKING_POLITICIAN,
         PASSIVE_ATTACKING_POLITICIAN,
+        DEFENDING_POLITICIAN,
         GUIDE_SCOUT,
         SCOUT,
     }
 
     private RobotController controller;
 
-    public int[] robotIDs; // [12912, 14911, 12913, 13991, 19391]
-    public int[] numFlagsForRobotID;
+    public int[] robotIDs;
     public TYPE[] typeForRobotID;
     public int[] healthForRobotID;
-    public int[][] flagsForRobotID; // [robotID IDX][#flags]
     public int numRobotsToProcess;
 
     private static int startIteratorIDX;
@@ -26,13 +25,11 @@ public class FastProcessIDs {
     private static int totalPassivePoliticianAttackDamage;
 
 
-    public FastProcessIDs(int size, int maxFlags, RobotController controller) {
+    public FastProcessIDs(int size, RobotController controller) {
         this.controller = controller;
         this.robotIDs = new int[size];
-        this.numFlagsForRobotID = new int[size];
         this.typeForRobotID = new TYPE[size];
         this.healthForRobotID = new int[size];
-        this.flagsForRobotID = new int[size][maxFlags];
         this.numRobotsToProcess = 0;
         this.startIteratorIDX = -1;
         totalPassivePoliticianAttackDamage = 0;
@@ -51,18 +48,19 @@ public class FastProcessIDs {
         return numRobotsToProcess;
     }
 
-    public boolean addItem(int robotID, TYPE robotType, int robotHealth) {
-        //TODO: deal with overflow
+    public void addItem(int robotID, TYPE robotType, int robotHealth) {
+        int indexToReplace = numRobotsToProcess;
         if (numRobotsToProcess == robotIDs.length) {
-            Debug.printInformation("OVERFLOWED WITH NUMBER OF ROBOTS TO PROCESS ", " ERROR ");
-            return false;
+            indexToReplace = (int) (Math.random() * numRobotsToProcess);
+            robotIDs[indexToReplace] = robotID;
+            typeForRobotID[indexToReplace] = robotType;
+            healthForRobotID[indexToReplace] = robotHealth;
+        } else {
+            robotIDs[indexToReplace] = robotID;
+            typeForRobotID[indexToReplace] = robotType;
+            healthForRobotID[indexToReplace] = robotHealth;
+            numRobotsToProcess++;
         }
-        robotIDs[numRobotsToProcess] = robotID;
-        numFlagsForRobotID[numRobotsToProcess] = 0;
-        typeForRobotID[numRobotsToProcess] = robotType;
-        healthForRobotID[numRobotsToProcess] = robotHealth;
-        numRobotsToProcess++;
-        return true;
     }
 
     public void updatePassivePoliticianAttackDamage(int robotIDX) {
@@ -77,30 +75,26 @@ public class FastProcessIDs {
 
     public void replaceIndices(int indexToReplace, int indexToKeep) {
         robotIDs[indexToReplace] = robotIDs[indexToKeep];
-        numFlagsForRobotID[indexToReplace] = numFlagsForRobotID[indexToKeep];
         typeForRobotID[indexToReplace] = typeForRobotID[indexToKeep];
-        for (int i = 0; i < numFlagsForRobotID[indexToKeep]; ++i) {
-            flagsForRobotID[indexToReplace][i] = flagsForRobotID[indexToKeep][i];
-        }
+        healthForRobotID[indexToReplace] = healthForRobotID[indexToKeep];
     }
 
-    public boolean nextIdxExists() throws GameActionException {
+    public int nextIdxExists() throws GameActionException {
         for (++startIteratorIDX; startIteratorIDX < numRobotsToProcess; ++startIteratorIDX) {
             if (controller.canGetFlag(robotIDs[startIteratorIDX])) {
                 // The robot exists, so we can simply return the index
-                return true;
+                return controller.getFlag(robotIDs[startIteratorIDX]);
             } else {
                 while (--numRobotsToProcess >= startIteratorIDX + 1) {
                     if (controller.canGetFlag(robotIDs[numRobotsToProcess])) {
                         // replace the data in startIteratorIDX by the data in the last index (numRobotsToProcess)
                         replaceIndices(startIteratorIDX, numRobotsToProcess);
-                        return true;
+                        return controller.getFlag(robotIDs[startIteratorIDX]);
                     }
                 }
-
             }
         }
-        return false;
+        return -1;
     }
 
 

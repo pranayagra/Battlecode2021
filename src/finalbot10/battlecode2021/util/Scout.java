@@ -52,63 +52,60 @@ public class Scout {
 
         MapLocation location = null;
 
-        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
-            if (robotInfo.type == RobotType.SLANDERER) {
-                // a muck found a slanderer
-                slandererLikeliness = 2;
-                location = robotInfo.location;
-                break;
+        if (controller.getType() == RobotType.MUCKRAKER) {
+            for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+                if (robotInfo.type == RobotType.SLANDERER) {
+                    // a muck found a slanderer
+                    slandererLikeliness = 100;
+                    location = robotInfo.location;
+                    break;
+                }
+            }
+        } else {
+            for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
+                if (robotInfo.type == RobotType.POLITICIAN) {
+                    switch (robotInfo.influence) {
+                        case 21:
+                        case 41:
+                        case 63:
+                        case 85:
+                        case 107:
+                        case 130:
+                        case 154:
+                        case 178:
+                        case 203:
+                        case 228:
+                        case 255:
+                        case 282:
+                        case 310:
+                        case 339:
+                        case 368:
+                        case 399:
+                        case 431:
+                        case 463:
+                        case 497:
+                        case 532:
+                        case 568:
+                        case 605:
+                        case 643:
+                        case 683:
+                        case 724:
+                        case 766:
+                        case 810:
+                        case 855:
+                        case 902:
+                        case 949:
+                            slandererLikeliness += 2;
+                            if (robotInfo.influence == 21 || robotInfo.influence % 10 == 0) {
+                                --slandererLikeliness;
+                            }
+                            location = robotInfo.location;
+                    }
+                }
             }
         }
 
-        /*
-        for (RobotInfo robotInfo : Cache.ALL_NEARBY_ENEMY_ROBOTS) {
-            if (robotInfo.type == RobotType.SLANDERER) {
-                // a muck found a slanderer
-                slandererLikeliness += 2;
-                location = robotInfo.location;
-            }
-            else if (robotInfo.type == RobotType.POLITICIAN) {
-                // a non-muck unit found an enemy politician or slanderer? let us guess which one...
-                switch (robotInfo.influence) {
-                    case 21:
-                    case 41:
-                    case 63:
-                    case 85:
-                    case 107:
-                    case 130:
-                    case 154:
-                    case 178:
-                    case 203:
-                    case 228:
-                    case 255:
-                    case 282:
-                    case 310:
-                    case 339:
-                    case 368:
-                    case 399:
-                    case 431:
-                    case 463:
-                    case 497:
-                    case 532:
-                    case 568:
-                    case 605:
-                    case 643:
-                    case 683:
-                    case 724:
-                    case 766:
-                    case 810:
-                    case 855:
-                    case 902:
-                    case 949:
-                        slandererLikeliness++;
-                        location = robotInfo.location;
-                        break;
-                }
-            }
-        }*/
-
-        if (slandererLikeliness > 0) {
+        if (slandererLikeliness >= 3) {
             flag = CommunicationLocation.encodeLOCATION(true, true, CommunicationLocation.FLAG_LOCATION_TYPES.SLANDERER_LOCATION, location);
 
             if (controller.canSetFlag(flag)) {
@@ -219,9 +216,7 @@ public class Scout {
                     }
 
                     if (Cache.FOUND_ECS.getOrDefault(info.location, null) != getECType(info.team)) {
-                        int flag = CommunicationLocation.encodeLOCATION(false, false, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION, info.location);
-                        Comms.checkAndAddFlag(flag);
-                        flag = CommunicationRobotID.encodeRobotID(false, true, CommunicationRobotID.COMMUNICATION_UNIT_TYPE.EC, CommunicationRobotID.COMMUNICATION_UNIT_TEAM.MY, info.ID);
+                        int flag = CommunicationLocation.encodeLOCATION(false, true, CommunicationLocation.FLAG_LOCATION_TYPES.MY_EC_LOCATION, info.location);
                         Comms.checkAndAddFlag(flag);
                     }
 
