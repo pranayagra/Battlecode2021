@@ -1,4 +1,4 @@
-package teambotnew2codebutoldattack.battlecode2021.util;
+package finalbot11.battlecode2021.util;
 
 public class FastQueueSlanderers {
     private int[][] array; //array[i][0,1], where 0=ID, 1=creation time
